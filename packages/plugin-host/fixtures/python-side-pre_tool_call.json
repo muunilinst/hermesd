@@ -1,0 +1,9 @@
+{
+  "comment": "Recorded result of the Python guard plugin (same rules as first-party-guard) for each input. Hand-written stand-in for a real recording from the gateway host.",
+  "cases": [
+    { "kwargs": { "tool_name": "terminal", "args": { "command": "ls -la" }, "task_id": "t1", "session_id": "s1", "new_unknown_kwarg": 1 }, "python_result": { "action": "approve" } },
+    { "kwargs": { "tool_name": "terminal", "args": { "command": "rm -rf /" }, "task_id": "t2", "session_id": "s1" }, "python_result": { "action": "block", "message": "guard: dangerous command", "plugin": "guard" } },
+    { "kwargs": { "tool_name": "read_file", "args": { "path": "/etc/hosts" }, "task_id": "t3", "session_id": "s1" }, "python_result": { "action": "approve" } },
+    { "kwargs": { "tool_name": "terminal", "args": { "command": "mkfs.ext4 /dev/sda" }, "task_id": "t4", "session_id": "s2" }, "python_result": { "action": "block", "message": "guard: dangerous command", "plugin": "guard" } }
+  ]
+}
