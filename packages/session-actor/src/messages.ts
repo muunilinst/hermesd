@@ -106,6 +106,7 @@ function fromRow(r: SqlRow): NewMessage {
   if (typeof r.tool_call_id === "string") m.toolCallId = r.tool_call_id;
   if (typeof r.tool_call_uid === "string") m.toolCallUid = r.tool_call_uid;
   if (typeof r.tool_name === "string") m.toolName = r.tool_name;
+  if (num(r._compressed_summary) === 1) m.compressedSummary = true;
   return m;
 }
 
@@ -116,7 +117,7 @@ function fromRow(r: SqlRow): NewMessage {
 export function loadActiveMessages(sql: Sql, sessionId: string): NewMessage[] {
   return sql
     .exec(
-      `SELECT id, role, content, tool_call_id, tool_calls, tool_name, tool_call_uids, tool_call_uid, message_uid
+      `SELECT id, role, content, tool_call_id, tool_calls, tool_name, tool_call_uids, tool_call_uid, message_uid, _compressed_summary
        FROM messages WHERE session_id = ? AND active = 1 ORDER BY id`,
       sessionId,
     )

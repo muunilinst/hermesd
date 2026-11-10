@@ -14,8 +14,8 @@ export {
   readPortRows,
 } from "./migrate.ts";
 export type { DataMigration, MigrationSet, PortRow, PortTable, RowData } from "./migrate.ts";
-export { checkLineage, compactSession, finishCompaction, repairLineageRows, safeCutoff } from "./lineage.ts";
-export type { CompactionDeps } from "./lineage.ts";
+export { VERDICT_PENDING, checkLineage, compactSession, finishCompaction, repairLineageRows, safeCutoff, writeWindowChild } from "./lineage.ts";
+export type { CompactionDeps, WindowChildDeps, WindowChildInput, WindowChildResult } from "./lineage.ts";
 export {
   currentSessionId,
   setCurrentSessionId,

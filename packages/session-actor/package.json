@@ -10,6 +10,7 @@
     "@hermesd/contracts": "*",
     "@hermesd/executor-protocol": "*",
     "@hermesd/host": "*",
+    "@hermesd/prompt": "*",
     "@hermesd/runtime": "*"
   }
 }

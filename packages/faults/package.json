@@ -13,6 +13,7 @@
     "@hermesd/host": "*",
     "@hermesd/host-node": "*",
     "@hermesd/profile-actor": "*",
+    "@hermesd/prompt": "*",
     "@hermesd/runtime": "*",
     "@hermesd/session-actor": "*"
   }

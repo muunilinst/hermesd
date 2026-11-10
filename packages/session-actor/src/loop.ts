@@ -9,7 +9,19 @@ import {
   type TurnContext,
   type TurnDriver,
 } from "@hermesd/runtime";
+import {
+  compressionConfig,
+  estimateMessagesTokensRough,
+  estimateRequestTokensRough,
+  hygieneNeeded,
+  planCompression,
+  shouldCompress,
+  thresholdTokens,
+  withSummaryPrefix,
+  type CompressionConfig,
+} from "@hermesd/prompt";
 import { rpcExecutor } from "./executor-rpc.ts";
+import { VERDICT_PENDING, finishCompaction, writeWindowChild } from "./lineage.ts";
 import {
   currentSessionId,
   ensureSession,
@@ -69,9 +81,15 @@ export interface LoopConfig {
   /**
    * The compression hook point (guide 2.3). The loop checks the 50% threshold
    * and calls this when it is exceeded. The hook may compact the session
-   * (`compactSession`). Without a hook the loop only records that compression was due.
+   * (`compactSession`). This is the flat 50% form. When there is no hook, the
+   * loop uses the built-in compressor (`@hermesd/prompt`), which sends the
+   * summary call as a `pending_call` of its own.
    */
   compress?: (info: CompressionInfo) => Promise<void>;
+  /** Knobs of the built-in compressor. The defaults are upstream's. */
+  compression?: Partial<CompressionConfig>;
+  /** The model for the summary call. The default is `model`. */
+  summaryModel?: string;
 }
 
 export function defaultLoopConfig(partial: Partial<LoopConfig> = {}): LoopConfig {
@@ -123,6 +141,7 @@ interface CallRow {
   request: string;
   pendingId: string | undefined;
   attempts: number;
+  data: RowData;
 }
 
 interface OpRow {
@@ -154,6 +173,12 @@ interface Snapshot {
   call: CallRow | undefined;
   ops: OpRow[];
   question: QuestionRow | undefined;
+  /** The summary calls that this turn has made. */
+  compressions: number;
+  /** The child session of a compaction that no measurement has judged yet. */
+  verdictPending: string | undefined;
+  /** Upstream `compression_ineffective_count` of the current session. */
+  ineffective: number;
 }
 
 type OpOutcome =
@@ -177,6 +202,8 @@ interface Plan {
   ops: OpPlan[];
   modelCall: { callId: string; seq: number; request: string; data: RowData } | undefined;
   finish: { status: "done" | "failed" | "unknown"; text: string } | undefined;
+  /** Writes that join the commit of this step (the anti-thrash verdict). */
+  postWrites: Array<(sql: Sql) => void>;
   /** Send the finish text to the user. False when the user already got a message (the clarify question). */
   finishReply: boolean;
 }
@@ -195,9 +222,13 @@ interface Transition {
   opUpdates?: Array<{ opId: string; status: string; discard: boolean; result: unknown }>;
   /** Set when the compression hook ran and the snapshot must be read again. */
   recompressed?: boolean;
+  /** The first step of a turn: the gateway hygiene check applies (upstream `run_turn_hygiene.py`). */
+  hygiene?: boolean;
 }
 
 const MAX_LOOP = 200;
+/** A safety stop of the port: one turn makes at most this many summary calls. */
+const MAX_COMPRESSIONS_PER_TURN = 3;
 
 export class LoopDriver implements TurnDriver {
   readonly #deps: LoopDeps;
@@ -299,10 +330,16 @@ export class LoopDriver implements TurnDriver {
     let call: CallRow | undefined;
     if (callRow) {
       const p = pendingFor("model_call", "callId", str(callRow.row.call_id));
-      call = { callId: str(callRow.row.call_id), seq: num(callRow.row.seq), request: str(callRow.row.request), pendingId: p?.id, attempts: p?.attempts ?? 0 };
+      call = { callId: str(callRow.row.call_id), seq: num(callRow.row.seq), request: str(callRow.row.request), pendingId: p?.id, attempts: p?.attempts ?? 0, data: callRow.data };
     }
+    const verdict = sql.exec("SELECT value FROM sa_meta WHERE key = ?", VERDICT_PENDING)[0];
+    const sess = sql.exec("SELECT compression_ineffective_count AS c FROM sessions WHERE id = ?", sessionId)[0];
+    const compressions = sql.exec("SELECT call_id FROM pending_call WHERE turn_id = ?", ctx.turnId).filter((r) => str(r.call_id).startsWith(`${ctx.turnId}:k`)).length;
     return {
       sessionId,
+      compressions,
+      verdictPending: verdict ? str(verdict.value) : undefined,
+      ineffective: sess && sess.c !== null && sess.c !== undefined ? num(sess.c) : 0,
       messages: loadActiveMessages(sql, sessionId),
       todos,
       modelCalls: turn ? num(turn.row.model_calls) : 0,
@@ -338,6 +375,7 @@ export class LoopDriver implements TurnDriver {
       };
       await this.#transition(ctx, snap, {
         newMessages: [msg],
+        hygiene: true,
         after: (sql) => {
           sql.exec("UPDATE clarify_question SET status = 'answered' WHERE tool_call_uid = ?", q.uid);
         },
@@ -345,7 +383,7 @@ export class LoopDriver implements TurnDriver {
       return true;
     }
     const user: NewMessage = { role: "user", content: ctx.input, messageUid: `adm-${ctx.admissionId}` };
-    await this.#transition(ctx, snap, { newMessages: [user] });
+    await this.#transition(ctx, snap, { newMessages: [user], hygiene: true });
     return true;
   }
 
@@ -386,8 +424,11 @@ export class LoopDriver implements TurnDriver {
   // ------------------------------------------------------------ the model call
 
   async #sendCall(ctx: TurnContext, snap: Snapshot, row: CallRow): Promise<"again" | "wait"> {
+    const compression = row.data.purpose === "compression";
     if (row.attempts > this.#cfg.maxModelRetries) {
-      await this.#failCall(ctx, row, `the model call ${row.callId} did not return after ${row.attempts - 1} retries`);
+      const why = `the model call ${row.callId} did not return after ${row.attempts - 1} retries`;
+      if (compression) return this.#finishCompression(ctx, snap, row, { fallbackReason: why });
+      await this.#failCall(ctx, row, why);
       return "wait";
     }
     const ac = new AbortController();
@@ -406,7 +447,9 @@ export class LoopDriver implements TurnDriver {
     if (ac.signal.aborted) return "again"; // partial output is dropped
     if (res.status === 429 || res.status === 408 || res.status >= 500) return "wait";
     if (!res.ok) {
-      await this.#failCall(ctx, row, `the model returned HTTP ${res.status}`);
+      const why = `the model returned HTTP ${res.status}`;
+      if (compression) return this.#finishCompression(ctx, snap, row, { fallbackReason: why });
+      await this.#failCall(ctx, row, why);
       return "wait";
     }
     let parsed: ParsedResponse | string;
@@ -416,8 +459,15 @@ export class LoopDriver implements TurnDriver {
       parsed = "the model answer is not JSON";
     }
     if (typeof parsed === "string") {
+      if (compression) return this.#finishCompression(ctx, snap, row, { fallbackReason: parsed });
       await this.#failCall(ctx, row, parsed);
       return "wait";
+    }
+    if (compression) {
+      const body = (parsed.content ?? "").trim();
+      const digest = await sha256(text);
+      if (body === "") return this.#finishCompression(ctx, snap, row, { fallbackReason: "the summary model returned no text" }, parsed.usage, digest);
+      return this.#finishCompression(ctx, snap, row, { text: withSummaryPrefix(body) }, parsed.usage, digest);
     }
     const uids = parsed.toolCalls.map((_c, i) => `${row.callId}#${i}`);
     const assistant: NewMessage = {
@@ -443,6 +493,69 @@ export class LoopDriver implements TurnDriver {
       if (e instanceof StepRaced) return "again";
       return this.#persistenceFailed(ctx, row, e);
     }
+    return "again";
+  }
+
+  /**
+   * The end of a summary call. One commit settles the call, writes the child
+   * session and makes it the current session. A second commit (the D7 pattern)
+   * turns the parent rows inactive. The guard on `pending_call` means a summary
+   * is used once: a second wake finds the call settled and does nothing.
+   * If the model cannot give a summary, the static fallback is used, as
+   * upstream does when the summary call fails, and the turn goes on.
+   */
+  async #finishCompression(
+    ctx: TurnContext,
+    _snap: Snapshot,
+    row: CallRow,
+    summary: { text: string } | { fallbackReason: string },
+    usage?: Usage,
+    digest?: string,
+  ): Promise<"again"> {
+    const now = this.#deps.clock.now();
+    const promptHash = await this.promptHash();
+    const d = row.data;
+    const strs = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
+    let made = false;
+    try {
+      await ctx.step({
+        settle: row.pendingId ? [{ id: row.pendingId, result: "response" }] : [],
+        write: (sql, outbox) => {
+          if (!turnIsOpen(sql, ctx.turnId)) throw new StepRaced();
+          if (num(sql.exec("SELECT COUNT(*) AS n FROM pending_call WHERE call_id = ? AND status = 'pending'", row.callId)[0]!.n) !== 1) throw new StepRaced();
+          const turn = sql.exec("SELECT interrupted FROM loop_turn WHERE turn_id = ?", ctx.turnId)[0];
+          if (turn && num(turn.interrupted) === 1) throw new StepRaced();
+          const r = writeWindowChild(
+            sql,
+            { migrations: this.#set, source: "teenytiny", model: this.#cfg.model, systemPrompt: this.#cfg.systemPrompt, systemPromptHash: promptHash, profileTarget: this.#cfg.profileTarget, fallbackId: ctx.host.id() },
+            outbox,
+            {
+              headUids: strs(d.head_uids),
+              middleUids: strs(d.middle_uids),
+              summary,
+              tokensBefore: Number(d.tokens_before ?? 0),
+              reason: String(d.reason ?? "threshold"),
+              turnId: ctx.turnId,
+            },
+            now,
+          );
+          made = r !== undefined;
+          if (usage) recordUsage(sql, currentSessionId(sql, ctx.host.id()), String(d.summary_model ?? this.#cfg.model), usage, now);
+          const outcome = r ? { child_id: r.childId, tokens_after: r.tokensAfter, fallback: r.fallback } : { skipped: "the rows changed" };
+          sql.exec(
+            "UPDATE pending_call SET status = 'done', response_digest = ?, updated_at = ?, data = ? WHERE call_id = ?",
+            digest ?? null,
+            now,
+            JSON.stringify({ ...d, outcome }),
+            row.callId,
+          );
+        },
+      });
+    } catch (e) {
+      if (e instanceof StepRaced) return "again";
+      throw e;
+    }
+    if (made) await finishCompaction({ host: ctx.host, clock: this.#deps.clock, migrations: this.#set });
     return "again";
   }
 
@@ -476,6 +589,7 @@ export class LoopDriver implements TurnDriver {
    */
   async #transition(ctx: TurnContext, snap: Snapshot, t: Transition): Promise<boolean> {
     const plan = await this.#plan(ctx, snap, t);
+    if (plan.modelCall && !this.#cfg.compress) this.#compressionDue(ctx, snap, t, plan);
     if (plan.modelCall && !t.recompressed && this.#cfg.compress) {
       const body = JSON.parse(plan.modelCall.request) as ChatRequestBody;
       const tokens = estimateTokens(body);
@@ -557,6 +671,7 @@ export class LoopDriver implements TurnDriver {
         );
         sql.exec("UPDATE loop_turn SET model_calls = ? WHERE turn_id = ?", c.seq, ctx.turnId);
       }
+      for (const w of plan.postWrites) w(sql);
       t.after?.(sql, now);
       if (plan.finish) {
         if (plan.finishReply) this.#reply(outbox, ctx.turnId, plan.finish.status === "done" ? plan.finish.text : `error: ${plan.finish.text}`);
@@ -573,7 +688,7 @@ export class LoopDriver implements TurnDriver {
   }
 
   async #plan(ctx: TurnContext, snap: Snapshot, t: Transition): Promise<Plan> {
-    const plan: Plan = { messages: [...t.newMessages], todoWrite: undefined, question: undefined, ops: [], modelCall: undefined, finish: undefined, finishReply: true };
+    const plan: Plan = { messages: [...t.newMessages], todoWrite: undefined, question: undefined, ops: [], modelCall: undefined, finish: undefined, postWrites: [], finishReply: true };
     const all = [...snap.messages, ...t.newMessages];
     let todos = snap.todos;
     for (let guard = 0; guard < 10; guard++) {
@@ -692,6 +807,55 @@ export class LoopDriver implements TurnDriver {
     await this.fence(ctx.host);
   }
 
+  /**
+   * The compression check before a model call (upstream `should_compress`,
+   * the gateway hygiene check, and the anti-thrash verdict). If compression is
+   * due, the planned model call is replaced by the summary call, which is a
+   * `pending_call` of its own with its own wake obligation (porting rule 1).
+   * The model call itself is planned again after the compaction.
+   */
+  #compressionDue(ctx: TurnContext, snap: Snapshot, t: Transition, plan: Plan): void {
+    if (!plan.modelCall) return;
+    const cfg = compressionConfig(this.#cfg.compression);
+    const window = this.#cfg.contextWindow;
+    const all = [...snap.messages, ...plan.messages];
+    const tokens = estimateRequestTokensRough(all, { systemPrompt: this.#cfg.systemPrompt, tools: toolDefinitions(this.#cfg.tools) });
+    const threshold = thresholdTokens(window, cfg);
+    // The verdict on the last compaction is judged on this measurement.
+    let strikes = snap.ineffective;
+    if (snap.verdictPending !== undefined) {
+      strikes = tokens >= threshold ? strikes + 1 : 0;
+      plan.postWrites.push((sql) => {
+        sql.exec("UPDATE sessions SET compression_ineffective_count = ? WHERE id = ?", strikes, snap.sessionId);
+        sql.exec("DELETE FROM sa_meta WHERE key = ?", VERDICT_PENDING);
+      });
+    }
+    const hygiene = t.hygiene === true && hygieneNeeded(estimateMessagesTokensRough(snap.messages), snap.messages.length, window, cfg);
+    const due = hygiene || (shouldCompress(tokens, window, cfg) && strikes < 2);
+    if (!due || snap.compressions >= MAX_COMPRESSIONS_PER_TURN) return;
+    const today = new Date(this.#deps.clock.now()).toISOString().slice(0, 10);
+    const planned = planCompression(all, { contextLength: window, today, config: cfg });
+    if (!planned) return;
+    const model = this.#cfg.summaryModel ?? this.#cfg.model;
+    const body: ChatRequestBody = { model, messages: [{ role: "user", content: planned.prompt }], tools: [] };
+    const uids = (from: number, to: number): string[] => all.slice(from, to).map((m) => m.messageUid);
+    plan.modelCall = {
+      callId: `${ctx.turnId}:k${snap.compressions + 1}`,
+      // The summary call does not count as a model call of the turn.
+      seq: snap.modelCalls,
+      request: JSON.stringify(body),
+      data: {
+        purpose: "compression",
+        reason: hygiene ? "hygiene" : "threshold",
+        summary_model: model,
+        head_uids: uids(0, planned.window.start),
+        middle_uids: uids(planned.window.start, planned.window.end),
+        tokens_before: tokens,
+        threshold,
+      },
+    };
+  }
+
   async #buildCall(ctx: TurnContext, snap: Snapshot, all: NewMessage[]): Promise<NonNullable<Plan["modelCall"]>> {
     const body: ChatRequestBody = {
       model: this.#cfg.model,
@@ -699,7 +863,7 @@ export class LoopDriver implements TurnDriver {
       tools: toolDefinitions(this.#cfg.tools),
     };
     const tokens = estimateTokens(body);
-    const threshold = Math.floor(this.#cfg.contextWindow * 0.5);
+    const threshold = this.#cfg.compress ? Math.floor(this.#cfg.contextWindow * 0.5) : thresholdTokens(this.#cfg.contextWindow, compressionConfig(this.#cfg.compression));
     const seq = snap.modelCalls + 1;
     return {
       callId: `${ctx.turnId}:c${seq}`,
