@@ -1,0 +1,401 @@
+{
+  "format": "hermesd-golden/1",
+  "side": "port",
+  "script": "format-codex-responses",
+  "requests": [
+    {
+      "index": 0,
+      "method": "POST",
+      "path": "/v1/responses",
+      "body": {
+        "model": "gpt-5-codex",
+        "instructions": "You are a helpful agent.",
+        "input": [
+          {
+            "type": "message",
+            "role": "user",
+            "content": "say hello in the shell"
+          }
+        ],
+        "store": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "terminal",
+            "description": "Execute shell commands in the workspace. The filesystem persists between calls. Pass the command in `command`. Use `workdir` for a working directory and `timeout` for a limit in seconds.",
+            "strict": false,
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "description": "The command to execute."
+                },
+                "background": {
+                  "type": "boolean",
+                  "description": "Run the command in the background.",
+                  "default": false
+                },
+                "timeout": {
+                  "type": "integer",
+                  "description": "Maximum time in seconds.",
+                  "minimum": 1
+                },
+                "workdir": {
+                  "type": "string",
+                  "description": "Working directory for this command."
+                },
+                "pty": {
+                  "type": "boolean",
+                  "description": "Run with a pseudo-terminal.",
+                  "default": false
+                }
+              },
+              "required": [
+                "command"
+              ]
+            }
+          },
+          {
+            "type": "function",
+            "name": "todo_list",
+            "description": "Track a task list for multi-step work (3+ steps). Use for complex tasks with 3+ steps or when the user provides multiple tasks. For 'all N items' tasks, enumerate every instance as its own checklist item so none are silently dropped. Call with no parameters to read the current list.\nList order is priority. Only ONE item in_progress at a time. Break large phases into subtasks via parent. Mark an item completed only after the work is verified done, never based on intent. If something fails, cancel it and add a revised item. Always returns the full current list.",
+            "strict": false,
+            "parameters": {
+              "properties": {
+                "merge": {
+                  "default": false,
+                  "description": "true: update existing items by id, add new ones. false (default): replace the entire list with a fresh plan.",
+                  "type": "boolean"
+                },
+                "todos": {
+                  "description": "Task items to write.",
+                  "items": {
+                    "properties": {
+                      "content": {
+                        "description": "Task description",
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "parent": {
+                        "description": "Optional id of another item, making this a nested subtask. Omit for top-level.",
+                        "type": "string"
+                      },
+                      "status": {
+                        "enum": [
+                          "pending",
+                          "in_progress",
+                          "completed",
+                          "cancelled"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "content",
+                      "status"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [],
+              "type": "object"
+            }
+          },
+          {
+            "type": "function",
+            "name": "clarify",
+            "description": "Ask the user one or more questions when you need a decision or feedback. Pass every question in `questions` (1-5 entries) — a single question is a one-entry array, and several INDEPENDENT questions belong in ONE call (one form beats a chain of clarify calls; if one answer would change another question, ask separately). Per question: single-select (up to 4 choices — put your recommended option FIRST, the UI marks it '(Recommended)' and auto-appends an 'Other' free-text row), multi-select (multi_select=true), or open-ended (omit choices). Options go ONLY in `choices`, never enumerated inside the question text (choices render as pickable rows; options written into the question are dead prose the user can't click). Result: {responses: [...], outcome} in question order. Each response has status answered, skipped or unanswered (user_response is null unless answered); outcome is submitted, cancelled, timed_out or undelivered, with a notice saying why when the wait ended without a submit. Prefer deciding low-stakes questions yourself; don't use this for dangerous-command confirmation (the terminal tool handles that).",
+            "strict": false,
+            "parameters": {
+              "properties": {
+                "questions": {
+                  "description": "The question(s). Each: question text (options excluded), optional choices (recommended first; omit for free-text), optional multi_select. Responses come back in question order with the question text echoed.",
+                  "items": {
+                    "properties": {
+                      "choices": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 4,
+                        "type": "array"
+                      },
+                      "multi_select": {
+                        "type": "boolean"
+                      },
+                      "question": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "question"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 5,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "questions"
+              ],
+              "type": "object"
+            }
+          }
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": true,
+        "prompt_cache_key": "pck_b95e7cc864d05e91555b5b17",
+        "reasoning": {
+          "effort": "medium",
+          "summary": "auto"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ]
+      }
+    },
+    {
+      "index": 1,
+      "method": "POST",
+      "path": "/v1/responses",
+      "body": {
+        "model": "gpt-5-codex",
+        "instructions": "You are a helpful agent.",
+        "input": [
+          {
+            "type": "message",
+            "role": "user",
+            "content": "say hello in the shell"
+          },
+          {
+            "type": "message",
+            "role": "assistant",
+            "content": "I will run it."
+          },
+          {
+            "type": "function_call",
+            "call_id": "call_1",
+            "name": "terminal",
+            "arguments": "{\"command\":\"echo hello\"}"
+          },
+          {
+            "type": "function_call_output",
+            "call_id": "call_1",
+            "output": "{\"output\":\"hello\\n\",\"exit_code\":0,\"error\":null}"
+          }
+        ],
+        "store": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "terminal",
+            "description": "Execute shell commands in the workspace. The filesystem persists between calls. Pass the command in `command`. Use `workdir` for a working directory and `timeout` for a limit in seconds.",
+            "strict": false,
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "description": "The command to execute."
+                },
+                "background": {
+                  "type": "boolean",
+                  "description": "Run the command in the background.",
+                  "default": false
+                },
+                "timeout": {
+                  "type": "integer",
+                  "description": "Maximum time in seconds.",
+                  "minimum": 1
+                },
+                "workdir": {
+                  "type": "string",
+                  "description": "Working directory for this command."
+                },
+                "pty": {
+                  "type": "boolean",
+                  "description": "Run with a pseudo-terminal.",
+                  "default": false
+                }
+              },
+              "required": [
+                "command"
+              ]
+            }
+          },
+          {
+            "type": "function",
+            "name": "todo_list",
+            "description": "Track a task list for multi-step work (3+ steps). Use for complex tasks with 3+ steps or when the user provides multiple tasks. For 'all N items' tasks, enumerate every instance as its own checklist item so none are silently dropped. Call with no parameters to read the current list.\nList order is priority. Only ONE item in_progress at a time. Break large phases into subtasks via parent. Mark an item completed only after the work is verified done, never based on intent. If something fails, cancel it and add a revised item. Always returns the full current list.",
+            "strict": false,
+            "parameters": {
+              "properties": {
+                "merge": {
+                  "default": false,
+                  "description": "true: update existing items by id, add new ones. false (default): replace the entire list with a fresh plan.",
+                  "type": "boolean"
+                },
+                "todos": {
+                  "description": "Task items to write.",
+                  "items": {
+                    "properties": {
+                      "content": {
+                        "description": "Task description",
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "parent": {
+                        "description": "Optional id of another item, making this a nested subtask. Omit for top-level.",
+                        "type": "string"
+                      },
+                      "status": {
+                        "enum": [
+                          "pending",
+                          "in_progress",
+                          "completed",
+                          "cancelled"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "content",
+                      "status"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [],
+              "type": "object"
+            }
+          },
+          {
+            "type": "function",
+            "name": "clarify",
+            "description": "Ask the user one or more questions when you need a decision or feedback. Pass every question in `questions` (1-5 entries) — a single question is a one-entry array, and several INDEPENDENT questions belong in ONE call (one form beats a chain of clarify calls; if one answer would change another question, ask separately). Per question: single-select (up to 4 choices — put your recommended option FIRST, the UI marks it '(Recommended)' and auto-appends an 'Other' free-text row), multi-select (multi_select=true), or open-ended (omit choices). Options go ONLY in `choices`, never enumerated inside the question text (choices render as pickable rows; options written into the question are dead prose the user can't click). Result: {responses: [...], outcome} in question order. Each response has status answered, skipped or unanswered (user_response is null unless answered); outcome is submitted, cancelled, timed_out or undelivered, with a notice saying why when the wait ended without a submit. Prefer deciding low-stakes questions yourself; don't use this for dangerous-command confirmation (the terminal tool handles that).",
+            "strict": false,
+            "parameters": {
+              "properties": {
+                "questions": {
+                  "description": "The question(s). Each: question text (options excluded), optional choices (recommended first; omit for free-text), optional multi_select. Responses come back in question order with the question text echoed.",
+                  "items": {
+                    "properties": {
+                      "choices": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 4,
+                        "type": "array"
+                      },
+                      "multi_select": {
+                        "type": "boolean"
+                      },
+                      "question": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "question"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 5,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "questions"
+              ],
+              "type": "object"
+            }
+          }
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": true,
+        "prompt_cache_key": "pck_b95e7cc864d05e91555b5b17",
+        "reasoning": {
+          "effort": "medium",
+          "summary": "auto"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ]
+      }
+    }
+  ],
+  "rows": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "say hello in the shell",
+        "tool_calls": null,
+        "tool_call_id": null,
+        "tool_name": null,
+        "finish_reason": null,
+        "active": 1,
+        "compacted": 0
+      },
+      {
+        "role": "assistant",
+        "content": "I will run it.",
+        "tool_calls": [
+          {
+            "id": "call_1",
+            "type": "function",
+            "function": {
+              "name": "terminal",
+              "arguments": "{\"command\":\"echo hello\"}"
+            },
+            "call_id": "call_1",
+            "response_item_id": "fc_turn-1:c1_0"
+          }
+        ],
+        "tool_call_id": null,
+        "tool_name": null,
+        "finish_reason": "tool_calls",
+        "active": 1,
+        "compacted": 0
+      },
+      {
+        "role": "tool",
+        "content": "{\"output\":\"hello\\n\",\"exit_code\":0,\"error\":null}",
+        "tool_calls": null,
+        "tool_call_id": "call_1",
+        "tool_name": "terminal",
+        "finish_reason": null,
+        "active": 1,
+        "compacted": 0
+      },
+      {
+        "role": "assistant",
+        "content": "It printed hello.",
+        "tool_calls": null,
+        "tool_call_id": null,
+        "tool_name": null,
+        "finish_reason": "stop",
+        "active": 1,
+        "compacted": 0
+      }
+    ],
+    "admissions": [
+      {
+        "status": "terminal",
+        "input": "say hello in the shell",
+        "outcome": "completed"
+      }
+    ]
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "name": "format-codex-responses",
+  "purpose": "A tool call and a final answer in the codex_responses wire format.",
+  "guide": "7.2: codex_responses format",
+  "mode": "codex_responses",
+  "steps": [
+    {
+      "reply": "I will run it.",
+      "toolCalls": [
+        {
+          "id": "call_1",
+          "name": "terminal",
+          "arguments": {
+            "command": "echo hello"
+          }
+        }
+      ]
+    },
+    {
+      "reply": "It printed hello."
+    }
+  ],
+  "commands": {
+    "echo hello": {
+      "stdout": "hello\n"
+    }
+  },
+  "inputs": [
+    {
+      "send": "say hello in the shell"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "It printed hello."
+    ],
+    "requests": 2,
+    "toolRuns": 1
+  },
+  "upstream": {
+    "ignore": [
+      "@system",
+      "@tools",
+      "requests[*].body.prompt_cache_key"
+    ]
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "name": "compaction-50",
+  "purpose": "The history passes 50% of the context window: a summary call, then the real call in the child session.",
+  "guide": "7.2: compaction at 50%",
+  "mode": "chat_completions",
+  "steps": [
+    {
+      "reply": "answer 1"
+    },
+    {
+      "reply": "answer 2"
+    },
+    {
+      "reply": "answer 3"
+    },
+    {
+      "reply": "answer 4"
+    },
+    {
+      "reply": "answer 5"
+    },
+    {
+      "reply": "answer 6"
+    },
+    {
+      "reply": "answer 7"
+    },
+    {
+      "reply": "answer 8"
+    },
+    {
+      "reply": "answer 9"
+    },
+    {
+      "reply": "answer 10"
+    },
+    {
+      "reply": "answer 11"
+    },
+    {
+      "reply": "answer 12"
+    },
+    {
+      "reply": "answer 13"
+    },
+    {
+      "reply": "answer 14"
+    },
+    {
+      "reply": "answer 15"
+    },
+    {
+      "reply": "answer 16"
+    },
+    {
+      "reply": "answer 17"
+    },
+    {
+      "reply": "answer 18"
+    },
+    {
+      "reply": "answer 19"
+    },
+    {
+      "reply": "answer 20"
+    }
+  ],
+  "config": {
+    "contextWindow": 4000,
+    "tools": [],
+    "compression": {
+      "minimumContextLength": 0,
+      "smallContextWindowLimit": 0
+    }
+  },
+  "inputs": [
+    {
+      "send": {
+        "prefix": "turn 1 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 2 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 3 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 4 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 5 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 6 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 7 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 8 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 9 ",
+        "lorem": 900
+      }
+    }
+  ],
+  "expect": {
+    "replies": [
+      "answer 1",
+      "answer 2",
+      "answer 3",
+      "answer 4",
+      "answer 5",
+      "answer 6",
+      "answer 7",
+      "answer 8",
+      "answer 10"
+    ],
+    "requests": 10,
+    "toolRuns": 0
+  },
+  "upstream": {
+    "procedure": "Set the context length of the model to 4000 tokens and compression.threshold to 0.5. The compaction summary request carries the date of the day; the comparator normalizes dates.",
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

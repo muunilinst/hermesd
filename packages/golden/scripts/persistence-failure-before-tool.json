@@ -1,0 +1,51 @@
+{
+  "name": "persistence-failure-before-tool",
+  "purpose": "The write of the tool-call turn fails; the turn ends with an error and no tool runs.",
+  "guide": "7.2: a persistence failure before tool execution",
+  "mode": "chat_completions",
+  "steps": [
+    {
+      "reply": "I will run it.",
+      "toolCalls": [
+        {
+          "id": "call_1",
+          "name": "terminal",
+          "arguments": {
+            "command": "echo hello"
+          }
+        }
+      ]
+    },
+    {
+      "reply": "never"
+    }
+  ],
+  "commands": {
+    "echo hello": {
+      "stdout": "hello\n"
+    }
+  },
+  "fault": {
+    "kind": "persistence_failure_after_model"
+  },
+  "inputs": [
+    {
+      "send": "say hello in the shell"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "error: session_persistence_failed: disk full"
+    ],
+    "requests": 1,
+    "toolRuns": 0
+  },
+  "upstream": {
+    "procedure": "After the server logs request 0, make state.db unwritable (for example chmod a-w on the file and its -wal and -shm files) before the tool runs, then check that the tool did not run.",
+    "manual": true,
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

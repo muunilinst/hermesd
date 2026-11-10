@@ -1,0 +1,205 @@
+{
+  "name": "compaction-85",
+  "purpose": "The history passes 85% of the window while the threshold is 99%: only the gateway hygiene check compresses.",
+  "guide": "7.2: compaction at 85%",
+  "mode": "chat_completions",
+  "steps": [
+    {
+      "reply": "answer 1"
+    },
+    {
+      "reply": "answer 2"
+    },
+    {
+      "reply": "answer 3"
+    },
+    {
+      "reply": "answer 4"
+    },
+    {
+      "reply": "answer 5"
+    },
+    {
+      "reply": "answer 6"
+    },
+    {
+      "reply": "answer 7"
+    },
+    {
+      "reply": "answer 8"
+    },
+    {
+      "reply": "answer 9"
+    },
+    {
+      "reply": "answer 10"
+    },
+    {
+      "reply": "answer 11"
+    },
+    {
+      "reply": "answer 12"
+    },
+    {
+      "reply": "answer 13"
+    },
+    {
+      "reply": "answer 14"
+    },
+    {
+      "reply": "answer 15"
+    },
+    {
+      "reply": "answer 16"
+    },
+    {
+      "reply": "answer 17"
+    },
+    {
+      "reply": "answer 18"
+    },
+    {
+      "reply": "answer 19"
+    },
+    {
+      "reply": "answer 20"
+    }
+  ],
+  "config": {
+    "contextWindow": 4000,
+    "tools": [],
+    "compression": {
+      "minimumContextLength": 0,
+      "smallContextWindowLimit": 0,
+      "thresholdPercent": 0.99
+    }
+  },
+  "inputs": [
+    {
+      "send": {
+        "prefix": "turn 1 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 2 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 3 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 4 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 5 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 6 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 7 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 8 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 9 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 10 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 11 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 12 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 13 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 14 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 15 ",
+        "lorem": 900
+      }
+    },
+    {
+      "send": {
+        "prefix": "turn 16 ",
+        "lorem": 900
+      }
+    }
+  ],
+  "expect": {
+    "replies": [
+      "answer 1",
+      "answer 2",
+      "answer 3",
+      "answer 4",
+      "answer 5",
+      "answer 6",
+      "answer 7",
+      "answer 8",
+      "answer 9",
+      "answer 10",
+      "answer 11",
+      "answer 12",
+      "answer 13",
+      "answer 14",
+      "answer 16",
+      "answer 17"
+    ],
+    "requests": 17,
+    "toolRuns": 0
+  },
+  "upstream": {
+    "procedure": "Run through the gateway (not hermes chat), because the 85% check is a gateway hygiene check. Set compression.threshold to 0.99 and the context length to 4000.",
+    "manual": true,
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "name": "clarify-sequential",
+  "purpose": "A clarify call forces the calls of its answer to run one at a time; the user answer is the next input.",
+  "guide": "7.2: clarify forcing sequential",
+  "mode": "chat_completions",
+  "steps": [
+    {
+      "toolCalls": [
+        {
+          "id": "call_1",
+          "name": "clarify",
+          "arguments": {
+            "questions": [
+              {
+                "question": "Which file?",
+                "choices": [
+                  "a.txt",
+                  "b.txt"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "call_2",
+          "name": "terminal",
+          "arguments": {
+            "command": "echo hello"
+          }
+        }
+      ]
+    },
+    {
+      "reply": "Done."
+    }
+  ],
+  "commands": {
+    "echo hello": {
+      "stdout": "hello\n"
+    }
+  },
+  "inputs": [
+    {
+      "send": "work on my file"
+    },
+    {
+      "send": "a.txt"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "Which file?\n  1) a.txt\n  2) b.txt",
+      "Done."
+    ],
+    "requests": 2,
+    "toolRuns": 1
+  },
+  "upstream": {
+    "procedure": "Hermes asks the question in the terminal. Type the second input as the answer.",
+    "manual": true,
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

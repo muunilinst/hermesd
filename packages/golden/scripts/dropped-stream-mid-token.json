@@ -1,0 +1,34 @@
+{
+  "name": "dropped-stream-mid-token",
+  "purpose": "A streamed answer is cut in the middle of a token; the partial text is dropped and the same request is sent again.",
+  "guide": "7.4: streaming, dropped stream mid-token",
+  "mode": "chat_completions",
+  "stream": true,
+  "steps": [
+    {
+      "reply": "I will start the build now",
+      "chunks": 4,
+      "dropAfter": 3,
+      "dropMode": "error"
+    }
+  ],
+  "inputs": [
+    {
+      "send": "build it"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "I will start the build now"
+    ],
+    "requests": 2,
+    "toolRuns": 0
+  },
+  "upstream": {
+    "procedure": "The server cuts the first stream of a step after its dropAfter frame, then serves the whole answer on the second request.",
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

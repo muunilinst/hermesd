@@ -1,0 +1,41 @@
+{
+  "name": "provider-fallback-429",
+  "purpose": "The primary model answers 429; the loop switches to the fallback model at once and sends the same history there.",
+  "guide": "7.2: provider fallback on a 429",
+  "mode": "chat_completions",
+  "model": "primary-model",
+  "steps": [
+    {
+      "status": 429,
+      "errorMessage": "rate limited"
+    }
+  ],
+  "fallback": {
+    "mode": "chat_completions",
+    "model": "fallback-model",
+    "steps": [
+      {
+        "reply": "Answered by the fallback model."
+      }
+    ]
+  },
+  "inputs": [
+    {
+      "send": "hi"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "Answered by the fallback model."
+    ],
+    "requests": 2,
+    "toolRuns": 0
+  },
+  "upstream": {
+    "procedure": "Set the model to primary-model and add one entry for fallback-model to fallback_providers, both on the same scripted server. The server picks the step list by the model name in the request.",
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

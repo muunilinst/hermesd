@@ -1,0 +1,46 @@
+{
+  "name": "one-tool-call",
+  "purpose": "The model calls the terminal tool once and then answers from the result.",
+  "guide": "7.2: one tool call",
+  "mode": "chat_completions",
+  "steps": [
+    {
+      "reply": "I will run it.",
+      "toolCalls": [
+        {
+          "id": "call_1",
+          "name": "terminal",
+          "arguments": {
+            "command": "echo hello"
+          }
+        }
+      ]
+    },
+    {
+      "reply": "It printed hello."
+    }
+  ],
+  "commands": {
+    "echo hello": {
+      "stdout": "hello\n"
+    }
+  },
+  "inputs": [
+    {
+      "send": "say hello in the shell"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "It printed hello."
+    ],
+    "requests": 2,
+    "toolRuns": 1
+  },
+  "upstream": {
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "name": "parallel-tools",
+  "purpose": "Two terminal calls in one answer run together; results go back in call order.",
+  "guide": "7.2: parallel tools",
+  "mode": "chat_completions",
+  "steps": [
+    {
+      "toolCalls": [
+        {
+          "id": "call_1",
+          "name": "terminal",
+          "arguments": {
+            "command": "echo one"
+          }
+        },
+        {
+          "id": "call_2",
+          "name": "terminal",
+          "arguments": {
+            "command": "echo two"
+          }
+        }
+      ]
+    },
+    {
+      "reply": "Both ran."
+    }
+  ],
+  "commands": {
+    "echo one": {
+      "stdout": "one\n"
+    },
+    "echo two": {
+      "stdout": "two\n"
+    }
+  },
+  "inputs": [
+    {
+      "send": "run both"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "Both ran."
+    ],
+    "requests": 2,
+    "toolRuns": 2
+  },
+  "upstream": {
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

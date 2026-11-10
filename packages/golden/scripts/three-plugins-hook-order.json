@@ -1,0 +1,81 @@
+{
+  "name": "three-plugins-hook-order",
+  "purpose": "Three plugins on pre_tool_call, loaded out of order: the first block in directory order wins.",
+  "guide": "7.4: hook ordering with 3 plugins on one hook",
+  "mode": "chat_completions",
+  "steps": [
+    {
+      "reply": "I will run it.",
+      "toolCalls": [
+        {
+          "id": "call_1",
+          "name": "terminal",
+          "arguments": {
+            "command": "echo hello"
+          }
+        }
+      ]
+    },
+    {
+      "reply": "That did not run."
+    }
+  ],
+  "commands": {
+    "echo hello": {
+      "stdout": "hello\n"
+    }
+  },
+  "hooks": {
+    "plugins": [
+      {
+        "name": "audit",
+        "dir": "30-audit",
+        "hook": "pre_tool_call",
+        "callback": "audit",
+        "behavior": {
+          "kind": "block",
+          "message": "audit says no"
+        }
+      },
+      {
+        "name": "policy",
+        "dir": "10-policy",
+        "hook": "pre_tool_call",
+        "callback": "policy",
+        "behavior": {
+          "kind": "block",
+          "message": "policy says no"
+        }
+      },
+      {
+        "name": "log",
+        "dir": "20-log",
+        "hook": "pre_tool_call",
+        "callback": "log",
+        "behavior": {
+          "kind": "none"
+        }
+      }
+    ]
+  },
+  "inputs": [
+    {
+      "send": "say hello in the shell"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "That did not run."
+    ],
+    "requests": 2,
+    "toolRuns": 0,
+    "hookLog": []
+  },
+  "upstream": {
+    "procedure": "Generate the three Python plugins with scripted-server/make-plugins.mjs and enable all three.",
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

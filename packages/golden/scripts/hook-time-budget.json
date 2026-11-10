@@ -1,0 +1,64 @@
+{
+  "name": "hook-time-budget",
+  "purpose": "A pre_tool_call hook never returns; at the time budget it is cut and the tool is blocked (fail closed).",
+  "guide": "7.2: a hook that exceeds its time budget",
+  "mode": "chat_completions",
+  "steps": [
+    {
+      "reply": "I will run it.",
+      "toolCalls": [
+        {
+          "id": "call_1",
+          "name": "terminal",
+          "arguments": {
+            "command": "echo hello"
+          }
+        }
+      ]
+    },
+    {
+      "reply": "That did not run."
+    }
+  ],
+  "commands": {
+    "echo hello": {
+      "stdout": "hello\n"
+    }
+  },
+  "hooks": {
+    "timeoutMs": 200,
+    "plugins": [
+      {
+        "name": "guard",
+        "dir": "guard",
+        "hook": "pre_tool_call",
+        "callback": "guard",
+        "behavior": {
+          "kind": "hang"
+        }
+      }
+    ]
+  },
+  "inputs": [
+    {
+      "send": "say hello in the shell"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "That did not run."
+    ],
+    "requests": 2,
+    "toolRuns": 0,
+    "hookLog": [
+      "timeout:guard"
+    ]
+  },
+  "upstream": {
+    "procedure": "Generate the Python plugin with scripted-server/make-plugins.mjs and set plugins.hook_callback_timeout to 0.2 in the Hermes config.",
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

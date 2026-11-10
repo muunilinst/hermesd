@@ -1,0 +1,46 @@
+{
+  "name": "format-chat-completions",
+  "purpose": "A tool call and a final answer in the chat_completions wire format (the baseline).",
+  "guide": "7.2: chat_completions format",
+  "mode": "chat_completions",
+  "steps": [
+    {
+      "reply": "I will run it.",
+      "toolCalls": [
+        {
+          "id": "call_1",
+          "name": "terminal",
+          "arguments": {
+            "command": "echo hello"
+          }
+        }
+      ]
+    },
+    {
+      "reply": "It printed hello."
+    }
+  ],
+  "commands": {
+    "echo hello": {
+      "stdout": "hello\n"
+    }
+  },
+  "inputs": [
+    {
+      "send": "say hello in the shell"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "It printed hello."
+    ],
+    "requests": 2,
+    "toolRuns": 1
+  },
+  "upstream": {
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

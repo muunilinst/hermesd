@@ -1,0 +1,40 @@
+{
+  "name": "interrupt-mid-call",
+  "purpose": "The user stops the turn while the model request is in flight; the partial answer is dropped and the next input works.",
+  "guide": "7.2: interrupt mid-call",
+  "mode": "chat_completions",
+  "steps": [
+    {
+      "hold": "g1",
+      "reply": "too late"
+    },
+    {
+      "reply": "second"
+    }
+  ],
+  "inputs": [
+    {
+      "send": "hi",
+      "interrupt": "model_call"
+    },
+    {
+      "send": "again"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "Stopped.",
+      "second"
+    ],
+    "requests": 2,
+    "toolRuns": 0
+  },
+  "upstream": {
+    "procedure": "Send the first input. The server holds the answer of a step that has a hold name. When the server logs the request, interrupt Hermes (Ctrl-C), then POST /__release/g1 to the server. Send the second input.",
+    "manual": true,
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

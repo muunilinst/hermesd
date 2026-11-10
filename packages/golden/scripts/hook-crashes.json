@@ -1,0 +1,65 @@
+{
+  "name": "hook-crashes",
+  "purpose": "A pre_tool_call hook raises; the policy hook fails closed, so the tool does not run.",
+  "guide": "7.2: a hook that crashes",
+  "mode": "chat_completions",
+  "steps": [
+    {
+      "reply": "I will run it.",
+      "toolCalls": [
+        {
+          "id": "call_1",
+          "name": "terminal",
+          "arguments": {
+            "command": "echo hello"
+          }
+        }
+      ]
+    },
+    {
+      "reply": "That did not run."
+    }
+  ],
+  "commands": {
+    "echo hello": {
+      "stdout": "hello\n"
+    }
+  },
+  "hooks": {
+    "plugins": [
+      {
+        "name": "guard",
+        "dir": "guard",
+        "hook": "pre_tool_call",
+        "callback": "guard",
+        "behavior": {
+          "kind": "throw",
+          "error": "RuntimeError",
+          "message": "guard failed"
+        }
+      }
+    ]
+  },
+  "inputs": [
+    {
+      "send": "say hello in the shell"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "That did not run."
+    ],
+    "requests": 2,
+    "toolRuns": 0,
+    "hookLog": [
+      "error:guard"
+    ]
+  },
+  "upstream": {
+    "procedure": "Generate the Python plugin with scripted-server/make-plugins.mjs and enable it.",
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

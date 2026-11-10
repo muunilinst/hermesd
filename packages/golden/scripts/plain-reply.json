@@ -1,0 +1,29 @@
+{
+  "name": "plain-reply",
+  "purpose": "One user message, one plain model answer, no tools.",
+  "guide": "7.2: plain reply",
+  "mode": "chat_completions",
+  "steps": [
+    {
+      "reply": "Hello! How can I help?"
+    }
+  ],
+  "inputs": [
+    {
+      "send": "hi"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "Hello! How can I help?"
+    ],
+    "requests": 1,
+    "toolRuns": 0
+  },
+  "upstream": {
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

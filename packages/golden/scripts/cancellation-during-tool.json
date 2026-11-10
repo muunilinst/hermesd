@@ -1,0 +1,52 @@
+{
+  "name": "cancellation-during-tool",
+  "purpose": "The user stops the turn while a tool command runs; the command is cancelled and the next input works.",
+  "guide": "7.4: cancellation at each point of a turn (during a tool)",
+  "mode": "chat_completions",
+  "steps": [
+    {
+      "toolCalls": [
+        {
+          "id": "call_1",
+          "name": "terminal",
+          "arguments": {
+            "command": "sleep 60"
+          }
+        }
+      ]
+    },
+    {
+      "reply": "Understood."
+    }
+  ],
+  "commands": {
+    "sleep 60": {
+      "hold": "h1"
+    }
+  },
+  "inputs": [
+    {
+      "send": "wait a minute",
+      "interrupt": "tool_running"
+    },
+    {
+      "send": "again"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "Stopped.",
+      "Understood."
+    ],
+    "requests": 2,
+    "toolRuns": 1
+  },
+  "upstream": {
+    "procedure": "Send the first input, wait until the tool starts (the command is sleep 60), interrupt Hermes (Ctrl-C), then send the second input.",
+    "manual": true,
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}
