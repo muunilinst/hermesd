@@ -1,0 +1,2478 @@
+{
+  "counts": {
+    "ordinary": 20,
+    "ordinary_created_lazily": 3,
+    "ordinary_in_schema_sql": 17,
+    "other_store_tables": 62,
+    "state_db_tables_total": 22,
+    "virtual_fts5": 2
+  },
+  "fts_storage_version": 3,
+  "other_stores": {
+    "files": {
+      "agent/verification_evidence.py": [
+        "verification_evidence.db"
+      ],
+      "cron/delivery_queue.py": [
+        "deliveries.db"
+      ],
+      "cron/executions.py": [
+        "executions.db"
+      ],
+      "cron/incidents.py": [
+        "executions.db"
+      ],
+      "cron/notepad.py": [
+        "notepad.db"
+      ],
+      "gateway/hosted_room_attachments.py": [
+        "state.db"
+      ],
+      "gateway/hosted_room_driver.py": [
+        "state.db"
+      ],
+      "gateway/hosted_room_policy_checkpoint.py": [
+        "shared-state.db"
+      ],
+      "gateway/hosted_room_replicas.py": [],
+      "gateway/hosted_room_work_storage.py": [],
+      "gateway/hosted_rooms.py": [
+        "shared-state.db",
+        "state.db"
+      ],
+      "gateway/platforms/api_server_response_store.py": [
+        "response_store.db",
+        "state.db"
+      ],
+      "gateway/platforms/api_server_run_idempotency.py": [
+        "runs_idempotency.db"
+      ],
+      "hermes_cli/kanban_db.py": [
+        "kanban.db",
+        "projects.db",
+        "state.db"
+      ],
+      "hermes_cli/kanban_db_connect.py": [
+        "kanban.db",
+        "state.db"
+      ],
+      "hermes_cli/observability/shared_metrics.py": [
+        "metrics.sqlite3"
+      ],
+      "hermes_cli/projects_db.py": [
+        "projects.db"
+      ],
+      "hermes_cli/session_lost_and_found.py": [
+        "probe.db",
+        "state.db"
+      ],
+      "plugins/memory/retaindb/__init__.py": [
+        "retaindb_queue.db"
+      ],
+      "plugins/platforms/discord/recovery.py": [
+        "discord_message_recovery.db",
+        "discord_recovery.db"
+      ],
+      "tui_gateway/hosted_room_router_call.py": [
+        "shared-state.db"
+      ]
+    },
+    "note": "Tables in files outside the state.db scope. db_hints lists database file names found in the file.",
+    "tables": [
+      {
+        "file": "agent/verification_evidence.py",
+        "kind": "table",
+        "line": 59,
+        "name": "meta"
+      },
+      {
+        "file": "agent/verification_evidence.py",
+        "kind": "table",
+        "line": 65,
+        "name": "verification_events"
+      },
+      {
+        "file": "agent/verification_evidence.py",
+        "kind": "table",
+        "line": 81,
+        "name": "verification_state"
+      },
+      {
+        "file": "cron/delivery_queue.py",
+        "kind": "table",
+        "line": 110,
+        "name": "deliveries"
+      },
+      {
+        "file": "cron/delivery_queue.py",
+        "kind": "table",
+        "line": 126,
+        "name": "delivery_tombstones"
+      },
+      {
+        "file": "cron/executions.py",
+        "kind": "table",
+        "line": 66,
+        "name": "executions"
+      },
+      {
+        "file": "cron/incidents.py",
+        "kind": "table",
+        "line": 79,
+        "name": "cron_incidents"
+      },
+      {
+        "file": "cron/notepad.py",
+        "kind": "table",
+        "line": 50,
+        "name": "cron_notepad"
+      },
+      {
+        "file": "gateway/hosted_room_attachments.py",
+        "kind": "table",
+        "line": 357,
+        "name": "hosted_room_attachment_blobs"
+      },
+      {
+        "file": "gateway/hosted_room_attachments.py",
+        "kind": "table",
+        "line": 366,
+        "name": "hosted_room_attachments"
+      },
+      {
+        "file": "gateway/hosted_room_driver.py",
+        "kind": "table",
+        "line": 256,
+        "name": "hosted_room_driver_leases"
+      },
+      {
+        "file": "gateway/hosted_room_policy_checkpoint.py",
+        "kind": "table",
+        "line": 33,
+        "name": "hosted_room_policy_capacity"
+      },
+      {
+        "file": "gateway/hosted_room_policy_checkpoint.py",
+        "kind": "table",
+        "line": 35,
+        "name": "hosted_room_policy_cursors"
+      },
+      {
+        "file": "gateway/hosted_room_policy_checkpoint.py",
+        "kind": "table",
+        "line": 38,
+        "name": "hosted_room_policy_threads"
+      },
+      {
+        "file": "gateway/hosted_room_policy_checkpoint.py",
+        "kind": "table",
+        "line": 44,
+        "name": "hosted_room_policy_events"
+      },
+      {
+        "file": "gateway/hosted_room_policy_checkpoint.py",
+        "kind": "table",
+        "line": 49,
+        "name": "hosted_room_policy_watermarks"
+      },
+      {
+        "file": "gateway/hosted_room_policy_checkpoint.py",
+        "kind": "table",
+        "line": 52,
+        "name": "hosted_room_policy_publications"
+      },
+      {
+        "file": "gateway/hosted_room_policy_checkpoint.py",
+        "kind": "table",
+        "line": 58,
+        "name": "hosted_room_policy_transcript"
+      },
+      {
+        "file": "gateway/hosted_room_policy_checkpoint.py",
+        "kind": "table",
+        "line": 61,
+        "name": "hosted_room_policy_transcript_state"
+      },
+      {
+        "file": "gateway/hosted_room_replicas.py",
+        "kind": "table",
+        "line": 38,
+        "name": "hosted_room_replicas"
+      },
+      {
+        "file": "gateway/hosted_room_replicas.py",
+        "kind": "table",
+        "line": 46,
+        "name": "hosted_room_replica_events"
+      },
+      {
+        "file": "gateway/hosted_rooms.py",
+        "kind": "table",
+        "line": 89,
+        "name": "hosted_rooms"
+      },
+      {
+        "file": "gateway/hosted_rooms.py",
+        "kind": "table",
+        "line": 102,
+        "name": "hosted_room_events"
+      },
+      {
+        "file": "gateway/hosted_rooms.py",
+        "kind": "table",
+        "line": 115,
+        "name": "hosted_room_retired_ids"
+      },
+      {
+        "file": "gateway/hosted_rooms.py",
+        "kind": "table",
+        "line": 119,
+        "name": "hosted_room_links"
+      },
+      {
+        "file": "gateway/hosted_rooms.py",
+        "kind": "table",
+        "line": 132,
+        "name": "hosted_room_remote_runs"
+      },
+      {
+        "file": "gateway/hosted_rooms.py",
+        "kind": "table",
+        "line": 133,
+        "name": "hosted_room_revoked_grants"
+      },
+      {
+        "file": "gateway/hosted_rooms.py",
+        "kind": "table",
+        "line": 138,
+        "name": "hosted_room_peer_reservations"
+      },
+      {
+        "file": "gateway/hosted_rooms.py",
+        "kind": "table",
+        "line": 153,
+        "name": "hosted_room_owed_revokes"
+      },
+      {
+        "file": "gateway/hosted_rooms.py",
+        "kind": "table",
+        "line": 348,
+        "name": "hosted_room_remote_runs_migrating"
+      },
+      {
+        "file": "gateway/platforms/api_server_response_store.py",
+        "kind": "table",
+        "line": 72,
+        "name": "responses"
+      },
+      {
+        "file": "gateway/platforms/api_server_response_store.py",
+        "kind": "table",
+        "line": 75,
+        "name": "conversations"
+      },
+      {
+        "file": "gateway/platforms/api_server_response_store.py",
+        "kind": "table",
+        "line": 80,
+        "name": "response_keys"
+      },
+      {
+        "file": "gateway/platforms/api_server_response_store.py",
+        "kind": "table",
+        "line": 82,
+        "name": "response_admissions"
+      },
+      {
+        "file": "gateway/platforms/api_server_response_store.py",
+        "kind": "table",
+        "line": 83,
+        "name": "response_output_order"
+      },
+      {
+        "file": "gateway/platforms/api_server_run_idempotency.py",
+        "kind": "table",
+        "line": 92,
+        "name": "run_idempotency"
+      },
+      {
+        "file": "hermes_cli/kanban_db.py",
+        "kind": "table",
+        "line": 777,
+        "name": "tasks"
+      },
+      {
+        "file": "hermes_cli/kanban_db.py",
+        "kind": "table",
+        "line": 880,
+        "name": "task_links"
+      },
+      {
+        "file": "hermes_cli/kanban_db.py",
+        "kind": "table",
+        "line": 886,
+        "name": "task_comments"
+      },
+      {
+        "file": "hermes_cli/kanban_db.py",
+        "kind": "table",
+        "line": 894,
+        "name": "task_events"
+      },
+      {
+        "file": "hermes_cli/kanban_db.py",
+        "kind": "table",
+        "line": 910,
+        "name": "task_runs"
+      },
+      {
+        "file": "hermes_cli/kanban_db.py",
+        "kind": "table",
+        "line": 942,
+        "name": "task_attachments"
+      },
+      {
+        "file": "hermes_cli/kanban_db.py",
+        "kind": "table",
+        "line": 957,
+        "name": "kanban_notify_subs"
+      },
+      {
+        "file": "hermes_cli/kanban_db_connect.py",
+        "kind": "table",
+        "line": 1063,
+        "name": "task_events"
+      },
+      {
+        "file": "hermes_cli/kanban_db_connect.py",
+        "kind": "table",
+        "line": 1073,
+        "name": "task_comments"
+      },
+      {
+        "file": "hermes_cli/kanban_db_connect.py",
+        "kind": "table",
+        "line": 1080,
+        "name": "task_runs"
+      },
+      {
+        "file": "hermes_cli/kanban_db_connect.py",
+        "kind": "table",
+        "line": 1094,
+        "name": "kanban_notify_subs"
+      },
+      {
+        "file": "hermes_cli/observability/shared_metrics.py",
+        "kind": "table",
+        "line": 53,
+        "name": "telemetry_state"
+      },
+      {
+        "file": "hermes_cli/observability/shared_metrics.py",
+        "kind": "table",
+        "line": 59,
+        "name": "counter_aggregates"
+      },
+      {
+        "file": "hermes_cli/observability/shared_metrics.py",
+        "kind": "table",
+        "line": 76,
+        "name": "package_outbox"
+      },
+      {
+        "file": "hermes_cli/observability/shared_metrics.py",
+        "kind": "table",
+        "line": 91,
+        "name": "send_consent_windows"
+      },
+      {
+        "file": "hermes_cli/observability/shared_metrics.py",
+        "kind": "table",
+        "line": 98,
+        "name": "consent_marks"
+      },
+      {
+        "file": "hermes_cli/projects_db.py",
+        "kind": "table",
+        "line": 29,
+        "name": "projects"
+      },
+      {
+        "file": "hermes_cli/projects_db.py",
+        "kind": "table",
+        "line": 42,
+        "name": "project_folders"
+      },
+      {
+        "file": "hermes_cli/projects_db.py",
+        "kind": "table",
+        "line": 54,
+        "name": "project_meta"
+      },
+      {
+        "file": "hermes_cli/projects_db.py",
+        "kind": "table",
+        "line": 62,
+        "name": "discovered_repos"
+      },
+      {
+        "file": "hermes_cli/session_lost_and_found.py",
+        "kind": "table",
+        "line": 170,
+        "name": "t"
+      },
+      {
+        "file": "plugins/memory/retaindb/__init__.py",
+        "kind": "table",
+        "line": 194,
+        "name": "pending"
+      },
+      {
+        "file": "plugins/platforms/discord/recovery.py",
+        "kind": "table",
+        "line": 59,
+        "name": "discord_messages"
+      },
+      {
+        "file": "plugins/platforms/discord/recovery.py",
+        "kind": "table",
+        "line": 67,
+        "name": "discord_recovery_scans"
+      },
+      {
+        "file": "plugins/platforms/discord/recovery.py",
+        "kind": "table",
+        "line": 73,
+        "name": "discord_recovery_cursors"
+      },
+      {
+        "file": "tui_gateway/hosted_room_router_call.py",
+        "kind": "table",
+        "line": 85,
+        "name": "hosted_room_router_claims"
+      }
+    ]
+  },
+  "schema_version": 32,
+  "state_db_files_rule": "hermes_state*.py at the repo root, plus gateway/delivery_ledger.py, hermes_cli/backup_restore.py, tools/async_delegation.py",
+  "surface": "state-schema",
+  "tables": [
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "TEXT PRIMARY KEY",
+          "name": "delegation_id"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "origin_session"
+        },
+        {
+          "definition": "TEXT NOT NULL DEFAULT ''",
+          "name": "origin_ui_session_id"
+        },
+        {
+          "definition": "TEXT",
+          "name": "parent_session_id"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "state"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "dispatched_at"
+        },
+        {
+          "definition": "REAL",
+          "name": "completed_at"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "updated_at"
+        },
+        {
+          "definition": "TEXT",
+          "name": "event_json"
+        },
+        {
+          "definition": "TEXT",
+          "name": "result_json"
+        },
+        {
+          "definition": "TEXT NOT NULL DEFAULT 'pending'",
+          "name": "delivery_state"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "delivery_attempts"
+        },
+        {
+          "definition": "REAL",
+          "name": "delivered_at"
+        },
+        {
+          "definition": "INTEGER",
+          "name": "owner_pid"
+        },
+        {
+          "definition": "INTEGER",
+          "name": "owner_started_at"
+        },
+        {
+          "definition": "TEXT",
+          "name": "task_json"
+        },
+        {
+          "definition": "TEXT",
+          "name": "owner_execution_id"
+        },
+        {
+          "definition": "TEXT",
+          "name": "delivery_claim"
+        },
+        {
+          "definition": "REAL",
+          "name": "delivery_claimed_at"
+        },
+        {
+          "definition": "TEXT NOT NULL DEFAULT ''",
+          "name": "origin_session_id"
+        }
+      ],
+      "constraints": [],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [
+        {
+          "columns": [
+            "delivery_state",
+            "completed_at"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 768,
+          "name": "idx_async_delegations_delivery",
+          "table": "async_delegations",
+          "unique": false,
+          "where": null
+        }
+      ],
+      "kind": "table",
+      "line": 718,
+      "module": null,
+      "name": "async_delegations",
+      "other_definitions": [],
+      "primary_key": [
+        "delegation_id"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS async_delegations ( delegation_id TEXT PRIMARY KEY, origin_session TEXT NOT NULL, origin_ui_session_id TEXT NOT NULL DEFAULT '', parent_session_id TEXT, state TEXT NOT NULL, dispatched_at REAL NOT NULL, completed_at REAL, updated_at REAL NOT NULL, event_json TEXT, result_json TEXT, delivery_state TEXT NOT NULL DEFAULT 'pending', delivery_attempts INTEGER NOT NULL DEFAULT 0, delivered_at REAL, owner_pid INTEGER, owner_started_at INTEGER, task_json TEXT, owner_execution_id TEXT, delivery_claim TEXT, delivery_claimed_at REAL, origin_session_id TEXT NOT NULL DEFAULT '' )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "TEXT PRIMARY KEY",
+          "name": "session_id"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "holder"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "acquired_at"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "expires_at"
+        }
+      ],
+      "constraints": [],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [
+        {
+          "columns": [
+            "expires_at"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 764,
+          "name": "idx_compression_locks_expires",
+          "table": "compression_locks",
+          "unique": false,
+          "where": null
+        }
+      ],
+      "kind": "table",
+      "line": 704,
+      "module": null,
+      "name": "compression_locks",
+      "other_definitions": [],
+      "primary_key": [
+        "session_id"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS compression_locks ( session_id TEXT PRIMARY KEY, holder TEXT NOT NULL, acquired_at REAL NOT NULL, expires_at REAL NOT NULL )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "source"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "session_key"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "generation"
+        }
+      ],
+      "constraints": [
+        "PRIMARY KEY (source, session_key)"
+      ],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [],
+      "kind": "table",
+      "line": 680,
+      "module": null,
+      "name": "conversation_generations",
+      "other_definitions": [],
+      "primary_key": [
+        "source",
+        "session_key"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS conversation_generations ( source TEXT NOT NULL, session_key TEXT NOT NULL, generation INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (source, session_key) )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "TEXT PRIMARY KEY",
+          "name": "obligation_id"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "session_key"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "platform"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "chat_id"
+        },
+        {
+          "definition": "TEXT",
+          "name": "thread_id"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "content"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "state"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "attempts"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "created_at"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "updated_at"
+        },
+        {
+          "definition": "INTEGER",
+          "name": "owner_pid"
+        },
+        {
+          "definition": "INTEGER",
+          "name": "owner_started_at"
+        },
+        {
+          "definition": "TEXT",
+          "name": "last_error"
+        },
+        {
+          "definition": "TEXT",
+          "name": "adapter_profile"
+        }
+      ],
+      "constraints": [],
+      "created_lazily": true,
+      "file": "gateway/delivery_ledger.py",
+      "indexes": [],
+      "kind": "table",
+      "line": 190,
+      "module": null,
+      "name": "delivery_obligations",
+      "other_definitions": [],
+      "primary_key": [
+        "obligation_id"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS delivery_obligations ( obligation_id TEXT PRIMARY KEY, session_key TEXT NOT NULL, platform TEXT NOT NULL, chat_id TEXT NOT NULL, thread_id TEXT, content TEXT NOT NULL, state TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, created_at REAL NOT NULL, updated_at REAL NOT NULL, owner_pid INTEGER, owner_started_at INTEGER, last_error TEXT, adapter_profile TEXT )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "TEXT PRIMARY KEY",
+          "name": "backend_id"
+        },
+        {
+          "definition": "INTEGER NOT NULL",
+          "name": "pid"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "started_at"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "last_heartbeat"
+        },
+        {
+          "definition": "TEXT NOT NULL DEFAULT ''",
+          "name": "profile"
+        },
+        {
+          "definition": "TEXT NOT NULL DEFAULT ''",
+          "name": "host"
+        }
+      ],
+      "constraints": [],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [],
+      "kind": "table",
+      "line": 695,
+      "module": null,
+      "name": "gateway_heartbeats",
+      "other_definitions": [],
+      "primary_key": [
+        "backend_id"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS gateway_heartbeats ( backend_id TEXT PRIMARY KEY, pid INTEGER NOT NULL, started_at REAL NOT NULL, last_heartbeat REAL NOT NULL, profile TEXT NOT NULL DEFAULT '', host TEXT NOT NULL DEFAULT '' )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "TEXT PRIMARY KEY",
+          "name": "session_key"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "failure_streak"
+        }
+      ],
+      "constraints": [],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [],
+      "kind": "table",
+      "line": 653,
+      "module": null,
+      "name": "gateway_hygiene_state",
+      "other_definitions": [],
+      "primary_key": [
+        "session_key"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS gateway_hygiene_state ( session_key TEXT PRIMARY KEY, failure_streak INTEGER NOT NULL DEFAULT 0 )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "TEXT NOT NULL DEFAULT ''",
+          "name": "scope"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "session_key"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "entry_json"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "updated_at"
+        }
+      ],
+      "constraints": [
+        "PRIMARY KEY (scope, session_key)"
+      ],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [],
+      "kind": "table",
+      "line": 645,
+      "module": null,
+      "name": "gateway_routing",
+      "other_definitions": [
+        {
+          "file": "hermes_state_schema.py",
+          "line": 829,
+          "sql": "CREATE TABLE gateway_routing ( scope TEXT NOT NULL DEFAULT '', session_key TEXT NOT NULL, entry_json TEXT NOT NULL, updated_at REAL NOT NULL, PRIMARY KEY (scope, session_key) )"
+        }
+      ],
+      "primary_key": [
+        "scope",
+        "session_key"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS gateway_routing ( scope TEXT NOT NULL DEFAULT '', session_key TEXT NOT NULL, entry_json TEXT NOT NULL, updated_at REAL NOT NULL, PRIMARY KEY (scope, session_key) )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "INTEGER PRIMARY KEY AUTOINCREMENT",
+          "name": "id"
+        },
+        {
+          "definition": "TEXT NOT NULL REFERENCES sessions(id)",
+          "name": "session_id"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "role"
+        },
+        {
+          "definition": "TEXT",
+          "name": "content"
+        },
+        {
+          "definition": "TEXT",
+          "name": "tool_call_id"
+        },
+        {
+          "definition": "TEXT",
+          "name": "tool_calls"
+        },
+        {
+          "definition": "TEXT",
+          "name": "tool_name"
+        },
+        {
+          "definition": "TEXT",
+          "name": "effect_disposition"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "timestamp"
+        },
+        {
+          "definition": "INTEGER",
+          "name": "token_count"
+        },
+        {
+          "definition": "TEXT",
+          "name": "finish_reason"
+        },
+        {
+          "definition": "TEXT",
+          "name": "reasoning"
+        },
+        {
+          "definition": "TEXT",
+          "name": "reasoning_content"
+        },
+        {
+          "definition": "TEXT",
+          "name": "reasoning_details"
+        },
+        {
+          "definition": "TEXT",
+          "name": "codex_reasoning_items"
+        },
+        {
+          "definition": "TEXT",
+          "name": "codex_message_items"
+        },
+        {
+          "definition": "TEXT",
+          "name": "platform_message_id"
+        },
+        {
+          "definition": "INTEGER DEFAULT 0",
+          "name": "observed"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "_compressed_summary"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 1",
+          "name": "active"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "compacted"
+        },
+        {
+          "definition": "TEXT",
+          "name": "api_content"
+        },
+        {
+          "definition": "TEXT",
+          "name": "display_kind"
+        },
+        {
+          "definition": "TEXT",
+          "name": "display_metadata"
+        },
+        {
+          "definition": "BLOB",
+          "name": "display_identity"
+        },
+        {
+          "definition": "INTEGER",
+          "name": "display_order"
+        },
+        {
+          "definition": "TEXT",
+          "name": "message_uid"
+        },
+        {
+          "definition": "TEXT",
+          "name": "absorbed_message_uids"
+        },
+        {
+          "definition": "TEXT",
+          "name": "tool_call_uids"
+        },
+        {
+          "definition": "TEXT",
+          "name": "tool_call_uid"
+        }
+      ],
+      "constraints": [],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [
+        {
+          "columns": [
+            "active"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 892,
+          "name": "idx_messages_active_null",
+          "table": "messages",
+          "unique": false,
+          "where": "active IS NULL"
+        },
+        {
+          "columns": [
+            "session_id"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 761,
+          "name": "idx_messages_assistant_calls_by_session",
+          "table": "messages",
+          "unique": false,
+          "where": "role = 'assistant' AND tool_calls IS NOT NULL"
+        },
+        {
+          "columns": [
+            "session_id"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 811,
+          "name": "idx_messages_display_backfill",
+          "table": "messages",
+          "unique": false,
+          "where": "(display_order IS NULL OR display_identity IS NULL) AND (active = 1 OR compacted = 1)"
+        },
+        {
+          "columns": [
+            "session_id",
+            "display_identity",
+            "display_order"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 814,
+          "name": "idx_messages_display_identity",
+          "table": "messages",
+          "unique": false,
+          "where": "display_identity IS NOT NULL AND (active = 1 OR compacted = 1)"
+        },
+        {
+          "columns": [
+            "session_id",
+            "display_order",
+            "active DESC",
+            "id DESC"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 808,
+          "name": "idx_messages_display_page",
+          "table": "messages",
+          "unique": false,
+          "where": "active = 1 OR compacted = 1"
+        },
+        {
+          "columns": [
+            "session_id",
+            "platform_message_id"
+          ],
+          "file": "hermes_state_schema.py",
+          "line": 944,
+          "name": "idx_messages_platform_msg_id",
+          "table": "messages",
+          "unique": false,
+          "where": "platform_message_id IS NOT NULL"
+        },
+        {
+          "columns": [
+            "session_id",
+            "timestamp"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 754,
+          "name": "idx_messages_session",
+          "table": "messages",
+          "unique": false,
+          "where": null
+        },
+        {
+          "columns": [
+            "session_id",
+            "active",
+            "timestamp"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 806,
+          "name": "idx_messages_session_active",
+          "table": "messages",
+          "unique": false,
+          "where": null
+        },
+        {
+          "columns": [
+            "session_id",
+            "id"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 755,
+          "name": "idx_messages_session_id",
+          "table": "messages",
+          "unique": false,
+          "where": null
+        },
+        {
+          "columns": [
+            "session_id",
+            "message_uid"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 895,
+          "name": "idx_messages_session_uid",
+          "table": "messages",
+          "unique": false,
+          "where": "active = 1"
+        }
+      ],
+      "kind": "table",
+      "line": 531,
+      "module": null,
+      "name": "messages",
+      "other_definitions": [],
+      "primary_key": [
+        "id"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS messages ( id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL REFERENCES sessions(id), role TEXT NOT NULL, content TEXT, tool_call_id TEXT, tool_calls TEXT, tool_name TEXT, effect_disposition TEXT, timestamp REAL NOT NULL, token_count INTEGER, finish_reason TEXT, reasoning TEXT, reasoning_content TEXT, reasoning_details TEXT, codex_reasoning_items TEXT, codex_message_items TEXT, platform_message_id TEXT, observed INTEGER DEFAULT 0, _compressed_summary INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1, compacted INTEGER NOT NULL DEFAULT 0, api_content TEXT, display_kind TEXT, display_metadata TEXT, display_identity BLOB, display_order INTEGER, message_uid TEXT, absorbed_message_uids TEXT, tool_call_uids TEXT, tool_call_uid TEXT )",
+      "triggers": [
+        {
+          "event": "AFTER DELETE",
+          "file": "hermes_state_common.py",
+          "line": 882,
+          "name": "messages_display_identity_delete",
+          "table": "messages"
+        },
+        {
+          "event": "AFTER INSERT",
+          "file": "hermes_state_common.py",
+          "line": 827,
+          "name": "messages_display_order_insert",
+          "table": "messages"
+        },
+        {
+          "event": "AFTER UPDATE OF codex_reasoning_items, codex_message_items, display_kind, display_metadata",
+          "file": "hermes_state_common.py",
+          "line": 798,
+          "name": "messages_display_revision_update",
+          "table": "messages"
+        },
+        {
+          "event": "AFTER UPDATE OF active, compacted",
+          "file": "hermes_state_common.py",
+          "line": 839,
+          "name": "messages_display_visibility_update",
+          "table": "messages"
+        },
+        {
+          "event": "AFTER DELETE",
+          "file": "hermes_state_common.py",
+          "line": 985,
+          "name": "messages_fts_delete",
+          "table": "messages"
+        },
+        {
+          "event": "AFTER DELETE",
+          "file": "hermes_state_common.py",
+          "line": 1171,
+          "name": "messages_fts_delete",
+          "table": "messages"
+        },
+        {
+          "event": "AFTER INSERT",
+          "file": "hermes_state_common.py",
+          "line": 970,
+          "name": "messages_fts_insert",
+          "table": "messages"
+        },
+        {
+          "event": "AFTER INSERT",
+          "file": "hermes_state_common.py",
+          "line": 1163,
+          "name": "messages_fts_insert",
+          "table": "messages"
+        },
+        {
+          "event": "AFTER DELETE",
+          "file": "hermes_state_common.py",
+          "line": 1103,
+          "name": "messages_fts_trigram_delete",
+          "table": "messages"
+        },
+        {
+          "event": "AFTER DELETE",
+          "file": "hermes_state_common.py",
+          "line": 1201,
+          "name": "messages_fts_trigram_delete",
+          "table": "messages"
+        },
+        {
+          "event": "AFTER INSERT",
+          "file": "hermes_state_common.py",
+          "line": 1090,
+          "name": "messages_fts_trigram_insert",
+          "table": "messages"
+        },
+        {
+          "event": "AFTER INSERT",
+          "file": "hermes_state_common.py",
+          "line": 1193,
+          "name": "messages_fts_trigram_insert",
+          "table": "messages"
+        },
+        {
+          "event": "AFTER UPDATE OF content, tool_name, role",
+          "file": "hermes_state_common.py",
+          "line": 1116,
+          "name": "messages_fts_trigram_update",
+          "table": "messages"
+        },
+        {
+          "event": "AFTER UPDATE OF content, tool_name, tool_calls, role",
+          "file": "hermes_state_common.py",
+          "line": 1205,
+          "name": "messages_fts_trigram_update",
+          "table": "messages"
+        },
+        {
+          "event": "AFTER UPDATE OF content, tool_name, tool_calls, role",
+          "file": "hermes_state_common.py",
+          "line": 1004,
+          "name": "messages_fts_update",
+          "table": "messages"
+        },
+        {
+          "event": "AFTER UPDATE OF content, tool_name, tool_calls, role",
+          "file": "hermes_state_common.py",
+          "line": 1175,
+          "name": "messages_fts_update",
+          "table": "messages"
+        },
+        {
+          "event": "AFTER INSERT",
+          "file": "hermes_state_common.py",
+          "line": 818,
+          "name": "messages_message_uid_insert",
+          "table": "messages"
+        }
+      ],
+      "unique": []
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "",
+          "name": "content"
+        },
+        {
+          "definition": "",
+          "name": "tool_name"
+        },
+        {
+          "definition": "",
+          "name": "tool_calls"
+        }
+      ],
+      "constraints": [],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "fts5_options": {
+        "content": "messages_fts_src",
+        "content_rowid": "id"
+      },
+      "indexes": [],
+      "kind": "virtual",
+      "line": 962,
+      "module": "fts5",
+      "name": "messages_fts",
+      "other_definitions": [
+        {
+          "file": "hermes_state_common.py",
+          "line": 1159,
+          "sql": "CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5( content )"
+        },
+        {
+          "file": "hermes_state_fts.py",
+          "line": 46,
+          "sql": "CREATE VIRTUAL TABLE messages_fts USING fts5(content,content=messages,content_rowid=id)"
+        },
+        {
+          "file": "hermes_state_fts.py",
+          "line": 47,
+          "sql": "CREATE VIRTUAL TABLE messages_fts USING fts5(content)"
+        },
+        {
+          "file": "hermes_state_fts.py",
+          "line": 48,
+          "sql": "CREATE VIRTUAL TABLE messages_fts USING fts5(content,tool_name,tool_calls,content='messages',content_rowid='id')"
+        },
+        {
+          "file": "hermes_state_fts.py",
+          "line": 50,
+          "sql": "CREATE VIRTUAL TABLE messages_fts USING fts5(content,tool_name,tool_calls,content='messages_fts_src',content_rowid='id')"
+        }
+      ],
+      "primary_key": [],
+      "sql": "CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5( content, tool_name, tool_calls, content='messages_fts_src', content_rowid='id' )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "",
+          "name": "content"
+        },
+        {
+          "definition": "",
+          "name": "tool_name"
+        }
+      ],
+      "constraints": [],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "fts5_options": {
+        "content": "messages_fts_trigram_src",
+        "content_rowid": "id",
+        "tokenize": "trigram"
+      },
+      "indexes": [],
+      "kind": "virtual",
+      "line": 1082,
+      "module": "fts5",
+      "name": "messages_fts_trigram",
+      "other_definitions": [
+        {
+          "file": "hermes_state_common.py",
+          "line": 1188,
+          "sql": "CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts_trigram USING fts5( content, tokenize='trigram' )"
+        },
+        {
+          "file": "hermes_state_fts.py",
+          "line": 54,
+          "sql": "CREATE VIRTUAL TABLE messages_fts_trigram USING fts5(content,content=messages,content_rowid=id,tokenize='trigram')"
+        },
+        {
+          "file": "hermes_state_fts.py",
+          "line": 56,
+          "sql": "CREATE VIRTUAL TABLE messages_fts_trigram USING fts5(content,tokenize='trigram')"
+        },
+        {
+          "file": "hermes_state_fts.py",
+          "line": 57,
+          "sql": "CREATE VIRTUAL TABLE messages_fts_trigram USING fts5(content,tool_name,tool_calls,content='messages_fts_trigram_src',content_rowid='id',tokenize='trigram')"
+        },
+        {
+          "file": "hermes_state_fts.py",
+          "line": 59,
+          "sql": "CREATE VIRTUAL TABLE messages_fts_trigram USING fts5(content,tool_name,content='messages_fts_trigram_src',content_rowid='id',tokenize='trigram')"
+        }
+      ],
+      "primary_key": [],
+      "sql": "CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts_trigram USING fts5( content, tool_name, content='messages_fts_trigram_src', content_rowid='id', tokenize='trigram' )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [
+        "singleton: (singleton = 1)",
+        "epoch: (epoch > 0)"
+      ],
+      "columns": [
+        {
+          "definition": "INTEGER PRIMARY KEY CHECK (singleton = 1)",
+          "name": "singleton"
+        },
+        {
+          "definition": "INTEGER NOT NULL CHECK (epoch > 0)",
+          "name": "epoch"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "instance_id"
+        }
+      ],
+      "constraints": [],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [],
+      "kind": "table",
+      "line": 586,
+      "module": null,
+      "name": "runtime_epoch",
+      "other_definitions": [
+        {
+          "file": "hermes_cli/backup_restore.py",
+          "line": 230,
+          "sql": "CREATE TABLE IF NOT EXISTS runtime_epoch ( singleton INTEGER PRIMARY KEY CHECK (singleton = 1), epoch INTEGER NOT NULL CHECK (epoch > 0), instance_id TEXT NOT NULL)"
+        }
+      ],
+      "primary_key": [
+        "singleton"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS runtime_epoch ( singleton INTEGER PRIMARY KEY CHECK (singleton = 1), epoch INTEGER NOT NULL CHECK (epoch > 0), instance_id TEXT NOT NULL )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "INTEGER NOT NULL",
+          "name": "version"
+        }
+      ],
+      "constraints": [],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [],
+      "kind": "table",
+      "line": 452,
+      "module": null,
+      "name": "schema_version",
+      "other_definitions": [],
+      "primary_key": [],
+      "sql": "CREATE TABLE IF NOT EXISTS schema_version ( version INTEGER NOT NULL )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [
+        "intent: (intent IN ('queue','steer','redirect'))",
+        "status: (status IN ('queued','started','unknown','terminal'))",
+        "(status != 'started' OR (owner_epoch IS NOT NULL AND generation IS NOT NULL))"
+      ],
+      "columns": [
+        {
+          "definition": "INTEGER PRIMARY KEY AUTOINCREMENT",
+          "name": "seq"
+        },
+        {
+          "definition": "TEXT NOT NULL UNIQUE",
+          "name": "admission_id"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "request_id"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "principal_id"
+        },
+        {
+          "definition": "TEXT NOT NULL REFERENCES sessions(id) ON DELETE RESTRICT",
+          "name": "target_session_id"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "lineage_json"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "payload_json"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "payload_digest"
+        },
+        {
+          "definition": "TEXT NOT NULL CHECK (intent IN ('queue','steer','redirect'))",
+          "name": "intent"
+        },
+        {
+          "definition": "TEXT NOT NULL CHECK (status IN ('queued','started','unknown','terminal'))",
+          "name": "status"
+        },
+        {
+          "definition": "TEXT",
+          "name": "outcome"
+        },
+        {
+          "definition": "INTEGER",
+          "name": "owner_epoch"
+        },
+        {
+          "definition": "INTEGER",
+          "name": "generation"
+        }
+      ],
+      "constraints": [
+        "UNIQUE (principal_id, target_session_id, request_id)",
+        "CHECK (status != 'started' OR (owner_epoch IS NOT NULL AND generation IS NOT NULL))"
+      ],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [
+        {
+          "columns": [
+            "principal_id",
+            "request_id",
+            "target_session_id"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 616,
+          "name": "idx_session_admissions_cron_request",
+          "table": "session_admissions",
+          "unique": false,
+          "where": "principal_id = '{CRON_PRINCIPAL_ID}'"
+        },
+        {
+          "columns": [
+            "target_session_id",
+            "status",
+            "seq"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 608,
+          "name": "session_admissions_pending",
+          "table": "session_admissions",
+          "unique": false,
+          "where": null
+        }
+      ],
+      "kind": "table",
+      "line": 591,
+      "module": null,
+      "name": "session_admissions",
+      "other_definitions": [],
+      "primary_key": [
+        "seq"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS session_admissions ( seq INTEGER PRIMARY KEY AUTOINCREMENT, admission_id TEXT NOT NULL UNIQUE, request_id TEXT NOT NULL, principal_id TEXT NOT NULL, target_session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE RESTRICT, lineage_json TEXT NOT NULL, payload_json TEXT NOT NULL, payload_digest TEXT NOT NULL, intent TEXT NOT NULL CHECK (intent IN ('queue','steer','redirect')), status TEXT NOT NULL CHECK (status IN ('queued','started','unknown','terminal')), outcome TEXT, owner_epoch INTEGER, generation INTEGER, UNIQUE (principal_id, target_session_id, request_id), CHECK (status != 'started' OR (owner_epoch IS NOT NULL AND generation IS NOT NULL)) )",
+      "triggers": [],
+      "unique": [
+        [
+          "admission_id"
+        ],
+        [
+          "principal_id",
+          "target_session_id",
+          "request_id"
+        ]
+      ]
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE",
+          "name": "session_id"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "model"
+        },
+        {
+          "definition": "TEXT NOT NULL DEFAULT ''",
+          "name": "billing_provider"
+        },
+        {
+          "definition": "TEXT NOT NULL DEFAULT ''",
+          "name": "billing_base_url"
+        },
+        {
+          "definition": "TEXT NOT NULL DEFAULT ''",
+          "name": "billing_mode"
+        },
+        {
+          "definition": "TEXT NOT NULL DEFAULT ''",
+          "name": "task"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "api_call_count"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "input_tokens"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "output_tokens"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "cache_read_tokens"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "cache_write_tokens"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "reasoning_tokens"
+        },
+        {
+          "definition": "REAL NOT NULL DEFAULT 0",
+          "name": "estimated_cost_usd"
+        },
+        {
+          "definition": "REAL NOT NULL DEFAULT 0",
+          "name": "actual_cost_usd"
+        },
+        {
+          "definition": "TEXT",
+          "name": "cost_status"
+        },
+        {
+          "definition": "TEXT",
+          "name": "cost_source"
+        },
+        {
+          "definition": "REAL",
+          "name": "first_seen"
+        },
+        {
+          "definition": "REAL",
+          "name": "last_seen"
+        }
+      ],
+      "constraints": [
+        "PRIMARY KEY (session_id, model, billing_provider, billing_base_url, billing_mode, task)"
+      ],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [
+        {
+          "columns": [
+            "model"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 767,
+          "name": "idx_session_model_usage_model",
+          "table": "session_model_usage",
+          "unique": false,
+          "where": null
+        },
+        {
+          "columns": [
+            "model"
+          ],
+          "file": "hermes_state_schema.py",
+          "line": 77,
+          "name": "idx_session_model_usage_model",
+          "table": "session_model_usage",
+          "unique": false,
+          "where": null
+        },
+        {
+          "columns": [
+            "session_id"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 766,
+          "name": "idx_session_model_usage_session",
+          "table": "session_model_usage",
+          "unique": false,
+          "where": null
+        },
+        {
+          "columns": [
+            "session_id"
+          ],
+          "file": "hermes_state_schema.py",
+          "line": 76,
+          "name": "idx_session_model_usage_session",
+          "table": "session_model_usage",
+          "unique": false,
+          "where": null
+        }
+      ],
+      "kind": "table",
+      "line": 564,
+      "module": null,
+      "name": "session_model_usage",
+      "other_definitions": [
+        {
+          "file": "hermes_state_schema.py",
+          "line": 79,
+          "sql": "CREATE TABLE session_model_usage ( session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, model TEXT NOT NULL, billing_provider TEXT NOT NULL DEFAULT '', billing_base_url TEXT NOT NULL DEFAULT '', billing_mode TEXT NOT NULL DEFAULT '', task TEXT NOT NULL DEFAULT '', api_call_count INTEGER NOT NULL DEFAULT 0, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0, cache_read_tokens INTEGER NOT NULL DEFAULT 0, cache_write_tokens INTEGER NOT NULL DEFAULT 0, reasoning_tokens INTEGER NOT NULL DEFAULT 0, estimated_cost_usd REAL NOT NULL DEFAULT 0, actual_cost_usd REAL NOT NULL DEFAULT 0, cost_status TEXT, cost_source TEXT, first_seen REAL, last_seen REAL, PRIMARY KEY (session_id, model, billing_provider, billing_base_url, billing_mode, task) )"
+        }
+      ],
+      "primary_key": [
+        "session_id",
+        "model",
+        "billing_provider",
+        "billing_base_url",
+        "billing_mode",
+        "task"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS session_model_usage ( session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, model TEXT NOT NULL, billing_provider TEXT NOT NULL DEFAULT '', billing_base_url TEXT NOT NULL DEFAULT '', billing_mode TEXT NOT NULL DEFAULT '', task TEXT NOT NULL DEFAULT '', api_call_count INTEGER NOT NULL DEFAULT 0, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0, cache_read_tokens INTEGER NOT NULL DEFAULT 0, cache_write_tokens INTEGER NOT NULL DEFAULT 0, reasoning_tokens INTEGER NOT NULL DEFAULT 0, estimated_cost_usd REAL NOT NULL DEFAULT 0, actual_cost_usd REAL NOT NULL DEFAULT 0, cost_status TEXT, cost_source TEXT, first_seen REAL, last_seen REAL, PRIMARY KEY (session_id, model, billing_provider, billing_base_url, billing_mode, task) )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "TEXT PRIMARY KEY",
+          "name": "conversation_id"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "holder"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "acquired_at"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "expires_at"
+        }
+      ],
+      "constraints": [],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [
+        {
+          "columns": [
+            "expires_at"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 765,
+          "name": "idx_session_turn_leases_expires",
+          "table": "session_turn_leases",
+          "unique": false,
+          "where": null
+        }
+      ],
+      "kind": "table",
+      "line": 711,
+      "module": null,
+      "name": "session_turn_leases",
+      "other_definitions": [],
+      "primary_key": [
+        "conversation_id"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS session_turn_leases ( conversation_id TEXT PRIMARY KEY, holder TEXT NOT NULL, acquired_at REAL NOT NULL, expires_at REAL NOT NULL )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "TEXT PRIMARY KEY",
+          "name": "id"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "runtime_revision"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "runtime_generation"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "source"
+        },
+        {
+          "definition": "TEXT",
+          "name": "created_source"
+        },
+        {
+          "definition": "TEXT",
+          "name": "user_id"
+        },
+        {
+          "definition": "TEXT",
+          "name": "session_key"
+        },
+        {
+          "definition": "TEXT",
+          "name": "chat_id"
+        },
+        {
+          "definition": "TEXT",
+          "name": "chat_type"
+        },
+        {
+          "definition": "TEXT",
+          "name": "thread_id"
+        },
+        {
+          "definition": "TEXT",
+          "name": "display_name"
+        },
+        {
+          "definition": "TEXT",
+          "name": "origin_json"
+        },
+        {
+          "definition": "INTEGER DEFAULT 0",
+          "name": "expiry_finalized"
+        },
+        {
+          "definition": "TEXT",
+          "name": "model"
+        },
+        {
+          "definition": "TEXT",
+          "name": "model_config"
+        },
+        {
+          "definition": "TEXT",
+          "name": "system_prompt"
+        },
+        {
+          "definition": "TEXT",
+          "name": "system_prompt_hash"
+        },
+        {
+          "definition": "TEXT",
+          "name": "parent_session_id"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "started_at"
+        },
+        {
+          "definition": "REAL",
+          "name": "ended_at"
+        },
+        {
+          "definition": "TEXT",
+          "name": "end_reason"
+        },
+        {
+          "definition": "INTEGER DEFAULT 0",
+          "name": "message_count"
+        },
+        {
+          "definition": "INTEGER DEFAULT 0",
+          "name": "tool_call_count"
+        },
+        {
+          "definition": "INTEGER DEFAULT 0",
+          "name": "input_tokens"
+        },
+        {
+          "definition": "INTEGER DEFAULT 0",
+          "name": "output_tokens"
+        },
+        {
+          "definition": "INTEGER DEFAULT 0",
+          "name": "cache_read_tokens"
+        },
+        {
+          "definition": "INTEGER DEFAULT 0",
+          "name": "cache_write_tokens"
+        },
+        {
+          "definition": "INTEGER DEFAULT 0",
+          "name": "reasoning_tokens"
+        },
+        {
+          "definition": "TEXT",
+          "name": "cwd"
+        },
+        {
+          "definition": "TEXT",
+          "name": "git_branch"
+        },
+        {
+          "definition": "TEXT",
+          "name": "git_repo_root"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "git_metadata_generation"
+        },
+        {
+          "definition": "TEXT",
+          "name": "billing_provider"
+        },
+        {
+          "definition": "TEXT",
+          "name": "billing_base_url"
+        },
+        {
+          "definition": "TEXT",
+          "name": "billing_mode"
+        },
+        {
+          "definition": "REAL",
+          "name": "estimated_cost_usd"
+        },
+        {
+          "definition": "REAL",
+          "name": "actual_cost_usd"
+        },
+        {
+          "definition": "TEXT",
+          "name": "cost_status"
+        },
+        {
+          "definition": "TEXT",
+          "name": "cost_source"
+        },
+        {
+          "definition": "TEXT",
+          "name": "pricing_version"
+        },
+        {
+          "definition": "TEXT",
+          "name": "title"
+        },
+        {
+          "definition": "TEXT",
+          "name": "title_source"
+        },
+        {
+          "definition": "REAL",
+          "name": "last_activity_at"
+        },
+        {
+          "definition": "TEXT",
+          "name": "last_activity_description"
+        },
+        {
+          "definition": "TEXT",
+          "name": "last_activity_provenance"
+        },
+        {
+          "definition": "INTEGER DEFAULT 0",
+          "name": "api_call_count"
+        },
+        {
+          "definition": "TEXT",
+          "name": "handoff_state"
+        },
+        {
+          "definition": "TEXT",
+          "name": "handoff_platform"
+        },
+        {
+          "definition": "TEXT",
+          "name": "handoff_error"
+        },
+        {
+          "definition": "REAL",
+          "name": "compression_failure_cooldown_until"
+        },
+        {
+          "definition": "TEXT",
+          "name": "compression_failure_error"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "compression_fallback_streak"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "compression_ineffective_count"
+        },
+        {
+          "definition": "REAL",
+          "name": "compression_recovery_deadline"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "compression_overload_streak"
+        },
+        {
+          "definition": "TEXT",
+          "name": "profile_name"
+        },
+        {
+          "definition": "TEXT",
+          "name": "transport_profile"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "rewind_count"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "archived"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "auto_archived"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "pinned"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "hidden"
+        },
+        {
+          "definition": "REAL",
+          "name": "last_read_at"
+        },
+        {
+          "definition": "TEXT",
+          "name": "tool_names"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0",
+          "name": "transcript_revision"
+        }
+      ],
+      "constraints": [
+        "FOREIGN KEY (parent_session_id) REFERENCES sessions(id)",
+        "FOREIGN KEY (system_prompt_hash) REFERENCES system_prompts(hash)"
+      ],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [
+        {
+          "columns": [
+            "source",
+            "user_id",
+            "chat_id",
+            "chat_type",
+            "thread_id",
+            "started_at DESC"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 899,
+          "name": "idx_sessions_gateway_peer",
+          "table": "sessions",
+          "unique": false,
+          "where": null
+        },
+        {
+          "columns": [
+            "handoff_state",
+            "started_at"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 901,
+          "name": "idx_sessions_handoff_state",
+          "table": "sessions",
+          "unique": false,
+          "where": null
+        },
+        {
+          "columns": [
+            "created_source",
+            "started_at DESC"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 916,
+          "name": "idx_sessions_local_created_started",
+          "table": "sessions",
+          "unique": false,
+          "where": "source = 'local'"
+        },
+        {
+          "columns": [
+            "parent_session_id"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 752,
+          "name": "idx_sessions_parent",
+          "table": "sessions",
+          "unique": false,
+          "where": null
+        },
+        {
+          "columns": [
+            "session_key",
+            "started_at DESC"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 897,
+          "name": "idx_sessions_session_key",
+          "table": "sessions",
+          "unique": false,
+          "where": null
+        },
+        {
+          "columns": [
+            "source"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 750,
+          "name": "idx_sessions_source",
+          "table": "sessions",
+          "unique": false,
+          "where": null
+        },
+        {
+          "columns": [
+            "source",
+            "id"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 751,
+          "name": "idx_sessions_source_id",
+          "table": "sessions",
+          "unique": false,
+          "where": null
+        },
+        {
+          "columns": [
+            "started_at DESC"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 753,
+          "name": "idx_sessions_started",
+          "table": "sessions",
+          "unique": false,
+          "where": null
+        },
+        {
+          "columns": [
+            "system_prompt_hash"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 903,
+          "name": "idx_sessions_system_prompt_hash",
+          "table": "sessions",
+          "unique": false,
+          "where": null
+        },
+        {
+          "columns": [
+            "title"
+          ],
+          "file": "hermes_state_schema.py",
+          "line": 137,
+          "name": "idx_sessions_title_unique",
+          "table": "sessions",
+          "unique": true,
+          "where": "title IS NOT NULL"
+        },
+        {
+          "columns": [
+            "tool_names"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 905,
+          "name": "idx_sessions_tool_names",
+          "table": "sessions",
+          "unique": false,
+          "where": null
+        }
+      ],
+      "kind": "table",
+      "line": 461,
+      "module": null,
+      "name": "sessions",
+      "other_definitions": [],
+      "primary_key": [
+        "id"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS sessions ( id TEXT PRIMARY KEY, runtime_revision INTEGER NOT NULL DEFAULT 0, runtime_generation INTEGER NOT NULL DEFAULT 0, source TEXT NOT NULL, created_source TEXT, user_id TEXT, session_key TEXT, chat_id TEXT, chat_type TEXT, thread_id TEXT, display_name TEXT, origin_json TEXT, expiry_finalized INTEGER DEFAULT 0, model TEXT, model_config TEXT, system_prompt TEXT, system_prompt_hash TEXT, parent_session_id TEXT, started_at REAL NOT NULL, ended_at REAL, end_reason TEXT, message_count INTEGER DEFAULT 0, tool_call_count INTEGER DEFAULT 0, input_tokens INTEGER DEFAULT 0, output_tokens INTEGER DEFAULT 0, cache_read_tokens INTEGER DEFAULT 0, cache_write_tokens INTEGER DEFAULT 0, reasoning_tokens INTEGER DEFAULT 0, cwd TEXT, git_branch TEXT, git_repo_root TEXT, git_metadata_generation INTEGER NOT NULL DEFAULT 0, billing_provider TEXT, billing_base_url TEXT, billing_mode TEXT, estimated_cost_usd REAL, actual_cost_usd REAL, cost_status TEXT, cost_source TEXT, pricing_version TEXT, title TEXT, title_source TEXT, last_activity_at REAL, last_activity_description TEXT, last_activity_provenance TEXT, api_call_count INTEGER DEFAULT 0, handoff_state TEXT, handoff_platform TEXT, handoff_error TEXT, compression_failure_cooldown_until REAL, compression_failure_error TEXT, compression_fallback_streak INTEGER NOT NULL DEFAULT 0, compression_ineffective_count INTEGER NOT NULL DEFAULT 0, compression_recovery_deadline REAL, compression_overload_streak INTEGER NOT NULL DEFAULT 0, profile_name TEXT, transport_profile TEXT, rewind_count INTEGER NOT NULL DEFAULT 0, archived INTEGER NOT NULL DEFAULT 0, auto_archived INTEGER NOT NULL DEFAULT 0, pinned INTEGER NOT NULL DEFAULT 0, hidden INTEGER NOT NULL DEFAULT 0, last_read_at REAL, tool_names TEXT, transcript_revision INTEGER NOT NULL DEFAULT 0, FOREIGN KEY (parent_session_id) REFERENCES sessions(id), FOREIGN KEY (system_prompt_hash) REFERENCES system_prompts(hash) )",
+      "triggers": [
+        {
+          "event": "BEFORE DELETE",
+          "file": "hermes_state_common.py",
+          "line": 780,
+          "name": "sessions_runtime_ledger_delete_guard",
+          "table": "sessions"
+        }
+      ],
+      "unique": []
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "TEXT PRIMARY KEY",
+          "name": "key"
+        },
+        {
+          "definition": "TEXT",
+          "name": "value"
+        }
+      ],
+      "constraints": [],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [],
+      "kind": "table",
+      "line": 640,
+      "module": null,
+      "name": "state_meta",
+      "other_definitions": [],
+      "primary_key": [
+        "key"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS state_meta ( key TEXT PRIMARY KEY, value TEXT )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "TEXT PRIMARY KEY",
+          "name": "hash"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "prompt"
+        }
+      ],
+      "constraints": [],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [],
+      "kind": "table",
+      "line": 456,
+      "module": null,
+      "name": "system_prompts",
+      "other_definitions": [],
+      "primary_key": [
+        "hash"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS system_prompts ( hash TEXT PRIMARY KEY, prompt TEXT NOT NULL )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "TEXT NOT NULL DEFAULT 'default'",
+          "name": "profile_name"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "chat_id"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "thread_id"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "user_id"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "session_key"
+        },
+        {
+          "definition": "TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE",
+          "name": "session_id"
+        },
+        {
+          "definition": "TEXT NOT NULL DEFAULT 'auto'",
+          "name": "managed_mode"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "linked_at"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "updated_at"
+        }
+      ],
+      "constraints": [
+        "PRIMARY KEY (profile_name, chat_id, thread_id)"
+      ],
+      "created_lazily": true,
+      "file": "hermes_state_telegram.py",
+      "indexes": [
+        {
+          "columns": [
+            "session_id"
+          ],
+          "file": "hermes_state_telegram.py",
+          "line": 150,
+          "name": "idx_telegram_dm_topic_bindings_session",
+          "table": "telegram_dm_topic_bindings",
+          "unique": true,
+          "where": null
+        },
+        {
+          "columns": [
+            "profile_name",
+            "user_id",
+            "chat_id"
+          ],
+          "file": "hermes_state_telegram.py",
+          "line": 154,
+          "name": "idx_telegram_dm_topic_bindings_user",
+          "table": "telegram_dm_topic_bindings",
+          "unique": false,
+          "where": null
+        }
+      ],
+      "kind": "table",
+      "line": 131,
+      "module": null,
+      "name": "telegram_dm_topic_bindings",
+      "other_definitions": [
+        {
+          "file": "hermes_state_telegram.py",
+          "line": 145,
+          "sql": "CREATE TABLE telegram_dm_topic_bindings ( profile_name TEXT NOT NULL DEFAULT 'default', chat_id TEXT NOT NULL, thread_id TEXT NOT NULL, user_id TEXT NOT NULL, session_key TEXT NOT NULL, session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, managed_mode TEXT NOT NULL DEFAULT 'auto', linked_at REAL NOT NULL, updated_at REAL NOT NULL, PRIMARY KEY (profile_name, chat_id, thread_id) )"
+        }
+      ],
+      "primary_key": [
+        "profile_name",
+        "chat_id",
+        "thread_id"
+      ],
+      "sql": "CREATE TABLE telegram_dm_topic_bindings ( profile_name TEXT NOT NULL DEFAULT 'default', chat_id TEXT NOT NULL, thread_id TEXT NOT NULL, user_id TEXT NOT NULL, session_key TEXT NOT NULL, session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, managed_mode TEXT NOT NULL DEFAULT 'auto', linked_at REAL NOT NULL, updated_at REAL NOT NULL, PRIMARY KEY (profile_name, chat_id, thread_id) )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [],
+      "columns": [
+        {
+          "definition": "TEXT NOT NULL DEFAULT 'default'",
+          "name": "profile_name"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "chat_id"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "user_id"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 1",
+          "name": "enabled"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "activated_at"
+        },
+        {
+          "definition": "REAL NOT NULL",
+          "name": "updated_at"
+        },
+        {
+          "definition": "INTEGER",
+          "name": "has_topics_enabled"
+        },
+        {
+          "definition": "INTEGER",
+          "name": "allows_users_to_create_topics"
+        },
+        {
+          "definition": "REAL",
+          "name": "capability_checked_at"
+        },
+        {
+          "definition": "TEXT",
+          "name": "intro_message_id"
+        },
+        {
+          "definition": "TEXT",
+          "name": "pinned_message_id"
+        }
+      ],
+      "constraints": [
+        "PRIMARY KEY (profile_name, chat_id)"
+      ],
+      "created_lazily": true,
+      "file": "hermes_state_telegram.py",
+      "indexes": [],
+      "kind": "table",
+      "line": 131,
+      "module": null,
+      "name": "telegram_dm_topic_mode",
+      "other_definitions": [
+        {
+          "file": "hermes_state_telegram.py",
+          "line": 145,
+          "sql": "CREATE TABLE telegram_dm_topic_mode ( profile_name TEXT NOT NULL DEFAULT 'default', chat_id TEXT NOT NULL, user_id TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, activated_at REAL NOT NULL, updated_at REAL NOT NULL, has_topics_enabled INTEGER, allows_users_to_create_topics INTEGER, capability_checked_at REAL, intro_message_id TEXT, pinned_message_id TEXT, PRIMARY KEY (profile_name, chat_id) )"
+        }
+      ],
+      "primary_key": [
+        "profile_name",
+        "chat_id"
+      ],
+      "sql": "CREATE TABLE telegram_dm_topic_mode ( profile_name TEXT NOT NULL DEFAULT 'default', chat_id TEXT NOT NULL, user_id TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, activated_at REAL NOT NULL, updated_at REAL NOT NULL, has_topics_enabled INTEGER, allows_users_to_create_topics INTEGER, capability_checked_at REAL, intro_message_id TEXT, pinned_message_id TEXT, PRIMARY KEY (profile_name, chat_id) )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [
+        "kind: (kind IN ('cron','child','compute','kanban'))",
+        "status: (status IN ('registered','running','unknown','terminal'))",
+        "last_sequence: (last_sequence >= 0)"
+      ],
+      "columns": [
+        {
+          "definition": "TEXT PRIMARY KEY",
+          "name": "execution_id"
+        },
+        {
+          "definition": "TEXT NOT NULL REFERENCES sessions(id) ON DELETE RESTRICT",
+          "name": "session_id"
+        },
+        {
+          "definition": "TEXT NOT NULL CHECK (kind IN ('cron','child','compute','kanban'))",
+          "name": "kind"
+        },
+        {
+          "definition": "INTEGER NOT NULL",
+          "name": "owner_epoch"
+        },
+        {
+          "definition": "INTEGER NOT NULL",
+          "name": "generation"
+        },
+        {
+          "definition": "TEXT NOT NULL CHECK (status IN ('registered','running','unknown','terminal'))",
+          "name": "status"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "adoption_digest"
+        },
+        {
+          "definition": "INTEGER NOT NULL DEFAULT 0 CHECK (last_sequence >= 0)",
+          "name": "last_sequence"
+        }
+      ],
+      "constraints": [],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [
+        {
+          "columns": [
+            "session_id",
+            "status"
+          ],
+          "file": "hermes_state_common.py",
+          "line": 630,
+          "name": "idx_worker_executions_session_status",
+          "table": "worker_executions",
+          "unique": false,
+          "where": null
+        }
+      ],
+      "kind": "table",
+      "line": 618,
+      "module": null,
+      "name": "worker_executions",
+      "other_definitions": [],
+      "primary_key": [
+        "execution_id"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS worker_executions ( execution_id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE RESTRICT, kind TEXT NOT NULL CHECK (kind IN ('cron','child','compute','kanban')), owner_epoch INTEGER NOT NULL, generation INTEGER NOT NULL, status TEXT NOT NULL CHECK (status IN ('registered','running','unknown','terminal')), adoption_digest TEXT NOT NULL, last_sequence INTEGER NOT NULL DEFAULT 0 CHECK (last_sequence >= 0) )",
+      "triggers": [],
+      "unique": []
+    },
+    {
+      "checks": [
+        "sequence: (sequence > 0)"
+      ],
+      "columns": [
+        {
+          "definition": "TEXT NOT NULL REFERENCES worker_executions(execution_id) ON DELETE RESTRICT",
+          "name": "execution_id"
+        },
+        {
+          "definition": "INTEGER NOT NULL CHECK (sequence > 0)",
+          "name": "sequence"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "payload_digest"
+        },
+        {
+          "definition": "TEXT NOT NULL",
+          "name": "result_json"
+        }
+      ],
+      "constraints": [
+        "PRIMARY KEY (execution_id, sequence)"
+      ],
+      "created_lazily": false,
+      "file": "hermes_state_common.py",
+      "indexes": [],
+      "kind": "table",
+      "line": 632,
+      "module": null,
+      "name": "worker_receipts",
+      "other_definitions": [],
+      "primary_key": [
+        "execution_id",
+        "sequence"
+      ],
+      "sql": "CREATE TABLE IF NOT EXISTS worker_receipts ( execution_id TEXT NOT NULL REFERENCES worker_executions(execution_id) ON DELETE RESTRICT, sequence INTEGER NOT NULL CHECK (sequence > 0), payload_digest TEXT NOT NULL, result_json TEXT NOT NULL, PRIMARY KEY (execution_id, sequence) )",
+      "triggers": [],
+      "unique": []
+    }
+  ],
+  "upstream_commit": "a9ff9799e273f525b82718cdc69fdec71b1dca5a"
+}

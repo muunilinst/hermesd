@@ -1,0 +1,474 @@
+{
+  "counts": {
+    "ledger_tables_present": 3,
+    "status_updates_found": 33,
+    "updates_to_undeclared_status": 0
+  },
+  "session_delete_guard_triggers": [
+    {
+      "event": "BEFORE DELETE",
+      "name": "sessions_runtime_ledger_delete_guard",
+      "on": "sessions"
+    }
+  ],
+  "status_updates": [
+    {
+      "file": "tools/async_delegation.py",
+      "from": [],
+      "line": 582,
+      "sql": "UPDATE async_delegations SET delivery_state='delivered', delivered_at=?, updated_at=? WHERE delegation_id=? AND delivery_state!='delivered'",
+      "table": "async_delegations",
+      "to": "delivered"
+    },
+    {
+      "file": "tools/async_delegation.py",
+      "from": [
+        "pending"
+      ],
+      "line": 677,
+      "sql": "UPDATE async_delegations SET delivery_state='delivered', delivered_at=?, updated_at=?, delivery_claim=NULL, delivery_claimed_at=NULL WHERE delegation_id=? AND delivery_state='pending' AND delivery_claim=?",
+      "table": "async_delegations",
+      "to": "delivered"
+    },
+    {
+      "file": "tools/async_delegation.py",
+      "from": [
+        "pending"
+      ],
+      "line": 386,
+      "sql": "UPDATE async_delegations SET delivery_state='dropped', delivery_claim=NULL, delivery_claimed_at=NULL, updated_at=? WHERE delegation_id=? AND delivery_state='pending'",
+      "table": "async_delegations",
+      "to": "dropped"
+    },
+    {
+      "file": "tools/async_delegation.py",
+      "from": [
+        "pending"
+      ],
+      "line": 539,
+      "sql": "UPDATE async_delegations SET delivery_state='dropped', delivery_claim=NULL, delivery_claimed_at=NULL, updated_at=? WHERE delegation_id=? AND delivery_state='pending'",
+      "table": "async_delegations",
+      "to": "dropped"
+    },
+    {
+      "file": "tools/async_delegation.py",
+      "from": [
+        "pending"
+      ],
+      "line": 630,
+      "sql": "UPDATE async_delegations SET delivery_state='dropped', delivery_claim=NULL, delivery_claimed_at=NULL, updated_at=? WHERE delegation_id=? AND delivery_state='pending' AND delivery_claim=? AND delivery_attempts>=?",
+      "table": "async_delegations",
+      "to": "dropped"
+    },
+    {
+      "file": "tools/async_delegation.py",
+      "from": [
+        "pending"
+      ],
+      "line": 665,
+      "sql": "UPDATE async_delegations SET delivery_state='dropped', updated_at=?, delivery_claim=NULL, delivery_claimed_at=NULL WHERE delegation_id=? AND delivery_state='pending' AND delivery_claim=?",
+      "table": "async_delegations",
+      "to": "dropped"
+    },
+    {
+      "file": "tools/async_delegation.py",
+      "from": [
+        "delivered"
+      ],
+      "line": 692,
+      "sql": "UPDATE async_delegations SET delivery_state='dropped', updated_at=? WHERE delegation_id=? AND delivery_state='delivered' AND delivery_attempts>=?",
+      "table": "async_delegations",
+      "to": "dropped"
+    },
+    {
+      "file": "tools/async_delegation.py",
+      "from": [],
+      "line": 237,
+      "sql": "UPDATE async_delegations SET state=?, completed_at=?, updated_at=?, event_json=?, result_json=?, delivery_state='pending' WHERE delegation_id=?",
+      "table": "async_delegations",
+      "to": "pending"
+    },
+    {
+      "file": "tools/async_delegation.py",
+      "from": [],
+      "line": 340,
+      "sql": "UPDATE async_delegations SET state='unknown', completed_at=?, updated_at=?, event_json=?, result_json=?, delivery_state='pending' WHERE delegation_id=?",
+      "table": "async_delegations",
+      "to": "pending"
+    },
+    {
+      "file": "tools/async_delegation.py",
+      "from": [
+        "delivered"
+      ],
+      "line": 700,
+      "sql": "UPDATE async_delegations SET delivery_state='pending', delivered_at=NULL, updated_at=? WHERE delegation_id=? AND delivery_state='delivered' AND event_json IS NOT NULL",
+      "table": "async_delegations",
+      "to": "pending"
+    },
+    {
+      "file": "gateway/delivery_ledger.py",
+      "from": [],
+      "line": 404,
+      "sql": "UPDATE delivery_obligations SET state='abandoned', updated_at=? WHERE obligation_id=?",
+      "table": "delivery_obligations",
+      "to": "abandoned"
+    },
+    {
+      "file": "gateway/delivery_ledger.py",
+      "from": [
+        "failed"
+      ],
+      "line": 484,
+      "sql": "UPDATE delivery_obligations SET state='abandoned', updated_at=? WHERE obligation_id=? AND state='failed' AND owner_pid IS ? AND owner_started_at IS ?",
+      "table": "delivery_obligations",
+      "to": "abandoned"
+    },
+    {
+      "file": "hermes_state_gateway.py",
+      "from": [],
+      "line": 833,
+      "sql": "UPDATE delivery_obligations SET state='abandoned', updated_at=? WHERE ({by_profile}substr(session_key, 1, ?) = ?) AND state NOT IN ('delivered', 'abandoned')",
+      "table": "delivery_obligations",
+      "to": "abandoned"
+    },
+    {
+      "file": "gateway/delivery_ledger.py",
+      "from": [],
+      "line": 432,
+      "sql": "UPDATE delivery_obligations SET owner_pid=?, owner_started_at=?, attempts=attempts+1, updated_at=?, adapter_profile=COALESCE(adapter_profile, 'default'), state='attempting', last_error=CASE WHEN ? THEN NULL ELSE last_err",
+      "table": "delivery_obligations",
+      "to": "attempting"
+    },
+    {
+      "file": "gateway/delivery_ledger.py",
+      "from": [
+        "failed"
+      ],
+      "line": 494,
+      "sql": "UPDATE delivery_obligations SET state='attempting', attempts=attempts+1, updated_at=?, last_error=NULL WHERE obligation_id=? AND state='failed' AND owner_pid IS ? AND owner_started_at IS ?",
+      "table": "delivery_obligations",
+      "to": "attempting"
+    },
+    {
+      "file": "gateway/delivery_ledger.py",
+      "from": [
+        "attempting"
+      ],
+      "line": 333,
+      "sql": "UPDATE delivery_obligations SET state='failed', attempts=CASE WHEN attempts > 0 THEN attempts - 1 ELSE 0 END, updated_at=?, last_error=? WHERE obligation_id=? AND state='attempting' AND owner_pid IS ? AND owner_started_a",
+      "table": "delivery_obligations",
+      "to": "failed"
+    },
+    {
+      "file": "hermes_state_runtime.py",
+      "from": [
+        "terminal"
+      ],
+      "line": 310,
+      "sql": "UPDATE session_admissions SET status='queued',outcome=NULL,generation=NULL WHERE admission_id=? AND status='terminal' AND outcome=? AND owner_epoch=? AND generation=?",
+      "table": "session_admissions",
+      "to": "queued"
+    },
+    {
+      "file": "hermes_state_runtime.py",
+      "from": [
+        "queued"
+      ],
+      "line": 233,
+      "sql": "UPDATE session_admissions SET status='started',owner_epoch=?,generation=? WHERE admission_id=? AND status='queued'",
+      "table": "session_admissions",
+      "to": "started"
+    },
+    {
+      "file": "hermes_state_runtime.py",
+      "from": [
+        "started",
+        "unknown"
+      ],
+      "line": 786,
+      "sql": "UPDATE session_admissions SET owner_epoch=?,status='started' WHERE admission_id=? AND generation=? AND owner_epoch=? AND status IN ('started','unknown')",
+      "table": "session_admissions",
+      "to": "started"
+    },
+    {
+      "file": "gateway/session_automation.py",
+      "from": [
+        "queued"
+      ],
+      "line": 230,
+      "sql": "UPDATE session_admissions SET status='terminal',outcome='cancelled' WHERE admission_id=? AND target_session_id=? AND status='queued'",
+      "table": "session_admissions",
+      "to": "terminal"
+    },
+    {
+      "file": "hermes_state_runtime.py",
+      "from": [],
+      "line": 270,
+      "sql": "UPDATE session_admissions SET status='terminal',outcome=? WHERE admission_id=?",
+      "table": "session_admissions",
+      "to": "terminal"
+    },
+    {
+      "file": "hermes_state_runtime.py",
+      "from": [],
+      "line": 277,
+      "sql": "UPDATE session_admissions SET status='terminal',outcome='cancelled' WHERE admission_id=?",
+      "table": "session_admissions",
+      "to": "terminal"
+    },
+    {
+      "file": "hermes_state_runtime.py",
+      "from": [],
+      "line": 331,
+      "sql": "UPDATE session_admissions SET status='terminal',outcome=?,owner_epoch=?,generation=? WHERE admission_id=?",
+      "table": "session_admissions",
+      "to": "terminal"
+    },
+    {
+      "file": "hermes_state_runtime.py",
+      "from": [],
+      "line": 690,
+      "sql": "UPDATE session_admissions SET status='terminal',outcome=? WHERE admission_id=?",
+      "table": "session_admissions",
+      "to": "terminal"
+    },
+    {
+      "file": "gateway/session_settlement_recovery.py",
+      "from": [],
+      "line": 24,
+      "sql": "UPDATE session_admissions SET status='unknown' WHERE admission_id=?",
+      "table": "session_admissions",
+      "to": "unknown"
+    },
+    {
+      "file": "gateway/session_worker_reservation.py",
+      "from": [],
+      "line": 132,
+      "sql": "UPDATE session_admissions SET status='unknown' WHERE admission_id=?",
+      "table": "session_admissions",
+      "to": "unknown"
+    },
+    {
+      "file": "hermes_state_runtime.py",
+      "from": [
+        "started"
+      ],
+      "line": 463,
+      "sql": "UPDATE session_admissions SET status='unknown' WHERE status='started' AND owner_epoch!=?",
+      "table": "session_admissions",
+      "to": "unknown"
+    },
+    {
+      "file": "hermes_state_runtime.py",
+      "from": [],
+      "line": 793,
+      "sql": "UPDATE worker_executions SET owner_epoch=?,status='running' WHERE execution_id=?",
+      "table": "worker_executions",
+      "to": "running"
+    },
+    {
+      "file": "gateway/session_worker_reservation.py",
+      "from": [],
+      "line": 129,
+      "sql": "UPDATE worker_executions SET status='terminal' WHERE execution_id=?",
+      "table": "worker_executions",
+      "to": "terminal"
+    },
+    {
+      "file": "hermes_state_runtime.py",
+      "from": [],
+      "line": 101,
+      "sql": "UPDATE worker_executions SET status='terminal' WHERE {scope}",
+      "table": "worker_executions",
+      "to": "terminal"
+    },
+    {
+      "file": "hermes_state_runtime_workers.py",
+      "from": [],
+      "line": 43,
+      "sql": "UPDATE worker_executions SET status='terminal' WHERE execution_id=?",
+      "table": "worker_executions",
+      "to": "terminal"
+    },
+    {
+      "file": "hermes_state_runtime_workers.py",
+      "from": [],
+      "line": 77,
+      "sql": "UPDATE worker_executions SET status='terminal' WHERE execution_id=?",
+      "table": "worker_executions",
+      "to": "terminal"
+    },
+    {
+      "file": "hermes_state_runtime.py",
+      "from": [
+        "registered",
+        "running"
+      ],
+      "line": 459,
+      "sql": "UPDATE worker_executions SET status='unknown' WHERE status IN ('registered','running') AND owner_epoch!=?",
+      "table": "worker_executions",
+      "to": "unknown"
+    }
+  ],
+  "surface": "ledger",
+  "tables": {
+    "async_delegations": {
+      "check_constraints": [],
+      "defined_in": "hermes_state_common.py:718",
+      "foreign_keys": [],
+      "intent_set": null,
+      "kind_set": null,
+      "own_triggers": [],
+      "present": true,
+      "primary_key": [
+        "delegation_id"
+      ],
+      "status_column": "delivery_state",
+      "status_set": null,
+      "unique_constraints": [],
+      "unique_indexes": []
+    },
+    "delivery_obligations": {
+      "check_constraints": [],
+      "defined_in": "gateway/delivery_ledger.py:190",
+      "foreign_keys": [],
+      "intent_set": null,
+      "kind_set": null,
+      "own_triggers": [],
+      "present": true,
+      "primary_key": [
+        "obligation_id"
+      ],
+      "status_column": "state",
+      "status_set": null,
+      "unique_constraints": [],
+      "unique_indexes": []
+    },
+    "runtime_epoch": {
+      "check_constraints": [
+        "singleton: (singleton = 1)",
+        "epoch: (epoch > 0)"
+      ],
+      "defined_in": "hermes_state_common.py:586",
+      "foreign_keys": [],
+      "intent_set": null,
+      "kind_set": null,
+      "own_triggers": [],
+      "present": true,
+      "primary_key": [
+        "singleton"
+      ],
+      "status_column": null,
+      "status_set": null,
+      "unique_constraints": [],
+      "unique_indexes": []
+    },
+    "session_admissions": {
+      "check_constraints": [
+        "intent: (intent IN ('queue','steer','redirect'))",
+        "status: (status IN ('queued','started','unknown','terminal'))",
+        "(status != 'started' OR (owner_epoch IS NOT NULL AND generation IS NOT NULL))"
+      ],
+      "defined_in": "hermes_state_common.py:591",
+      "foreign_keys": [
+        {
+          "column": "target_session_id",
+          "on_delete": "RESTRICT",
+          "references": "sessions(id)"
+        }
+      ],
+      "intent_set": [
+        "queue",
+        "redirect",
+        "steer"
+      ],
+      "kind_set": null,
+      "own_triggers": [],
+      "present": true,
+      "primary_key": [
+        "seq"
+      ],
+      "status_column": "status",
+      "status_set": [
+        "queued",
+        "started",
+        "terminal",
+        "unknown"
+      ],
+      "unique_constraints": [
+        [
+          "admission_id"
+        ],
+        [
+          "principal_id",
+          "target_session_id",
+          "request_id"
+        ]
+      ],
+      "unique_indexes": []
+    },
+    "worker_executions": {
+      "check_constraints": [
+        "kind: (kind IN ('cron','child','compute','kanban'))",
+        "status: (status IN ('registered','running','unknown','terminal'))",
+        "last_sequence: (last_sequence >= 0)"
+      ],
+      "defined_in": "hermes_state_common.py:618",
+      "foreign_keys": [
+        {
+          "column": "session_id",
+          "on_delete": "RESTRICT",
+          "references": "sessions(id)"
+        }
+      ],
+      "intent_set": null,
+      "kind_set": [
+        "child",
+        "compute",
+        "cron",
+        "kanban"
+      ],
+      "own_triggers": [],
+      "present": true,
+      "primary_key": [
+        "execution_id"
+      ],
+      "status_column": "status",
+      "status_set": [
+        "registered",
+        "running",
+        "terminal",
+        "unknown"
+      ],
+      "unique_constraints": [],
+      "unique_indexes": []
+    },
+    "worker_receipts": {
+      "check_constraints": [
+        "sequence: (sequence > 0)"
+      ],
+      "defined_in": "hermes_state_common.py:632",
+      "foreign_keys": [
+        {
+          "column": "execution_id",
+          "on_delete": "RESTRICT",
+          "references": "worker_executions(execution_id)"
+        }
+      ],
+      "intent_set": null,
+      "kind_set": null,
+      "own_triggers": [],
+      "present": true,
+      "primary_key": [
+        "execution_id",
+        "sequence"
+      ],
+      "status_column": null,
+      "status_set": null,
+      "unique_constraints": [],
+      "unique_indexes": []
+    }
+  },
+  "upstream_commit": "a9ff9799e273f525b82718cdc69fdec71b1dca5a"
+}

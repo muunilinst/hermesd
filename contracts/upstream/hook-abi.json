@@ -1,0 +1,1862 @@
+{
+  "counts": {
+    "call_sites_with_literal_name": 64,
+    "hook_like_calls_without_literal_name": 319,
+    "hook_names": 46,
+    "hooks_with_no_literal_call_site": 6
+  },
+  "hook_names": [
+    "agent_loop_stopped",
+    "api_request_error",
+    "gateway_platform_event",
+    "kanban_task_blocked",
+    "kanban_task_claimed",
+    "kanban_task_completed",
+    "on_human_input_request",
+    "on_human_input_resolved",
+    "on_interim_message",
+    "on_kanban_dispatch_tick",
+    "on_kanban_task_updated",
+    "on_kanban_worker_exited",
+    "on_kanban_worker_spawned",
+    "on_kanban_worker_stale_claim",
+    "on_room_member_activity",
+    "on_session_delete",
+    "on_session_end",
+    "on_session_finalize",
+    "on_session_reset",
+    "on_session_start",
+    "on_skill_lifecycle",
+    "on_stream_delta",
+    "on_stream_end",
+    "on_stream_start",
+    "post_api_request",
+    "post_approval_response",
+    "post_auxiliary_call",
+    "post_compaction",
+    "post_gateway_admission",
+    "post_llm_call",
+    "post_tool_call",
+    "pre_api_request",
+    "pre_approval_request",
+    "pre_auxiliary_call",
+    "pre_command",
+    "pre_gateway_dispatch",
+    "pre_llm_call",
+    "pre_tool_call",
+    "pre_transcription",
+    "pre_verify",
+    "subagent_start",
+    "subagent_stop",
+    "transform_api_error_classification",
+    "transform_llm_output",
+    "transform_terminal_output",
+    "transform_tool_result"
+  ],
+  "hooks": [
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 2,
+      "kwargs_in_every_site": [
+        "invalidation_reason",
+        "platform",
+        "reason",
+        "session_key"
+      ],
+      "kwargs_union": [
+        "invalidation_reason",
+        "platform",
+        "reason",
+        "session_key"
+      ],
+      "name": "agent_loop_stopped",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "gateway/run_agent_cache.py",
+          "kwargs": [
+            "invalidation_reason",
+            "platform",
+            "reason",
+            "session_key"
+          ],
+          "line": 572,
+          "via": "_invoke_hook"
+        },
+        {
+          "dynamic_kwargs": false,
+          "file": "tui_gateway/session_lifecycle.py",
+          "kwargs": [
+            "invalidation_reason",
+            "platform",
+            "reason",
+            "session_key"
+          ],
+          "line": 808,
+          "via": "_invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "api_call_count",
+        "api_duration",
+        "api_mode",
+        "api_request_id",
+        "base_url",
+        "ended_at",
+        "error",
+        "max_retries",
+        "model",
+        "platform",
+        "provider",
+        "reason",
+        "request",
+        "retry_count",
+        "retryable",
+        "session_id",
+        "started_at",
+        "status_code",
+        "task_id",
+        "turn_id"
+      ],
+      "kwargs_union": [
+        "api_call_count",
+        "api_duration",
+        "api_mode",
+        "api_request_id",
+        "base_url",
+        "ended_at",
+        "error",
+        "max_retries",
+        "model",
+        "platform",
+        "provider",
+        "reason",
+        "request",
+        "retry_count",
+        "retryable",
+        "session_id",
+        "started_at",
+        "status_code",
+        "task_id",
+        "turn_id"
+      ],
+      "name": "api_request_error",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "agent/api_request_hooks.py",
+          "kwargs": [
+            "api_call_count",
+            "api_duration",
+            "api_mode",
+            "api_request_id",
+            "base_url",
+            "ended_at",
+            "error",
+            "max_retries",
+            "model",
+            "platform",
+            "provider",
+            "reason",
+            "request",
+            "retry_count",
+            "retryable",
+            "session_id",
+            "started_at",
+            "status_code",
+            "task_id",
+            "turn_id"
+          ],
+          "line": 176,
+          "via": "_lifecycle.invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": true,
+      "call_sites": 1,
+      "kwargs_in_every_site": [],
+      "kwargs_union": [],
+      "name": "gateway_platform_event",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": true,
+          "file": "gateway/run_adapters.py",
+          "kwargs": [],
+          "line": 1666,
+          "via": "invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "reason"
+      ],
+      "kwargs_union": [
+        "reason"
+      ],
+      "name": "kanban_task_blocked",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "hermes_cli/kanban_db.py",
+          "kwargs": [
+            "reason"
+          ],
+          "line": 3211,
+          "via": "_fire_task_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [],
+      "kwargs_union": [],
+      "name": "kanban_task_claimed",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "hermes_cli/kanban_db.py",
+          "kwargs": [],
+          "line": 2202,
+          "via": "_fire_task_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 2,
+      "kwargs_in_every_site": [
+        "summary"
+      ],
+      "kwargs_union": [
+        "assignee",
+        "board",
+        "run_id",
+        "summary"
+      ],
+      "name": "kanban_task_completed",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "hermes_cli/kanban_db.py",
+          "kwargs": [
+            "summary"
+          ],
+          "line": 2743,
+          "via": "_fire_task_hook"
+        },
+        {
+          "dynamic_kwargs": false,
+          "file": "hermes_cli/kanban_swarm.py",
+          "kwargs": [
+            "assignee",
+            "board",
+            "run_id",
+            "summary"
+          ],
+          "line": 154,
+          "via": "kb._fire_kanban_lifecycle_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 0,
+      "kwargs_in_every_site": [],
+      "kwargs_union": [],
+      "name": "on_human_input_request",
+      "shell_unsupported": false,
+      "sites": []
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 0,
+      "kwargs_in_every_site": [],
+      "kwargs_union": [],
+      "name": "on_human_input_resolved",
+      "shell_unsupported": false,
+      "sites": []
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "already_streamed",
+        "text"
+      ],
+      "kwargs_union": [
+        "already_streamed",
+        "text"
+      ],
+      "name": "on_interim_message",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "agent/stream_delivery.py",
+          "kwargs": [
+            "already_streamed",
+            "text"
+          ],
+          "line": 249,
+          "via": "self._enqueue_stream_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "board",
+        "dry_run",
+        "outcome",
+        "profile_name",
+        "result"
+      ],
+      "kwargs_union": [
+        "board",
+        "dry_run",
+        "outcome",
+        "profile_name",
+        "result"
+      ],
+      "name": "on_kanban_dispatch_tick",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "hermes_cli/kanban_db.py",
+          "kwargs": [
+            "board",
+            "dry_run",
+            "outcome",
+            "profile_name",
+            "result"
+          ],
+          "line": 270,
+          "via": "invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "assignee",
+        "board",
+        "changed_fields",
+        "run_id"
+      ],
+      "kwargs_union": [
+        "assignee",
+        "board",
+        "changed_fields",
+        "run_id"
+      ],
+      "name": "on_kanban_task_updated",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "hermes_cli/kanban_db.py",
+          "kwargs": [
+            "assignee",
+            "board",
+            "changed_fields",
+            "run_id"
+          ],
+          "line": 225,
+          "via": "_fire_kanban_lifecycle_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": true,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "board"
+      ],
+      "kwargs_union": [
+        "board"
+      ],
+      "name": "on_kanban_worker_exited",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": true,
+          "file": "hermes_cli/kanban_db_dispatch.py",
+          "kwargs": [
+            "board"
+          ],
+          "line": 1346,
+          "via": "_kb._fire_kanban_lifecycle_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "assignee",
+        "board",
+        "run_id",
+        "worker_pid",
+        "workspace_path"
+      ],
+      "kwargs_union": [
+        "assignee",
+        "board",
+        "run_id",
+        "worker_pid",
+        "workspace_path"
+      ],
+      "name": "on_kanban_worker_spawned",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "hermes_cli/kanban_db.py",
+          "kwargs": [
+            "assignee",
+            "board",
+            "run_id",
+            "worker_pid",
+            "workspace_path"
+          ],
+          "line": 203,
+          "via": "_fire_kanban_lifecycle_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "assignee",
+        "board",
+        "heartbeat_stale",
+        "retry_status",
+        "run_id",
+        "worker_pid"
+      ],
+      "kwargs_union": [
+        "assignee",
+        "board",
+        "heartbeat_stale",
+        "retry_status",
+        "run_id",
+        "worker_pid"
+      ],
+      "name": "on_kanban_worker_stale_claim",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "hermes_cli/kanban_db.py",
+          "kwargs": [
+            "assignee",
+            "board",
+            "heartbeat_stale",
+            "retry_status",
+            "run_id",
+            "worker_pid"
+          ],
+          "line": 2424,
+          "via": "_fire_kanban_lifecycle_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 0,
+      "kwargs_in_every_site": [],
+      "kwargs_union": [],
+      "name": "on_room_member_activity",
+      "shell_unsupported": false,
+      "sites": []
+    },
+    {
+      "any_dynamic_kwargs": true,
+      "call_sites": 1,
+      "kwargs_in_every_site": [],
+      "kwargs_union": [],
+      "name": "on_session_delete",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": true,
+          "file": "hermes_state_common.py",
+          "kwargs": [],
+          "line": 440,
+          "via": "invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": true,
+      "call_sites": 4,
+      "kwargs_in_every_site": [],
+      "kwargs_union": [
+        "completed",
+        "failed",
+        "interrupted",
+        "model",
+        "platform",
+        "reason",
+        "session_id",
+        "task_id",
+        "turn_exit_reason",
+        "turn_id"
+      ],
+      "name": "on_session_end",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "agent/turn_finalizer.py",
+          "kwargs": [
+            "completed",
+            "failed",
+            "interrupted",
+            "model",
+            "platform",
+            "session_id",
+            "task_id",
+            "turn_exit_reason",
+            "turn_id"
+          ],
+          "line": 886,
+          "via": "_invoke_hook_safely"
+        },
+        {
+          "dynamic_kwargs": true,
+          "file": "hermes_cli/cli_shutdown.py",
+          "kwargs": [
+            "completed",
+            "interrupted",
+            "model",
+            "platform",
+            "reason",
+            "session_id"
+          ],
+          "line": 199,
+          "via": "_invoke_hook"
+        },
+        {
+          "dynamic_kwargs": false,
+          "file": "run_agent.py",
+          "kwargs": [],
+          "line": 361,
+          "via": "_call_engine_hook"
+        },
+        {
+          "dynamic_kwargs": false,
+          "file": "tui_gateway/session_lifecycle.py",
+          "kwargs": [
+            "completed",
+            "interrupted",
+            "model",
+            "platform",
+            "session_id"
+          ],
+          "line": 465,
+          "via": "invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": true,
+      "call_sites": 1,
+      "kwargs_in_every_site": [],
+      "kwargs_union": [],
+      "name": "on_session_finalize",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": true,
+          "file": "hermes_cli/lifecycle.py",
+          "kwargs": [],
+          "line": 97,
+          "via": "_plugin_hooks"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": true,
+      "call_sites": 3,
+      "kwargs_in_every_site": [],
+      "kwargs_union": [
+        "new_session_id",
+        "old_session_id",
+        "platform",
+        "reason",
+        "session_id"
+      ],
+      "name": "on_session_reset",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": true,
+          "file": "gateway/run_shutdown_session_end.py",
+          "kwargs": [],
+          "line": 43,
+          "via": "invoke_hook"
+        },
+        {
+          "dynamic_kwargs": false,
+          "file": "gateway/slash_commands_session.py",
+          "kwargs": [
+            "new_session_id",
+            "old_session_id",
+            "platform",
+            "reason",
+            "session_id"
+          ],
+          "line": 258,
+          "via": "_invoke_hook"
+        },
+        {
+          "dynamic_kwargs": false,
+          "file": "run_agent.py",
+          "kwargs": [],
+          "line": 363,
+          "via": "_call_engine_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 2,
+      "kwargs_in_every_site": [
+        "model",
+        "platform"
+      ],
+      "kwargs_union": [
+        "carry_over_context",
+        "context_length",
+        "conversation_id",
+        "model",
+        "old_session_id",
+        "platform",
+        "session_id"
+      ],
+      "name": "on_session_start",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "agent/conversation_loop.py",
+          "kwargs": [
+            "model",
+            "platform",
+            "session_id"
+          ],
+          "line": 933,
+          "via": "_invoke_hook"
+        },
+        {
+          "dynamic_kwargs": false,
+          "file": "run_agent.py",
+          "kwargs": [
+            "carry_over_context",
+            "context_length",
+            "conversation_id",
+            "model",
+            "old_session_id",
+            "platform"
+          ],
+          "line": 375,
+          "via": "_call_engine_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "action",
+        "provenance",
+        "reuse_after_patch",
+        "reused",
+        "session_id",
+        "skill_name",
+        "task_id",
+        "use_count"
+      ],
+      "kwargs_union": [
+        "action",
+        "provenance",
+        "reuse_after_patch",
+        "reused",
+        "session_id",
+        "skill_name",
+        "task_id",
+        "use_count"
+      ],
+      "name": "on_skill_lifecycle",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "tools/skill_usage.py",
+          "kwargs": [
+            "action",
+            "provenance",
+            "reuse_after_patch",
+            "reused",
+            "session_id",
+            "skill_name",
+            "task_id",
+            "use_count"
+          ],
+          "line": 477,
+          "via": "invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 2,
+      "kwargs_in_every_site": [
+        "delta",
+        "kind"
+      ],
+      "kwargs_union": [
+        "delta",
+        "kind",
+        "label"
+      ],
+      "name": "on_stream_delta",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "agent/stream_delivery.py",
+          "kwargs": [
+            "delta",
+            "kind"
+          ],
+          "line": 366,
+          "via": "self._enqueue_stream_hook"
+        },
+        {
+          "dynamic_kwargs": false,
+          "file": "agent/stream_delivery.py",
+          "kwargs": [
+            "delta",
+            "kind",
+            "label"
+          ],
+          "line": 396,
+          "via": "self._enqueue_stream_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "error",
+        "final_text",
+        "finished"
+      ],
+      "kwargs_union": [
+        "error",
+        "final_text",
+        "finished"
+      ],
+      "name": "on_stream_end",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "agent/stream_delivery.py",
+          "kwargs": [
+            "error",
+            "final_text",
+            "finished"
+          ],
+          "line": 330,
+          "via": "self._enqueue_stream_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [],
+      "kwargs_union": [],
+      "name": "on_stream_start",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "agent/stream_delivery.py",
+          "kwargs": [],
+          "line": 327,
+          "via": "self._enqueue_stream_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "api_call_count",
+        "api_duration",
+        "api_mode",
+        "api_request_id",
+        "assistant_content_chars",
+        "assistant_message",
+        "assistant_tool_call_count",
+        "base_url",
+        "context_length",
+        "ended_at",
+        "finish_reason",
+        "first_chunk_at",
+        "message_count",
+        "moa_references",
+        "model",
+        "platform",
+        "provider",
+        "response",
+        "response_model",
+        "session_id",
+        "started_at",
+        "task_id",
+        "turn_id",
+        "usage"
+      ],
+      "kwargs_union": [
+        "api_call_count",
+        "api_duration",
+        "api_mode",
+        "api_request_id",
+        "assistant_content_chars",
+        "assistant_message",
+        "assistant_tool_call_count",
+        "base_url",
+        "context_length",
+        "ended_at",
+        "finish_reason",
+        "first_chunk_at",
+        "message_count",
+        "moa_references",
+        "model",
+        "platform",
+        "provider",
+        "response",
+        "response_model",
+        "session_id",
+        "started_at",
+        "task_id",
+        "turn_id",
+        "usage"
+      ],
+      "name": "post_api_request",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "agent/turn_response_intake.py",
+          "kwargs": [
+            "api_call_count",
+            "api_duration",
+            "api_mode",
+            "api_request_id",
+            "assistant_content_chars",
+            "assistant_message",
+            "assistant_tool_call_count",
+            "base_url",
+            "context_length",
+            "ended_at",
+            "finish_reason",
+            "first_chunk_at",
+            "message_count",
+            "moa_references",
+            "model",
+            "platform",
+            "provider",
+            "response",
+            "response_model",
+            "session_id",
+            "started_at",
+            "task_id",
+            "turn_id",
+            "usage"
+          ],
+          "line": 76,
+          "via": "_invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": true,
+      "call_sites": 7,
+      "kwargs_in_every_site": [
+        "choice"
+      ],
+      "kwargs_union": [
+        "choice",
+        "command",
+        "decided_by",
+        "description",
+        "pattern_key",
+        "pattern_keys",
+        "session_key",
+        "surface"
+      ],
+      "name": "post_approval_response",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": true,
+          "file": "tools/approval.py",
+          "kwargs": [
+            "choice"
+          ],
+          "line": 996,
+          "via": "approval_context._fire_approval_hook"
+        },
+        {
+          "dynamic_kwargs": true,
+          "file": "tools/approval_gateway_wait.py",
+          "kwargs": [
+            "choice"
+          ],
+          "line": 97,
+          "via": "_ctx._fire_approval_hook"
+        },
+        {
+          "dynamic_kwargs": false,
+          "file": "tools/approval_gateway_wait.py",
+          "kwargs": [
+            "choice",
+            "command",
+            "description",
+            "pattern_key",
+            "pattern_keys",
+            "session_key",
+            "surface"
+          ],
+          "line": 244,
+          "via": "_ctx._fire_approval_hook"
+        },
+        {
+          "dynamic_kwargs": true,
+          "file": "tools/approval_prompt.py",
+          "kwargs": [
+            "choice"
+          ],
+          "line": 252,
+          "via": "_ctx._fire_approval_hook"
+        },
+        {
+          "dynamic_kwargs": true,
+          "file": "tools/approval_prompt.py",
+          "kwargs": [
+            "choice"
+          ],
+          "line": 375,
+          "via": "_ctx._fire_approval_hook"
+        },
+        {
+          "dynamic_kwargs": false,
+          "file": "tools/approval_smart.py",
+          "kwargs": [
+            "choice",
+            "command",
+            "decided_by",
+            "description",
+            "pattern_key",
+            "pattern_keys",
+            "session_key",
+            "surface"
+          ],
+          "line": 169,
+          "via": "_ctx._fire_approval_hook"
+        },
+        {
+          "dynamic_kwargs": true,
+          "file": "tools/file_tools_write_guards.py",
+          "kwargs": [
+            "choice"
+          ],
+          "line": 338,
+          "via": "_fire_approval_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 0,
+      "kwargs_in_every_site": [],
+      "kwargs_union": [],
+      "name": "post_auxiliary_call",
+      "shell_unsupported": false,
+      "sites": []
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "after_tokens",
+        "before_tokens",
+        "kind",
+        "messages_removed",
+        "old_session_id",
+        "reason",
+        "session_id"
+      ],
+      "kwargs_union": [
+        "after_tokens",
+        "before_tokens",
+        "kind",
+        "messages_removed",
+        "old_session_id",
+        "reason",
+        "session_id"
+      ],
+      "name": "post_compaction",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "agent/compaction_events.py",
+          "kwargs": [
+            "after_tokens",
+            "before_tokens",
+            "kind",
+            "messages_removed",
+            "old_session_id",
+            "reason",
+            "session_id"
+          ],
+          "line": 247,
+          "via": "invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 0,
+      "kwargs_in_every_site": [],
+      "kwargs_union": [],
+      "name": "post_gateway_admission",
+      "shell_unsupported": false,
+      "sites": []
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "assistant_response",
+        "conversation_history",
+        "model",
+        "platform",
+        "session_id",
+        "side_question_token",
+        "task_id",
+        "turn_id",
+        "user_message"
+      ],
+      "kwargs_union": [
+        "assistant_response",
+        "conversation_history",
+        "model",
+        "platform",
+        "session_id",
+        "side_question_token",
+        "task_id",
+        "turn_id",
+        "user_message"
+      ],
+      "name": "post_llm_call",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "agent/turn_finalizer.py",
+          "kwargs": [
+            "assistant_response",
+            "conversation_history",
+            "model",
+            "platform",
+            "session_id",
+            "side_question_token",
+            "task_id",
+            "turn_id",
+            "user_message"
+          ],
+          "line": 494,
+          "via": "_invoke_hook_safely"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": true,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "args",
+        "duration_ms",
+        "error_message",
+        "error_type",
+        "middleware_trace",
+        "result",
+        "status",
+        "tool_name"
+      ],
+      "kwargs_union": [
+        "args",
+        "duration_ms",
+        "error_message",
+        "error_type",
+        "middleware_trace",
+        "result",
+        "status",
+        "tool_name"
+      ],
+      "name": "post_tool_call",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": true,
+          "file": "model_tools.py",
+          "kwargs": [
+            "args",
+            "duration_ms",
+            "error_message",
+            "error_type",
+            "middleware_trace",
+            "result",
+            "status",
+            "tool_name"
+          ],
+          "line": 714,
+          "via": "invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "api_call_count",
+        "api_mode",
+        "api_request_id",
+        "approx_input_tokens",
+        "base_url",
+        "conversation_history",
+        "max_tokens",
+        "message_count",
+        "middleware_trace",
+        "model",
+        "platform",
+        "provider",
+        "request",
+        "request_char_count",
+        "request_messages",
+        "retry_count",
+        "session_id",
+        "started_at",
+        "system_prompt",
+        "task_id",
+        "tool_count",
+        "turn_id",
+        "user_message"
+      ],
+      "kwargs_union": [
+        "api_call_count",
+        "api_mode",
+        "api_request_id",
+        "approx_input_tokens",
+        "base_url",
+        "conversation_history",
+        "max_tokens",
+        "message_count",
+        "middleware_trace",
+        "model",
+        "platform",
+        "provider",
+        "request",
+        "request_char_count",
+        "request_messages",
+        "retry_count",
+        "session_id",
+        "started_at",
+        "system_prompt",
+        "task_id",
+        "tool_count",
+        "turn_id",
+        "user_message"
+      ],
+      "name": "pre_api_request",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "agent/turn_api_request.py",
+          "kwargs": [
+            "api_call_count",
+            "api_mode",
+            "api_request_id",
+            "approx_input_tokens",
+            "base_url",
+            "conversation_history",
+            "max_tokens",
+            "message_count",
+            "middleware_trace",
+            "model",
+            "platform",
+            "provider",
+            "request",
+            "request_char_count",
+            "request_messages",
+            "retry_count",
+            "session_id",
+            "started_at",
+            "system_prompt",
+            "task_id",
+            "tool_count",
+            "turn_id",
+            "user_message"
+          ],
+          "line": 80,
+          "via": "_invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": true,
+      "call_sites": 7,
+      "kwargs_in_every_site": [],
+      "kwargs_union": [
+        "coalesced",
+        "command",
+        "description",
+        "pattern_key",
+        "pattern_keys",
+        "session_key",
+        "surface"
+      ],
+      "name": "pre_approval_request",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": true,
+          "file": "tools/approval.py",
+          "kwargs": [],
+          "line": 993,
+          "via": "approval_context._fire_approval_hook"
+        },
+        {
+          "dynamic_kwargs": true,
+          "file": "tools/approval_gateway_wait.py",
+          "kwargs": [
+            "coalesced"
+          ],
+          "line": 117,
+          "via": "_ctx._fire_approval_hook"
+        },
+        {
+          "dynamic_kwargs": false,
+          "file": "tools/approval_gateway_wait.py",
+          "kwargs": [
+            "command",
+            "description",
+            "pattern_key",
+            "pattern_keys",
+            "session_key",
+            "surface"
+          ],
+          "line": 236,
+          "via": "_ctx._fire_approval_hook"
+        },
+        {
+          "dynamic_kwargs": true,
+          "file": "tools/approval_prompt.py",
+          "kwargs": [],
+          "line": 242,
+          "via": "_ctx._fire_approval_hook"
+        },
+        {
+          "dynamic_kwargs": true,
+          "file": "tools/approval_prompt.py",
+          "kwargs": [],
+          "line": 362,
+          "via": "_ctx._fire_approval_hook"
+        },
+        {
+          "dynamic_kwargs": false,
+          "file": "tools/approval_smart.py",
+          "kwargs": [
+            "command",
+            "description",
+            "pattern_key",
+            "pattern_keys",
+            "session_key",
+            "surface"
+          ],
+          "line": 166,
+          "via": "_ctx._fire_approval_hook"
+        },
+        {
+          "dynamic_kwargs": true,
+          "file": "tools/file_tools_write_guards.py",
+          "kwargs": [],
+          "line": 335,
+          "via": "_fire_approval_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 0,
+      "kwargs_in_every_site": [],
+      "kwargs_union": [],
+      "name": "pre_auxiliary_call",
+      "shell_unsupported": false,
+      "sites": []
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 4,
+      "kwargs_in_every_site": [
+        "alias_used",
+        "args_raw",
+        "command",
+        "platform",
+        "session_key",
+        "surface"
+      ],
+      "kwargs_union": [
+        "alias_used",
+        "args_raw",
+        "command",
+        "platform",
+        "session_key",
+        "surface"
+      ],
+      "name": "pre_command",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "cli.py",
+          "kwargs": [
+            "alias_used",
+            "args_raw",
+            "command",
+            "platform",
+            "session_key",
+            "surface"
+          ],
+          "line": 1188,
+          "via": "fire_pre_command_hook"
+        },
+        {
+          "dynamic_kwargs": false,
+          "file": "gateway/run_inbound_hooks.py",
+          "kwargs": [
+            "alias_used",
+            "args_raw",
+            "command",
+            "platform",
+            "session_key",
+            "surface"
+          ],
+          "line": 142,
+          "via": "fire_pre_command_hook"
+        },
+        {
+          "dynamic_kwargs": false,
+          "file": "gateway/session_commands.py",
+          "kwargs": [
+            "alias_used",
+            "args_raw",
+            "command",
+            "platform",
+            "session_key",
+            "surface"
+          ],
+          "line": 340,
+          "via": "fire_pre_command_hook"
+        },
+        {
+          "dynamic_kwargs": false,
+          "file": "hermes_cli/plugins.py",
+          "kwargs": [
+            "alias_used",
+            "args_raw",
+            "command",
+            "platform",
+            "session_key",
+            "surface"
+          ],
+          "line": 1051,
+          "via": "manager.invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "event",
+        "gateway",
+        "session_store"
+      ],
+      "kwargs_union": [
+        "event",
+        "gateway",
+        "session_store"
+      ],
+      "name": "pre_gateway_dispatch",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "gateway/run_inbound_hooks.py",
+          "kwargs": [
+            "event",
+            "gateway",
+            "session_store"
+          ],
+          "line": 82,
+          "via": "_ainvoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "conversation_history",
+        "is_first_turn",
+        "model",
+        "parent_session_id",
+        "platform",
+        "sender_id",
+        "session_id",
+        "task_id",
+        "turn_id",
+        "user_message"
+      ],
+      "kwargs_union": [
+        "conversation_history",
+        "is_first_turn",
+        "model",
+        "parent_session_id",
+        "platform",
+        "sender_id",
+        "session_id",
+        "task_id",
+        "turn_id",
+        "user_message"
+      ],
+      "name": "pre_llm_call",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "agent/turn_context.py",
+          "kwargs": [
+            "conversation_history",
+            "is_first_turn",
+            "model",
+            "parent_session_id",
+            "platform",
+            "sender_id",
+            "session_id",
+            "task_id",
+            "turn_id",
+            "user_message"
+          ],
+          "line": 895,
+          "via": "_invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "api_request_id",
+        "args",
+        "conversation_id",
+        "middleware_trace",
+        "session_id",
+        "task_id",
+        "tool_call_id",
+        "tool_name",
+        "turn_id"
+      ],
+      "kwargs_union": [
+        "api_request_id",
+        "args",
+        "conversation_id",
+        "middleware_trace",
+        "session_id",
+        "task_id",
+        "tool_call_id",
+        "tool_name",
+        "turn_id"
+      ],
+      "name": "pre_tool_call",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "hermes_cli/plugins.py",
+          "kwargs": [
+            "api_request_id",
+            "args",
+            "conversation_id",
+            "middleware_trace",
+            "session_id",
+            "task_id",
+            "tool_call_id",
+            "tool_name",
+            "turn_id"
+          ],
+          "line": 1103,
+          "via": "invoke_lifecycle_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "file_path",
+        "language",
+        "model",
+        "prompt",
+        "provider",
+        "source"
+      ],
+      "kwargs_union": [
+        "file_path",
+        "language",
+        "model",
+        "prompt",
+        "provider",
+        "source"
+      ],
+      "name": "pre_transcription",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "tools/transcription_command.py",
+          "kwargs": [
+            "file_path",
+            "language",
+            "model",
+            "prompt",
+            "provider",
+            "source"
+          ],
+          "line": 254,
+          "via": "invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "attempt",
+        "changed_paths",
+        "coding",
+        "final_response",
+        "model",
+        "platform",
+        "session_id"
+      ],
+      "kwargs_union": [
+        "attempt",
+        "changed_paths",
+        "coding",
+        "final_response",
+        "model",
+        "platform",
+        "session_id"
+      ],
+      "name": "pre_verify",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "hermes_cli/plugins.py",
+          "kwargs": [
+            "attempt",
+            "changed_paths",
+            "coding",
+            "final_response",
+            "model",
+            "platform",
+            "session_id"
+          ],
+          "line": 1217,
+          "via": "invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "child_goal",
+        "child_role",
+        "child_session_id",
+        "child_subagent_id",
+        "parent_session_id",
+        "parent_subagent_id",
+        "parent_turn_id"
+      ],
+      "kwargs_union": [
+        "child_goal",
+        "child_role",
+        "child_session_id",
+        "child_subagent_id",
+        "parent_session_id",
+        "parent_subagent_id",
+        "parent_turn_id"
+      ],
+      "name": "subagent_start",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "tools/delegate_tool.py",
+          "kwargs": [
+            "child_goal",
+            "child_role",
+            "child_session_id",
+            "child_subagent_id",
+            "parent_session_id",
+            "parent_subagent_id",
+            "parent_turn_id"
+          ],
+          "line": 369,
+          "via": "_invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "child_role",
+        "child_session_id",
+        "child_status",
+        "child_summary",
+        "duration_ms",
+        "parent_session_id",
+        "parent_turn_id",
+        "tool_call_history"
+      ],
+      "kwargs_union": [
+        "child_role",
+        "child_session_id",
+        "child_status",
+        "child_summary",
+        "duration_ms",
+        "parent_session_id",
+        "parent_turn_id",
+        "tool_call_history"
+      ],
+      "name": "subagent_stop",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "tools/delegate_tool_results.py",
+          "kwargs": [
+            "child_role",
+            "child_session_id",
+            "child_status",
+            "child_summary",
+            "duration_ms",
+            "parent_session_id",
+            "parent_turn_id",
+            "tool_call_history"
+          ],
+          "line": 381,
+          "via": "invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "approx_tokens",
+        "context_length",
+        "error",
+        "error_body",
+        "error_code",
+        "error_message",
+        "error_type",
+        "model",
+        "num_messages",
+        "provider",
+        "status_code"
+      ],
+      "kwargs_union": [
+        "approx_tokens",
+        "context_length",
+        "error",
+        "error_body",
+        "error_code",
+        "error_message",
+        "error_type",
+        "model",
+        "num_messages",
+        "provider",
+        "status_code"
+      ],
+      "name": "transform_api_error_classification",
+      "shell_unsupported": true,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "hermes_cli/plugins.py",
+          "kwargs": [
+            "approx_tokens",
+            "context_length",
+            "error",
+            "error_body",
+            "error_code",
+            "error_message",
+            "error_type",
+            "model",
+            "num_messages",
+            "provider",
+            "status_code"
+          ],
+          "line": 1252,
+          "via": "invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": true,
+      "call_sites": 1,
+      "kwargs_in_every_site": [],
+      "kwargs_union": [],
+      "name": "transform_llm_output",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": true,
+          "file": "agent/turn_finalizer.py",
+          "kwargs": [],
+          "line": 542,
+          "via": "_invoke_hook_safely"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": false,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "command",
+        "env_type",
+        "output",
+        "returncode",
+        "task_id",
+        "tool_call_id"
+      ],
+      "kwargs_union": [
+        "command",
+        "env_type",
+        "output",
+        "returncode",
+        "task_id",
+        "tool_call_id"
+      ],
+      "name": "transform_terminal_output",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": false,
+          "file": "tools/terminal_tool_result.py",
+          "kwargs": [
+            "command",
+            "env_type",
+            "output",
+            "returncode",
+            "task_id",
+            "tool_call_id"
+          ],
+          "line": 144,
+          "via": "invoke_hook"
+        }
+      ]
+    },
+    {
+      "any_dynamic_kwargs": true,
+      "call_sites": 1,
+      "kwargs_in_every_site": [
+        "args",
+        "duration_ms",
+        "error_message",
+        "error_type",
+        "result",
+        "status",
+        "tool_name"
+      ],
+      "kwargs_union": [
+        "args",
+        "duration_ms",
+        "error_message",
+        "error_type",
+        "result",
+        "status",
+        "tool_name"
+      ],
+      "name": "transform_tool_result",
+      "shell_unsupported": false,
+      "sites": [
+        {
+          "dynamic_kwargs": true,
+          "file": "model_tools.py",
+          "kwargs": [
+            "args",
+            "duration_ms",
+            "error_message",
+            "error_type",
+            "result",
+            "status",
+            "tool_name"
+          ],
+          "line": 884,
+          "via": "invoke_hook"
+        }
+      ]
+    }
+  ],
+  "literal_names_outside_valid_hooks": [],
+  "shell_unsupported": [
+    "transform_api_error_classification"
+  ],
+  "source": "hermes_cli/plugins.py",
+  "surface": "hook-abi",
+  "upstream_commit": "a9ff9799e273f525b82718cdc69fdec71b1dca5a"
+}
