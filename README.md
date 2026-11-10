@@ -21,3 +21,28 @@ the plan is to port hermes incrementally, starting with the core agentic convers
 after each step we verify the new component with the existing hermes code.
 
 this project will rely heavily AI assistance and I wonder how else I would be able to do it.
+
+## where we are
+
+the design is the porting guide (rev 5.1). we start with its milestone 1:
+prove crash recovery at every handoff on the smallest slice, before any
+estimate. nothing is demonstrated yet; [STATUS.md](STATUS.md) tracks each
+mechanism and each fault test (D1 to D17).
+
+## layout
+
+| path | what it holds |
+| --- | --- |
+| `packages/host` | the `Host` interface (guide 4.6). agent code imports only this, never a platform SDK |
+| `packages/executor-protocol` | the executor contract (guide 3.4), `deriveOpId`, and the guest launch reconciliation table |
+| `packages/faults` | the catalogue of fault tests D1 to D17 (guide 7.3) |
+| `upstream/pin.json` | the upstream hermes-agent commit we test against |
+
+## develop
+
+needs node 22.18 or later (tests run the `.ts` files directly with `node --test`).
+
+```sh
+npm install
+npm run check   # typecheck + tests
+```

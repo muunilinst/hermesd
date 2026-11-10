@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/NousResearch/hermes-agent",
+  "commit": "a9ff9799",
+  "commitDate": "2026-11-07",
+  "stateSchemaVersion": 32,
+  "note": "Porting guide rev 5.1 measured every count at this commit. Replace the short SHA with the full SHA when the inventory extractor (PR 2) first clones upstream."
+}
