@@ -28,6 +28,7 @@ import {
   insertMessage,
   insertPortRow,
   loadActiveMessages,
+  replayColumns,
   recordUsage,
   toApiMessage,
   type NewMessage,
@@ -550,6 +551,7 @@ export class LoopDriver implements TurnDriver {
       ...(parsed.toolCalls.length > 0 ? { toolCalls: parsed.toolCalls, toolCallUids: uids } : {}),
       ...(parsed.finishReason ? { finishReason: parsed.finishReason } : {}),
       tokenCount: parsed.usage.completionTokens,
+      ...replayColumns(parsed),
     };
     const digest = await sha256(text);
     try {

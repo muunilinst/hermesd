@@ -44,6 +44,10 @@ export interface ScriptStep {
   dropMode?: "close" | "error";
   /** Streaming: pieces per text or argument string. Default 2. */
   chunks?: number;
+  /** anthropic_messages: signed thinking blocks that come before the text and the tool calls. */
+  thinking?: Array<{ thinking: string; signature: string }>;
+  /** codex_responses: reasoning items (with `encrypted_content`) that come before the message. */
+  reasoningItems?: Dict[];
 }
 
 export interface RecordedCall {
@@ -60,6 +64,8 @@ export interface ScriptedModelOptions {
 }
 
 interface Resolved {
+  thinking: Array<{ thinking: string; signature: string }>;
+  reasoningItems: Dict[];
   text: string | null;
   calls: Array<{ id: string; name: string; args: string }>;
   usage: { prompt: number; completion: number };
@@ -107,7 +113,7 @@ function jsonAnswer(mode: ApiMode, r: Resolved): Dict {
         type: "message",
         role: "assistant",
         model: r.model,
-        content: [...(r.text ? [{ type: "text", text: r.text }] : []), ...r.calls.map((c) => ({ type: "tool_use", id: c.id, name: c.name, input: JSON.parse(c.args || "{}") as unknown }))],
+        content: [...r.thinking.map((t) => ({ type: "thinking", thinking: t.thinking, signature: t.signature })), ...(r.text ? [{ type: "text", text: r.text }] : []), ...r.calls.map((c) => ({ type: "tool_use", id: c.id, name: c.name, input: JSON.parse(c.args || "{}") as unknown }))],
         stop_reason: r.calls.length > 0 ? "tool_use" : "end_turn",
         stop_sequence: null,
         usage: { input_tokens: r.usage.prompt, output_tokens: r.usage.completion },
@@ -137,6 +143,7 @@ function jsonAnswer(mode: ApiMode, r: Resolved): Dict {
 
 function codexItems(r: Resolved): Dict[] {
   return [
+    ...r.reasoningItems.map((x) => ({ ...x })),
     ...(r.text ? [{ type: "message", id: `msg_${r.id}`, role: "assistant", status: "completed", content: [{ type: "output_text", text: r.text }] }] : []),
     ...r.calls.map((c, i) => ({ type: "function_call", id: `fc_${r.id}_${i}`, call_id: c.id, name: c.name, arguments: c.args, status: "completed" })),
   ];
@@ -164,6 +171,13 @@ function streamFrames(mode: ApiMode, r: Resolved, n: number): Uint8Array[] {
       const ev = (type: string, body: Dict): void => void f.push(sse({ type, ...body }, type));
       ev("message_start", { message: { id: `msg_${r.id}`, type: "message", role: "assistant", model: r.model, content: [], stop_reason: null, usage: { input_tokens: r.usage.prompt, output_tokens: 0 } } });
       let index = 0;
+      for (const t of r.thinking) {
+        ev("content_block_start", { index, content_block: { type: "thinking", thinking: "", signature: "" } });
+        for (const p of pieces(t.thinking, n)) ev("content_block_delta", { index, delta: { type: "thinking_delta", thinking: p } });
+        ev("content_block_delta", { index, delta: { type: "signature_delta", signature: t.signature } });
+        ev("content_block_stop", { index });
+        index += 1;
+      }
       if (r.text) {
         ev("content_block_start", { index, content_block: { type: "text", text: "" } });
         for (const p of pieces(r.text, n)) ev("content_block_delta", { index, delta: { type: "text_delta", text: p } });
@@ -319,6 +333,8 @@ export class ScriptedModel {
       }
     }
     const resolved: Resolved = {
+      thinking: step.thinking ?? [],
+      reasoningItems: step.reasoningItems ?? [],
       text: step.reply ?? null,
       calls: (step.toolCalls ?? []).map((c, i) => ({
         id: c.id ?? (this.mode === "anthropic_messages" ? `toolu_${index}_${i}` : `call_${index}_${i}`),
