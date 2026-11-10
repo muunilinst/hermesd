@@ -1,8 +1,8 @@
 /**
  * The 17 fault tests of the porting guide rev 5.1 (section 7.3).
  *
- * This file is the catalogue only. The harness that runs each test against a
- * backend comes in a later change. Rule: a test counts as passed only when it
+ * This file is the catalogue. The harnesses that run the tests are in
+ * definitions.ts (executor), actor/ and guest/. Rule: a test counts as passed only when it
  * ran with a real executor, a real guest helper and a real VM. A mock hides
  * the "ran but unreported" case. "One run" is read from a counter that the
  * command itself increments on the VM.
@@ -11,7 +11,7 @@
 export type FaultId = `D${number}`;
 
 /** Where the test runs. "model" is the in-memory reference model. */
-export type Backend = "model" | "node" | "durable-objects" | "teenytiny-1node" | "teenytiny-2node" | "rivet";
+export type Backend = "model" | "node" | "guest-process" | "durable-objects" | "teenytiny-1node" | "teenytiny-2node" | "rivet";
 
 /** The backends on which a pass counts as demonstrated. */
 export const DEMONSTRATING_BACKENDS: ReadonlySet<Backend> = new Set([

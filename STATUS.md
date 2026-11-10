@@ -25,27 +25,31 @@ demonstrated. Change a row only in the same change that adds the evidence.
 
 ## Fault tests
 
-Columns are hosts. `-` means not run.
+Columns are hosts. `-` means not run. `model` is the in-memory executor
+model, `node` is the in-memory Node host (both Durable Objects and Rivet rule
+sets), and `guest-process` is the guest helper prototype with real child
+processes and files but no systemd and no VM. None of these three
+demonstrates a mechanism.
 
-| Test | Phase | model | node | durable-objects | teenytiny-1node | teenytiny-2node | rivet |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| D1 | 1 | - | - | - | - | - | - |
-| D2 | 0 | - | - | - | - | - | - |
-| D3 | 1 | - | - | - | - | - | - |
-| D4 | 0 | - | - | - | - | - | - |
-| D5 | 0 | - | - | - | - | - | - |
-| D6 | 1 | - | - | - | - | - | - |
-| D7 | 1 | - | - | - | - | - | - |
-| D8 | 1 | - | - | - | - | - | - |
-| D9 | 1 | - | - | - | - | - | - |
-| D10 | 0 | - | - | - | - | - | - |
-| D11 | 0 | - | - | - | - | - | - |
-| D12 | 1 | - | - | - | - | - | - |
-| D13 | 0 | - | - | - | - | - | - |
-| D14 | 0 | - | - | - | - | - | - |
-| D15 | 0 | - | - | - | - | - | - |
-| D16 | 0 | - | - | - | - | - | - |
-| D17 | 0 | - | - | - | - | - | - |
+| Test | Phase | model | node | guest-process | durable-objects | teenytiny-1node | teenytiny-2node | rivet |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| D1 | 1 | - | - | - | - | - | - | - |
+| D2 | 0 | pass | - | - | - | - | - | - |
+| D3 | 1 | - | pass | - | - | - | - | - |
+| D4 | 0 | pass | - | - | - | - | - | - |
+| D5 | 0 | pass | - | - | - | - | - | - |
+| D6 | 1 | - | pass (store side) | - | - | - | - | - |
+| D7 | 1 | - | - | - | - | - | - | - |
+| D8 | 1 | - | pass | - | - | - | - | - |
+| D9 | 1 | - | pass | - | - | - | - | - |
+| D10 | 0 | pass | - | - | - | - | - | - |
+| D11 | 0 | pass | - | - | - | - | - | - |
+| D12 | 1 | - | pass | - | - | - | - | - |
+| D13 | 0 | pass | - | - | - | - | - | - |
+| D14 | 0 | - | - | pass | - | - | - | - |
+| D15 | 0 | - | - | pass | - | - | - | - |
+| D16 | 0 | pass (cell side) | - | pass | - | - | - | - |
+| D17 | 0 | pass | - | - | - | - | - | - |
 
 Phase 0 runs against the executor with upstream Hermes as the agent, so the
 actor hosts do not apply to its tests until phase 3 reruns them.

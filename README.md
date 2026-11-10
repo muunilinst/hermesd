@@ -34,9 +34,19 @@ mechanism and each fault test (D1 to D17).
 | path | what it holds |
 | --- | --- |
 | `packages/host` | the `Host` interface (guide 4.6). agent code imports only this, never a platform SDK |
+| `packages/host-node` | in-memory platform simulator with Durable Objects and Rivet rule sets, crash and timer fault hooks |
+| `packages/host-cloudflare` | the Durable Objects adapter (also the TeenyTiny v2 adapter); tests run on local workerd |
+| `packages/runtime` | adapter-independent rules: wake obligations, outbox, `session_admissions` inbox, sweeper |
 | `packages/executor-protocol` | the executor contract (guide 3.4), `deriveOpId`, and the guest launch reconciliation table |
-| `packages/faults` | the catalogue of fault tests D1 to D17 (guide 7.3) |
+| `packages/executor-model` | in-memory reference executor cell, simulated VM lifecycle and guest |
+| `packages/guest-helper` | prototype guest helper: launch journal, `O_EXCL` claim shim, reconciliation |
+| `packages/faults` | the D1 to D17 catalogue (guide 7.3) and backend-agnostic fault tests |
+| `packages/contracts` | weekly-diff guards over the upstream contract surfaces (guide 7.1) |
+| `contracts/` | static extractors, extracted upstream surfaces, and per-table port decisions |
 | `upstream/pin.json` | the upstream hermes-agent commit we test against |
+
+each package with design choices has a `NOTES.md` that records how we read
+the guide where it was ambiguous.
 
 ## develop
 
