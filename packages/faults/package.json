@@ -5,5 +5,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@hermesd/executor-model": "*",
+    "@hermesd/executor-protocol": "*",
+    "@hermesd/guest-helper": "*"
   }
 }
