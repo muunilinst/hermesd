@@ -40,6 +40,7 @@ mechanism and each fault test (D1 to D17).
 | `packages/executor-protocol` | the executor contract (guide 3.4), `deriveOpId`, and the guest launch reconciliation table |
 | `packages/executor-model` | in-memory reference executor cell, simulated VM lifecycle and guest |
 | `packages/guest-helper` | prototype guest helper: launch journal, `O_EXCL` claim shim, reconciliation |
+| `packages/plugin-host` | manifest loader, hook dispatch with upstream semantics, per-call-site python/shadow/ts flags |
 | `packages/faults` | the D1 to D17 catalogue (guide 7.3) and backend-agnostic fault tests |
 | `packages/contracts` | weekly-diff guards over the upstream contract surfaces (guide 7.1) |
 | `contracts/` | static extractors, extracted upstream surfaces, and per-table port decisions |
