@@ -177,7 +177,14 @@
           {
             "type": "message",
             "role": "assistant",
-            "content": "I will run it."
+            "status": "completed",
+            "content": [
+              {
+                "type": "output_text",
+                "text": "I will run it."
+              }
+            ],
+            "id": "msg_turn-1:c1"
           },
           {
             "type": "function_call",

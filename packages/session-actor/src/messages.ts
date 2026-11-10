@@ -26,6 +26,17 @@ export interface NewMessage {
   finishReason?: string;
   tokenCount?: number;
   compressedSummary?: boolean;
+  /**
+   * Replay data of an assistant row, in upstream's columns: `reasoning` and
+   * `reasoning_content` are text, the other three are JSON lists (stored as
+   * JSON text). The provider layer rebuilds signed thinking blocks and
+   * Responses reasoning items from them.
+   */
+  reasoning?: string;
+  reasoningContent?: string;
+  reasoningDetails?: unknown[];
+  codexReasoningItems?: unknown[];
+  codexMessageItems?: unknown[];
   /** Set when the row comes from the database. */
   id?: number;
 }
@@ -68,14 +79,31 @@ export function ensureSession(sql: Sql, seed: SessionSeed, nowMs: number): void 
   );
 }
 
+/** A list column as JSON text, or null when there is nothing to keep (upstream `_reasoning_json_text`). */
+function jsonList(v: unknown[] | undefined): string | null {
+  return v && v.length > 0 ? JSON.stringify(v) : null;
+}
+
+/** A JSON list column back to a list. A value that is not a list is dropped. */
+function listOf(v: unknown): unknown[] | undefined {
+  if (typeof v !== "string") return undefined;
+  try {
+    const x = JSON.parse(v) as unknown;
+    return Array.isArray(x) && x.length > 0 ? x : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Insert a message. Returns the row id, or undefined if a row with the same uid exists. */
 export function insertMessage(sql: Sql, sessionId: string, m: NewMessage, nowMs: number): number | undefined {
   const dup = sql.exec("SELECT id FROM messages WHERE session_id = ? AND message_uid = ?", sessionId, m.messageUid)[0];
   if (dup) return undefined;
   const r = sql.exec(
     `INSERT INTO messages (session_id, role, content, tool_call_id, tool_calls, tool_name, timestamp, token_count, finish_reason,
-       message_uid, tool_call_uids, tool_call_uid, _compressed_summary)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+       message_uid, tool_call_uids, tool_call_uid, _compressed_summary, reasoning, reasoning_content, reasoning_details,
+       codex_reasoning_items, codex_message_items)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
     sessionId,
     m.role,
     m.content,
@@ -89,6 +117,11 @@ export function insertMessage(sql: Sql, sessionId: string, m: NewMessage, nowMs:
     m.toolCallUids ? JSON.stringify(m.toolCallUids) : null,
     m.toolCallUid ?? null,
     m.compressedSummary ? 1 : 0,
+    m.reasoning ? m.reasoning : null,
+    m.reasoningContent !== undefined ? m.reasoningContent : null,
+    jsonList(m.reasoningDetails),
+    jsonList(m.codexReasoningItems),
+    jsonList(m.codexMessageItems),
   );
   sql.exec(
     "UPDATE sessions SET message_count = COALESCE(message_count, 0) + 1, tool_call_count = COALESCE(tool_call_count, 0) + ?, last_activity_at = ? WHERE id = ?",
@@ -107,6 +140,16 @@ function fromRow(r: SqlRow): NewMessage {
   if (typeof r.tool_call_uid === "string") m.toolCallUid = r.tool_call_uid;
   if (typeof r.tool_name === "string") m.toolName = r.tool_name;
   if (num(r._compressed_summary) === 1) m.compressedSummary = true;
+  if (m.role === "assistant") {
+    if (typeof r.reasoning === "string" && r.reasoning) m.reasoning = r.reasoning;
+    if (typeof r.reasoning_content === "string") m.reasoningContent = r.reasoning_content;
+    const details = listOf(r.reasoning_details);
+    if (details) m.reasoningDetails = details;
+    const codexReasoning = listOf(r.codex_reasoning_items);
+    if (codexReasoning) m.codexReasoningItems = codexReasoning;
+    const codexMessages = listOf(r.codex_message_items);
+    if (codexMessages) m.codexMessageItems = codexMessages;
+  }
   return m;
 }
 
@@ -117,7 +160,8 @@ function fromRow(r: SqlRow): NewMessage {
 export function loadActiveMessages(sql: Sql, sessionId: string): NewMessage[] {
   return sql
     .exec(
-      `SELECT id, role, content, tool_call_id, tool_calls, tool_name, tool_call_uids, tool_call_uid, message_uid, _compressed_summary
+      `SELECT id, role, content, tool_call_id, tool_calls, tool_name, tool_call_uids, tool_call_uid, message_uid, _compressed_summary,
+         reasoning, reasoning_content, reasoning_details, codex_reasoning_items, codex_message_items
        FROM messages WHERE session_id = ? AND active = 1 ORDER BY id`,
       sessionId,
     )
@@ -127,7 +171,16 @@ export function loadActiveMessages(sql: Sql, sessionId: string): NewMessage[] {
 /** One message in the OpenAI shape. */
 export function toApiMessage(m: NewMessage): ChatMessage {
   if (m.role === "assistant") {
-    return { role: "assistant", content: m.content, ...(m.toolCalls && m.toolCalls.length > 0 ? { tool_calls: m.toolCalls } : {}) };
+    return {
+      role: "assistant",
+      content: m.content,
+      ...(m.toolCalls && m.toolCalls.length > 0 ? { tool_calls: m.toolCalls } : {}),
+      ...(m.reasoning ? { reasoning: m.reasoning } : {}),
+      ...(m.reasoningContent !== undefined ? { reasoning_content: m.reasoningContent } : {}),
+      ...(m.reasoningDetails ? { reasoning_details: m.reasoningDetails } : {}),
+      ...(m.codexReasoningItems ? { codex_reasoning_items: m.codexReasoningItems } : {}),
+      ...(m.codexMessageItems ? { codex_message_items: m.codexMessageItems } : {}),
+    };
   }
   if (m.role === "tool") return { role: "tool", tool_call_id: m.toolCallId ?? "", content: m.content ?? "" };
   return { role: "user", content: m.content ?? "" };
@@ -173,4 +226,29 @@ export function insertPortRow(
   const all: Record<string, SqlValue> = { ...columns, schema_version: set.current, data: JSON.stringify(data) };
   const names = Object.keys(all);
   sql.exec(`INSERT INTO ${table} (${names.join(", ")}) VALUES (${names.map(() => "?").join(", ")})`, ...names.map((n) => all[n] as SqlValue));
+}
+
+/**
+ * The replay columns of a new assistant row from a model answer (upstream
+ * `chat_completion_helpers.py:_build_assistant_message`). `reasoning` is the
+ * reasoning text. `reasoning_content` comes from the provider data, or from the
+ * reasoning text when nothing else set it. The three JSON columns are copied as
+ * they are, because their signatures and encrypted blobs must come back exactly.
+ * `anthropic_content_blocks`, `bedrock_content_blocks` and `stop_details` have no
+ * column upstream (live only), so they are not kept.
+ */
+export function replayColumns(r: { reasoning?: string | null; providerData?: Record<string, unknown> | null }): Partial<NewMessage> {
+  const pd = r.providerData ?? {};
+  const out: Partial<NewMessage> = {};
+  const list = (v: unknown): unknown[] | undefined => (Array.isArray(v) && v.length > 0 ? v : undefined);
+  if (r.reasoning) out.reasoning = r.reasoning;
+  if (typeof pd.reasoning_content === "string") out.reasoningContent = pd.reasoning_content;
+  else if (r.reasoning) out.reasoningContent = r.reasoning;
+  const details = list(pd.reasoning_details);
+  if (details) out.reasoningDetails = details;
+  const codexReasoning = list(pd.codex_reasoning_items);
+  if (codexReasoning) out.codexReasoningItems = codexReasoning;
+  const codexMessages = list(pd.codex_message_items);
+  if (codexMessages) out.codexMessageItems = codexMessages;
+  return out;
 }

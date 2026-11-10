@@ -15,6 +15,16 @@ export interface ChatMessage {
   content: string | null;
   tool_calls?: ToolCallWire[];
   tool_call_id?: string;
+  /**
+   * The replay columns of an assistant row (upstream `messages.reasoning` and
+   * friends). The provider layer reads them to rebuild thinking blocks and
+   * reasoning items. Only set when the row has them.
+   */
+  reasoning?: string;
+  reasoning_content?: string;
+  reasoning_details?: unknown[];
+  codex_reasoning_items?: unknown[];
+  codex_message_items?: unknown[];
 }
 
 export interface ChatRequestBody {
@@ -34,6 +44,10 @@ export interface ParsedResponse {
   toolCalls: ToolCallWire[];
   finishReason: string | null;
   usage: Usage;
+  /** The reasoning text of the answer, when the provider layer gave one. */
+  reasoning?: string | null;
+  /** Carrier fields of the provider layer (`reasoning_details`, `codex_reasoning_items`, ...). */
+  providerData?: Record<string, unknown> | null;
 }
 
 /** The request for one model call. The call ID is the idempotency key. */
