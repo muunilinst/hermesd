@@ -54,7 +54,7 @@ eachLoopWorld("golden transcript record and compression hook", (use) => {
           rec.rows.messages.map((m) => m.role),
           ["user", "assistant", "tool", "assistant"],
         );
-        assert.deepEqual(rec.rows.admissions, [{ status: "done", input: "run it", outcome: "finished" }]);
+        assert.deepEqual(rec.rows.admissions, [{ status: "terminal", input: "run it", outcome: "completed" }]);
 
         // A difference is reported, and the call IDs and timestamps are not part of it.
         const changed: GoldenRecord = { ...again, rows: { ...again.rows, messages: again.rows.messages.slice(1) } };

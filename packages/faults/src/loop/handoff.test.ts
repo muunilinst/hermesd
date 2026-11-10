@@ -3,6 +3,7 @@ import { it } from "node:test";
 import type { OpId } from "@hermesd/executor-protocol";
 import { eachLoopWorld } from "./test-util.ts";
 import { scriptedTerminal, term, tick, type LoopWorld } from "./world.ts";
+import { admissionState } from "../actor/admission.ts";
 
 // D2, D10, D13 and D17 from the side of the session actor, the persistence
 // rules of the loop, parallel and sequential tools, and the unknown outcome.
@@ -200,7 +201,7 @@ eachLoopWorld("session actor and executor handoffs", (use) => {
       assert.equal(w.rig.guest.totalRuns(), 0, "no tool ran");
       assert.equal(w.rows("pending_op").length, 0);
       assert.equal(w.rows("messages", "role = 'assistant'").length, 0, "the failed write left nothing behind");
-      assert.equal(w.rows("session_admissions")[0]!.status, "failed");
+      assert.equal(admissionState(w.rows("session_admissions")[0]!), "terminal:failed");
       w.assertConsistent();
     }),
   );
@@ -317,7 +318,7 @@ eachLoopWorld("session actor and executor handoffs", (use) => {
         assert.match(w.replies[0]!.text, /Which colour\?/);
         assert.equal(w.rows("pending_op").length, 1, "the third call did not start before the answer");
         assert.equal(w.rows("clarify_question")[0]!.status, "open");
-        assert.equal(w.rows("session_admissions")[0]!.status, "done", "the turn ended and waits for the user");
+        assert.equal(admissionState(w.rows("session_admissions")[0]!), "terminal:completed", "the turn ended and waits for the user");
         assert.equal(w.rows("turns", "status = 'open'").length, 0);
         w.assertConsistent();
 

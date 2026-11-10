@@ -83,9 +83,13 @@ export function goldenMessages(rows: Row[]): GoldenMessage[] {
   }));
 }
 
-/** Admissions in the shape of the record. Reads rows of the port's `session_admissions`. */
+/** Admissions in the shape of the record. Reads rows of `session_admissions`, which has upstream's columns. */
 export function goldenAdmissions(rows: Row[]): GoldenAdmission[] {
-  return rows.map((r) => ({ status: String(r.status), input: String(r.input), outcome: (r.result as string | null) ?? null }));
+  return rows.map((r) => ({
+    status: String(r.status),
+    input: String((JSON.parse(String(r.payload_json)) as { input: unknown }).input),
+    outcome: (r.outcome as string | null) ?? null,
+  }));
 }
 
 /** The differences between two records, as readable lines. An empty list means they agree. */

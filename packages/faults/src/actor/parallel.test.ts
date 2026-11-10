@@ -3,6 +3,7 @@ import { it } from "node:test";
 import type { Host } from "@hermesd/host";
 import { eachNode } from "./test-util.ts";
 import { createWorld } from "./world.ts";
+import { admissionState } from "./admission.ts";
 
 // Rivet (guide 4.4, 7.4): "By default, actions run in parallel and interleave
 // at every await, so two actions can both append to a session." Two parallel
@@ -47,7 +48,7 @@ eachNode("parallel actions on one session", (use, cfg) => {
       await b.settle();
       assert.equal(w.rows("s1", "session_admissions").length, 2);
       assert.deepEqual(
-        w.rows("s1", "session_admissions").map((r) => r.status).sort(),
+        w.rows("s1", "session_admissions").map(admissionState).sort(),
         ["queued", "started"],
       );
       assert.equal(w.rows("s1", "turns").length, 1, "the inbound actions never run a turn; one background task does");

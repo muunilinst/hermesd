@@ -24,7 +24,7 @@ eachNode("D6 two owners of one session key", (use) => {
       await assert.rejects(old.call("receive", call("from-old")), (e: Error) => e.name === "StaleEpochError");
       await fresh.call("receive", call("from-new"));
       await b.settle();
-      const requests = w.rows("s1", "session_admissions").map((r) => r.request);
+      const requests = w.rows("s1", "session_admissions").map((r) => r.request_id);
       assert.deepEqual(requests, ["req-1", "from-new"]);
     }),
   );

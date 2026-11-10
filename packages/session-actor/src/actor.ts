@@ -113,14 +113,14 @@ export class PortSessionActor implements ActorBehavior {
    */
   async resolveUnknown(note: string): Promise<{ resolved: number }> {
     const now = this.#deps.clock.now();
-    const n = await this.#host.tx(
-      (sql) =>
-        sql.exec(
-          "UPDATE session_admissions SET status = 'failed', result = ?, updated_at = ? WHERE status = 'unknown' RETURNING id",
-          `resolved: ${note}`,
-          now,
-        ).length,
-    );
+    // Upstream's resolve: the row becomes terminal with outcome "interrupted". It is never requeued.
+    const n = await this.#host.tx((sql) => {
+      const rows = sql.exec("UPDATE session_admissions SET status = 'terminal', outcome = 'interrupted' WHERE status = 'unknown' RETURNING seq");
+      for (const r of rows) {
+        sql.exec("UPDATE rt_admission_port SET result = ?, updated_at = ? WHERE seq = ?", `resolved: ${note}`, now, r.seq!);
+      }
+      return rows.length;
+    });
     await this.#host.commit();
     await this.#inner.call("kick", {});
     return { resolved: n };

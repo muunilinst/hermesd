@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { eachLoopWorld } from "./test-util.ts";
 import { tick, type LoopWorld } from "./world.ts";
+import { admissionState } from "../actor/admission.ts";
 
 // D1: shut the actor down during a model call: before, during, after the
 // response. Rows are consistent, the pending_call completes (or the turn ends
@@ -18,7 +19,7 @@ function assertOneCleanReply(w: LoopWorld, text: string): void {
   assert.equal(assistantRows(w).length, 1, "one assistant message");
   assert.equal(w.rows("pending_call").length, 1);
   assert.equal(w.rows("pending_call")[0]!.status, "done");
-  assert.equal(w.rows("session_admissions")[0]!.status, "done");
+  assert.equal(admissionState(w.rows("session_admissions")[0]!), "terminal:completed");
   w.assertConsistent();
 }
 
@@ -139,7 +140,7 @@ eachLoopWorld("D1 shut down around the model call", (use) => {
       assert.equal(w.model.recorder.requests.length, 4, "one send and 3 retries");
       assert.equal(w.replies.length, 1);
       assert.match(w.replies[0]!.text, /^error: .*did not return after 3 retries|^error: the model returned HTTP/);
-      assert.equal(w.rows("session_admissions")[0]!.status, "failed");
+      assert.equal(admissionState(w.rows("session_admissions")[0]!), "terminal:failed");
       assert.equal(w.rows("pending_call")[0]!.status, "failed");
       assert.equal(assistantRows(w).length, 0);
       w.assertConsistent();

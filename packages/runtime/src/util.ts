@@ -1,5 +1,11 @@
 import type { Sql, SqlRow, SqlValue } from "@hermesd/host";
 
+/** The SHA-256 of a text, as lower-case hex. Uses Web Crypto, which every host has. */
+export async function sha256Hex(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 /** The store refused a call that carries a lower owner epoch. */
 export class StaleEpochError extends Error {
   readonly code = "stale_epoch";

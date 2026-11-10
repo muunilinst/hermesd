@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { eachNode } from "./test-util.ts";
 import { createWorld } from "./world.ts";
+import { admissionState } from "./admission.ts";
 
 // Inbox crash: a crash between receive and the admission write loses nothing
 // (guide 7.4, on Rivet; the rule holds on every host). An inbound message is a
@@ -25,7 +26,7 @@ eachNode("inbox crash between receive and admission write", (use) => {
       assert.equal(w.rows("s1", "session_admissions").length, 1);
       assert.equal(w.rows("s1", "turns").length, 1);
       assert.equal(w.driver.sent.length, 1);
-      assert.equal(w.rows("s1", "session_admissions")[0]!.status, "done");
+      assert.equal(admissionState(w.rows("s1", "session_admissions")[0]!), "terminal:completed");
     }),
   );
 
@@ -43,7 +44,7 @@ eachNode("inbox crash between receive and admission write", (use) => {
       await b.clock.advance(10 * 60_000 + 1);
       await b.settle();
       assert.equal(w.rows("s1", "session_admissions").length, 1);
-      assert.equal(w.rows("s1", "session_admissions")[0]!.status, "done");
+      assert.equal(admissionState(w.rows("s1", "session_admissions")[0]!), "terminal:completed");
       assert.equal(w.rows("s1", "turns").length, 1);
       assert.deepEqual([...new Set(w.driver.sent.map((s) => s.callId))], ["turn-1:call-1"]);
     }),
@@ -78,7 +79,7 @@ eachNode("inbox crash between receive and admission write", (use) => {
       await b.settle();
       assert.equal(ok.duplicate, false);
       assert.equal(w.rows("sweeper", "sessions").length, 1);
-      assert.equal(w.rows("s1", "session_admissions")[0]!.status, "done");
+      assert.equal(admissionState(w.rows("s1", "session_admissions")[0]!), "terminal:completed");
     }),
   );
 });

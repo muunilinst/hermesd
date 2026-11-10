@@ -12,25 +12,43 @@ import {
   type StepSpec,
   type TurnContext,
 } from "./types.ts";
-import { num, str } from "./util.ts";
+import { num, sha256Hex, str } from "./util.ts";
 
 /** The tables of one session actor. */
 export const SESSION_DDL: string[] = [
   `CREATE TABLE IF NOT EXISTS rt_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
   // The inbox. A message is a row first and an event second (guide 4.6, "inbox is authoritative").
+  // This is upstream's table (`hermes_state_common.py:591`): same name, columns, statuses and
+  // unique keys (contracts/upstream/ledger.json). Two differences, both on purpose:
+  // - `target_session_id` has no FOREIGN KEY. Upstream refers to `sessions(id)`. This package does
+  //   not own `sessions`, and an admission is written before the session row exists.
+  // - The port's own needs are in the side table `rt_admission_port`, not in extra columns.
   `CREATE TABLE IF NOT EXISTS session_admissions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    principal TEXT NOT NULL,
-    session TEXT NOT NULL,
-    request TEXT NOT NULL,
-    status TEXT NOT NULL CHECK (status IN ('queued', 'started', 'done', 'failed', 'unknown')),
-    input TEXT NOT NULL,
+    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+    admission_id TEXT NOT NULL UNIQUE,
+    request_id TEXT NOT NULL,
+    principal_id TEXT NOT NULL,
+    target_session_id TEXT NOT NULL,
+    lineage_json TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    payload_digest TEXT NOT NULL,
+    intent TEXT NOT NULL CHECK (intent IN ('queue','steer','redirect')),
+    status TEXT NOT NULL CHECK (status IN ('queued','started','unknown','terminal')),
+    outcome TEXT,
+    owner_epoch INTEGER,
+    generation INTEGER,
+    UNIQUE (principal_id, target_session_id, request_id),
+    CHECK (status != 'started' OR (owner_epoch IS NOT NULL AND generation IS NOT NULL))
+  )`,
+  // What upstream's admission row has no place for: the turn that runs it, the result text, the
+  // epoch of the actor that took it in, and times. One row for each admission, same seq.
+  `CREATE TABLE IF NOT EXISTS rt_admission_port (
+    seq INTEGER PRIMARY KEY,
     turn_id TEXT,
     result TEXT,
-    epoch INTEGER NOT NULL,
+    received_epoch INTEGER NOT NULL,
     created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    UNIQUE (principal, session, request)
+    updated_at INTEGER NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS turns (
     id TEXT PRIMARY KEY,
@@ -192,26 +210,31 @@ export class SessionActor implements ActorBehavior {
     await this.#ensureRegistered();
     const now = this.#deps.clock.now();
     const epoch = this.#host.epoch();
+    const payload = JSON.stringify({ input: p.input });
+    const digest = await sha256Hex(payload);
+    const admissionId = [p.principal, p.session, p.request].map(encodeURIComponent).join(":");
     const res = await this.#host.tx((sql): ReceiveResult => {
       const ex = sql.exec(
-        "SELECT id, status FROM session_admissions WHERE principal = ? AND session = ? AND request = ?",
+        "SELECT seq, status FROM session_admissions WHERE principal_id = ? AND target_session_id = ? AND request_id = ?",
         p.principal,
         p.session,
         p.request,
       )[0];
-      if (ex) return { admissionId: num(ex.id), status: str(ex.status), duplicate: true };
+      if (ex) return { admissionId: num(ex.seq), status: str(ex.status), duplicate: true };
       const ins = sql.exec(
-        `INSERT INTO session_admissions (principal, session, request, status, input, epoch, created_at, updated_at)
-         VALUES (?, ?, ?, 'queued', ?, ?, ?, ?) RETURNING id`,
+        `INSERT INTO session_admissions
+           (admission_id, request_id, principal_id, target_session_id, lineage_json, payload_json, payload_digest, intent, status)
+         VALUES (?, ?, ?, ?, '{}', ?, ?, 'queue', 'queued') RETURNING seq`,
+        admissionId,
+        p.request,
         p.principal,
         p.session,
-        p.request,
-        p.input,
-        epoch,
-        now,
-        now,
+        payload,
+        digest,
       );
-      return { admissionId: num(ins[0]!.id), status: "queued", duplicate: false };
+      const seq = num(ins[0]!.seq);
+      sql.exec("INSERT INTO rt_admission_port (seq, received_epoch, created_at, updated_at) VALUES (?, ?, ?, ?)", seq, epoch, now, now);
+      return { admissionId: seq, status: "queued", duplicate: false };
     });
     await this.#host.commit();
     this.#kick();
@@ -423,7 +446,7 @@ export class SessionActor implements ActorBehavior {
       for (const t of theirs) {
         if (sql.exec("SELECT 1 AS x FROM turns WHERE id = ? AND status = 'open'", t).length > 0) continue;
         // An admission that is still queued may open this turn soon: leave the record.
-        const waiting = sql.exec("SELECT 1 AS x FROM session_admissions WHERE 'turn-' || id = ? AND status IN ('queued', 'started')", t);
+        const waiting = sql.exec("SELECT 1 AS x FROM session_admissions WHERE 'turn-' || seq = ? AND status IN ('queued', 'started')", t);
         const queued = sql.exec("SELECT 1 AS x FROM outbox WHERE method = 'close' AND target = ? AND payload = ?", target, JSON.stringify({ turn: t }));
         if (waiting.length === 0 && queued.length === 0) enqueueOutbox(sql, now, target, "close", { turn: t });
       }
@@ -459,7 +482,7 @@ export class SessionActor implements ActorBehavior {
     const cand = await this.#host.tx((sql) => {
       // Later inputs wait while one is started or unknown (guide 6.3).
       if (sql.exec("SELECT 1 AS x FROM session_admissions WHERE status IN ('started', 'unknown') LIMIT 1").length > 0) return undefined;
-      return sql.exec("SELECT id, input FROM session_admissions WHERE status = 'queued' ORDER BY id LIMIT 1")[0];
+      return sql.exec("SELECT seq AS id, json_extract(payload_json, '$.input') AS input FROM session_admissions WHERE status = 'queued' ORDER BY seq LIMIT 1")[0];
     });
     if (!cand) return false;
     await this.#ensureRegistered();
@@ -470,16 +493,18 @@ export class SessionActor implements ActorBehavior {
     // Synchronous open. If it fails the turn does not start, and the admission stays queued.
     await this.#sweeperOpen(turnId, horizon);
     const started = await this.#commitWithObligation({ kind: "turn", ref: turnId, turnId }, (sql, add) => {
+      // Upstream: a started row has the owner epoch and a generation (CHECK in the table).
       const ok = sql.exec(
-        `UPDATE session_admissions SET status = 'started', turn_id = ?, updated_at = ?
-         WHERE id = ? AND status = 'queued'
+        `UPDATE session_admissions
+           SET status = 'started', owner_epoch = ?, generation = (SELECT COALESCE(MAX(generation), 0) + 1 FROM session_admissions)
+         WHERE seq = ? AND status = 'queued'
            AND NOT EXISTS (SELECT 1 FROM session_admissions WHERE status IN ('started', 'unknown'))
-         RETURNING id`,
-        turnId,
-        now,
+         RETURNING seq`,
+        this.#host.epoch(),
         admissionId,
       );
       if (ok.length === 0) return false;
+      sql.exec("UPDATE rt_admission_port SET turn_id = ?, updated_at = ? WHERE seq = ?", turnId, now, admissionId);
       sql.exec("INSERT INTO turns (id, admission_id, status, horizon, started_at) VALUES (?, ?, 'open', ?, ?)", turnId, admissionId, horizon, now);
       add();
       return true;
@@ -494,7 +519,7 @@ export class SessionActor implements ActorBehavior {
     this.#active.add(turnId);
     try {
       const row = await this.#host.tx((sql) =>
-        sql.exec("SELECT t.admission_id AS aid, a.input AS input FROM turns t JOIN session_admissions a ON a.id = t.admission_id WHERE t.id = ?", turnId)[0],
+        sql.exec("SELECT t.admission_id AS aid, json_extract(a.payload_json, '$.input') AS input FROM turns t JOIN session_admissions a ON a.seq = t.admission_id WHERE t.id = ?", turnId)[0],
       );
       if (!row) return;
       await run(this.#makeContext(turnId, num(row.aid), str(row.input)));
@@ -567,7 +592,11 @@ export class SessionActor implements ActorBehavior {
       turnId,
     );
     if (r.length === 0) return false;
-    sql.exec("UPDATE session_admissions SET status = ?, result = ?, updated_at = ? WHERE id = ?", outcome, text, now, num(r[0]!.admission_id));
+    // done -> terminal/completed, failed -> terminal/failed, unknown -> unknown (upstream's words).
+    const seq = num(r[0]!.admission_id);
+    if (outcome === "unknown") sql.exec("UPDATE session_admissions SET status = 'unknown' WHERE seq = ?", seq);
+    else sql.exec("UPDATE session_admissions SET status = 'terminal', outcome = ? WHERE seq = ?", outcome === "done" ? "completed" : "failed", seq);
+    sql.exec("UPDATE rt_admission_port SET result = ?, updated_at = ? WHERE seq = ?", text, now, seq);
     sql.exec("UPDATE pending_rows SET status = 'done' WHERE turn_id = ? AND status = 'pending'", turnId);
     sql.exec("UPDATE wake_obligations SET state = 'done' WHERE turn_id = ? AND state = 'open'", turnId);
     enqueueOutbox(sql, now, this.#cfg.sweeperTarget, "close", { turn: turnId });

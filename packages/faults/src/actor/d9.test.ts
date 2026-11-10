@@ -3,6 +3,7 @@ import { it } from "node:test";
 import type { ActorBackend } from "./backend.ts";
 import { eachNode, never } from "./test-util.ts";
 import { createWorld, type World } from "./world.ts";
+import { admissionState } from "./admission.ts";
 
 // D9: crashes around arming, committing and handling a wake obligation (guide 4.6, 7.3).
 // Cases (a) to (h). Rule: no pending row is left without a timer or a sweeper record.
@@ -19,7 +20,7 @@ async function crashAfterPendingRow(b: ActorBackend, w: World): Promise<void> {
 }
 
 const sentIds = (w: World): string[] => w.driver.sent.map((s) => s.callId);
-const status = (w: World): unknown => w.rows("s1", "session_admissions")[0]?.status;
+const status = (w: World): unknown => admissionState(w.rows("s1", "session_admissions")[0] ?? {});
 
 eachNode("D9 (a) crash after the timer is armed and before the row commits", (use) => {
   it(
@@ -42,7 +43,7 @@ eachNode("D9 (a) crash after the timer is armed and before the row commits", (us
       // The wake found no obligation and no open turn. The inbox drain then started the turn once.
       assert.equal(w.rows("s1", "turns").length, 1);
       assert.equal(w.driver.sent.length, 1);
-      assert.equal(status(w), "done");
+      assert.equal(status(w), "terminal:completed");
     }),
   );
 });
@@ -61,7 +62,7 @@ eachNode("D9 (b) crash after the row commits, then no further event", (use) => {
       await b.clock.advance(w.config.minDelayMs + 1); // no other event
       await b.settle();
       assert.deepEqual(sentIds(w), ["turn-1:call-1"]);
-      assert.equal(status(w), "done");
+      assert.equal(status(w), "terminal:completed");
       assert.equal(w.rows("s1", "wake_obligations").filter((r) => r.state === "open").length, 0);
     }),
   );
@@ -77,8 +78,8 @@ eachNode("D9 (b) crash after the row commits, then no further event", (use) => {
         await b.clock.advance(w.config.minDelayMs + 1);
         await b.settle();
       }
-      assert.equal(status(w), "failed");
-      assert.match(String(w.rows("s1", "session_admissions")[0]!.result), /^error:/);
+      assert.equal(status(w), "terminal:failed");
+      assert.match(String(w.rows("s1", "rt_admission_port")[0]!.result), /^error:/);
       // The same call ID each time. The retry is counted.
       assert.deepEqual([...new Set(sentIds(w))], ["turn-1:call-1"]);
       assert.equal(w.driver.sent.length, 3);
@@ -104,7 +105,7 @@ eachNode("D9 (c) the arm call fails", (use) => {
       // No timer exists. The sweeper's slower cycle wakes every registered session.
       await b.clock.advance(10 * 60_000 + 1);
       await b.settle();
-      assert.equal(status(w), "done");
+      assert.equal(status(w), "terminal:completed");
       assert.equal(w.rows("s1", "turns").length, 1);
       assert.equal(w.driver.sent.length, 1);
     }),
@@ -122,7 +123,7 @@ eachNode("D9 (c) the arm call fails", (use) => {
       const again = (await w.receive("s1", "req-1")) as { duplicate: boolean };
       await b.settle();
       assert.equal(again.duplicate, true);
-      assert.equal(status(w), "done");
+      assert.equal(status(w), "terminal:completed");
       assert.equal(w.rows("s1", "session_admissions").length, 1);
       assert.equal(w.driver.sent.length, 1);
     }),
@@ -147,7 +148,7 @@ eachNode("D9 (d) crash inside the handler after it re-armed and before it did th
       await b.clock.advance(w.config.minDelayMs + 1);
       await b.settle();
       assert.deepEqual(sentIds(w), ["turn-1:call-1"]);
-      assert.equal(status(w), "done");
+      assert.equal(status(w), "terminal:completed");
     }),
   );
 });
@@ -171,7 +172,7 @@ eachNode("D9 (e) a test hook deletes the timer", (use) => {
       await b.clock.advance(5 * 60_000);
       await b.settle();
       assert.equal(sweeperWakes >= 1, true, "the sweeper woke the session");
-      assert.equal(status(w), "done");
+      assert.equal(status(w), "terminal:completed");
       assert.deepEqual(sentIds(w), ["turn-1:call-1"]);
       assert.deepEqual(w.rows("sweeper", "open_turns"), [], "the close arrived through the outbox");
     }),
@@ -203,7 +204,7 @@ eachNode(
         await b.clock.advance(5 * 60_000);
         await b.settle();
         assert.equal(sweeperWakes >= 1, true);
-        assert.equal(status(w), "done");
+        assert.equal(status(w), "terminal:completed");
         assert.deepEqual(sentIds(w), ["turn-1:call-1"]);
       }),
     );
@@ -225,7 +226,7 @@ eachNode("D9 (g) crash after the commit and before the outbox is delivered, and 
       await b.settle();
       b.deleteTimer("s1");
       // The turn ended and committed. Its close never reached the sweeper.
-      assert.equal(status(w), "done");
+      assert.equal(status(w), "terminal:completed");
       assert.equal(w.rows("s1", "outbox").filter((r) => r.method === "close").length, 1);
       assert.equal(w.rows("sweeper", "open_turns").length, 1);
       assert.equal(b.alarmOf("s1"), null);
@@ -298,7 +299,7 @@ eachNode("D9 (h) the timer fires before the pending row commits", (use) => {
 
       await b.clock.advance(w.config.minDelayMs + 1);
       await b.settle();
-      assert.equal(status(w), "done");
+      assert.equal(status(w), "terminal:completed");
     }),
   );
 });

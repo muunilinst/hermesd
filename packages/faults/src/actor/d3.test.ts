@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { createWorld } from "./world.ts";
 import { eachNode } from "./test-util.ts";
+import { admissionState } from "./admission.ts";
 
 // D3: deliver the same inbound message twice. One admission row; one turn.
 
@@ -20,7 +21,7 @@ eachNode("D3 duplicate inbound message", (use) => {
       assert.equal(w.rows("s1", "session_admissions").length, 1);
       assert.equal(w.rows("s1", "turns").length, 1);
       assert.equal(w.driver.sent.length, 1);
-      assert.equal(w.rows("s1", "session_admissions")[0]!.status, "done");
+      assert.equal(admissionState(w.rows("s1", "session_admissions")[0]!), "terminal:completed");
     }),
   );
 
@@ -47,7 +48,7 @@ eachNode("D3 duplicate inbound message", (use) => {
       const late = (await w.receive("s1", "req-1")) as { duplicate: boolean; status: string };
       await b.settle();
       assert.equal(late.duplicate, true);
-      assert.equal(late.status, "done");
+      assert.equal(late.status, "terminal");
       assert.equal(w.rows("s1", "turns").length, 1);
       assert.equal(w.driver.sent.length, 1);
     }),
@@ -76,7 +77,7 @@ eachNode("D3 duplicate inbound message", (use) => {
       await w.receive("s1", "req-1");
       await w.receive("s1", "req-2");
       await b.settle();
-      const statuses = w.rows("s1", "session_admissions").map((r) => r.status);
+      const statuses = w.rows("s1", "session_admissions").map(admissionState);
       assert.deepEqual(statuses, ["started", "queued"]);
       assert.equal(w.rows("s1", "turns").length, 1);
     }),
@@ -90,19 +91,19 @@ eachNode("D3 duplicate inbound message", (use) => {
       await w.receive("s1", "req-1");
       await b.settle();
       // The owner was lost between steps: force the state that upstream calls "unknown".
-      b.query("s1", "UPDATE session_admissions SET status = 'unknown' WHERE id = 1");
+      b.query("s1", "UPDATE session_admissions SET status = 'unknown' WHERE seq = 1");
       await w.receive("s1", "req-2");
       await b.settle();
       assert.deepEqual(
-        w.rows("s1", "session_admissions").map((r) => r.status),
+        w.rows("s1", "session_admissions").map(admissionState),
         ["unknown", "queued"],
       );
-      b.query("s1", "UPDATE session_admissions SET status = 'failed' WHERE id = 1");
+      b.query("s1", "UPDATE session_admissions SET status = 'terminal', outcome = 'interrupted' WHERE seq = 1");
       await b.call("s1", "wake", {});
       await b.settle();
       assert.deepEqual(
-        w.rows("s1", "session_admissions").map((r) => r.status),
-        ["failed", "done"],
+        w.rows("s1", "session_admissions").map(admissionState),
+        ["terminal:interrupted", "terminal:completed"],
       );
     }),
   );

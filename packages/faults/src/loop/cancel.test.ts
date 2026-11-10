@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { eachLoopWorld } from "./test-util.ts";
 import { scriptedTerminal, term, type LoopWorld } from "./world.ts";
+import { admissionState } from "../actor/admission.ts";
 
 // D5 on the side of the actor, and cancellation at each point of a turn
 // (guide 7.4): before the call is sent, during it, after the answer came but
@@ -14,8 +15,8 @@ const sentBy = (w: LoopWorld, method: string) => w.link.sent.filter((m) => m.met
 /** After a stop: the turn is over, nothing is pending, the transcript is valid. */
 function assertStopped(w: LoopWorld): void {
   assert.equal(w.rows("turns")[0]!.status, "done");
-  assert.equal(w.rows("session_admissions")[0]!.status, "done");
-  assert.equal(w.rows("session_admissions")[0]!.result, "interrupted");
+  assert.equal(admissionState(w.rows("session_admissions")[0]!), "terminal:completed");
+  assert.equal(w.rows("rt_admission_port")[0]!.result, "interrupted");
   assert.equal(w.replies.at(-1)!.text, "Stopped.");
   assert.equal(w.rows("pending_call", "status = 'pending'").length, 0);
   assert.equal(w.rows("wake_obligations", "state = 'open'").length, 0);
