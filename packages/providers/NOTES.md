@@ -187,7 +187,7 @@ Differences:
 
 ## Not done
 
-- The loop does not use `ProviderRouter`. Fallback across modes needs the loop to rebuild the
+- The loop does not use `ProviderRouter`. It has a small eager fallback of its own (`LoopFallback` in session-actor: 429 and 402 only; see `packages/golden/NOTES.md`). Fallback across modes needs the loop to rebuild the
   body from the stored messages when the target changes. Today `pending_call.request` holds
   the bytes of one target. The design is: store `RouterState` in `pending_call.data`, call
   `decide()` on a failure, and when the decision is `fallback` rebuild the request with the

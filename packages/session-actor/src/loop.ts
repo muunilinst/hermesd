@@ -129,12 +129,42 @@ export interface LoopModelClient {
   ): Promise<{ response: ParsedResponse; raw: string }>;
 }
 
+/**
+ * The plugin hook seam (guide 3.5, 7.2). It is a structural type, so session-actor needs
+ * no dependency on `@hermesd/plugin-host`: its `HookDispatcher` fits. Only `pre_tool_call`
+ * is wired. The loop calls it once for each tool call, before the tool runs. On a block
+ * the tool does not run and the model gets `{"error": message}` as the tool result, as
+ * upstream does (`agent/tool_executor.py:_dispatch_authorized_once`). The dispatcher is
+ * responsible for the crash and time-budget rules (`pre_tool_call` fails closed). If the
+ * dispatcher itself throws, the call goes on, as upstream does (`_pre_tool_block`).
+ *
+ * The hook runs in the planning step, before the commit. A replay of that step (a crash
+ * before the commit) calls the hook again, so a hook must not depend on being called once.
+ */
+export interface LoopHooks {
+  preToolCall(kwargs: Record<string, unknown>): Promise<{ action: "approve" } | { action: "block"; message: string; plugin?: string }>;
+}
+
+/**
+ * A fallback model target (upstream `fallback_model`). On a 429 or 402 from the primary,
+ * the loop builds the request again with this client and sends it. The choice is kept for
+ * the rest of the turn, in `pending_call.data.target`. The next turn starts on the primary.
+ */
+export interface LoopFallback {
+  client: LoopModelClient;
+  model: string;
+}
+
 export interface LoopDeps {
   clock: Clock;
   config: LoopConfig;
   migrations?: MigrationSet;
   /** The model client of the API mode. The default is chat_completions at `config.modelUrl`. */
   modelClient?: LoopModelClient;
+  /** Plugin hooks. Without it no hook runs. */
+  hooks?: LoopHooks;
+  /** The fallback target. Used only together with `modelClient`. */
+  fallback?: LoopFallback;
   /** Replace the executor client. The default is the sidecar `config.executorTarget`. */
   executor?: (host: Host) => Executor;
 }
@@ -200,6 +230,8 @@ interface Snapshot {
   verdictPending: string | undefined;
   /** Upstream `compression_ineffective_count` of the current session. */
   ineffective: number;
+  /** A call of this turn went to the fallback target. Later calls of the turn stay there. */
+  fallbackActive: boolean;
 }
 
 type OpOutcome =
@@ -355,8 +387,11 @@ export class LoopDriver implements TurnDriver {
     }
     const verdict = sql.exec("SELECT value FROM sa_meta WHERE key = ?", VERDICT_PENDING)[0];
     const sess = sql.exec("SELECT compression_ineffective_count AS c FROM sessions WHERE id = ?", sessionId)[0];
-    const compressions = sql.exec("SELECT call_id FROM pending_call WHERE turn_id = ?", ctx.turnId).filter((r) => str(r.call_id).startsWith(`${ctx.turnId}:k`)).length;
+    const turnCalls = sql.exec("SELECT call_id, data FROM pending_call WHERE turn_id = ?", ctx.turnId);
+    const compressions = turnCalls.filter((r) => str(r.call_id).startsWith(`${ctx.turnId}:k`)).length;
+    const fallbackActive = turnCalls.some((r) => (JSON.parse(str(r.data)) as RowData).target === "fallback");
     return {
+      fallbackActive,
       sessionId,
       compressions,
       verdictPending: verdict ? str(verdict.value) : undefined,
@@ -457,8 +492,13 @@ export class LoopDriver implements TurnDriver {
     let parsed: ParsedResponse | string;
     let text: string;
     if (this.#deps.modelClient) {
-      const r = await this.#callClient(ctx, row, ac, this.#deps.modelClient);
+      const onFallback = row.data.target === "fallback" && this.#deps.fallback !== undefined;
+      const r = await this.#callClient(ctx, row, ac, onFallback ? this.#deps.fallback!.client : this.#deps.modelClient, !compression && !onFallback && this.#deps.fallback !== undefined);
       if ("end" in r) return r.end;
+      if ("switch" in r) {
+        await this.#switchToFallback(ctx, snap, row);
+        return "again";
+      }
       if ("fail" in r) {
         if (compression) return this.#finishCompression(ctx, snap, row, { fallbackReason: r.fail });
         await this.#failCall(ctx, row, r.fail);
@@ -598,7 +638,8 @@ export class LoopDriver implements TurnDriver {
     row: CallRow,
     ac: AbortController,
     client: LoopModelClient,
-  ): Promise<{ parsed: ParsedResponse; text: string } | { end: "again" | "wait" } | { fail: string }> {
+    canSwitch: boolean,
+  ): Promise<{ parsed: ParsedResponse; text: string } | { end: "again" | "wait" } | { fail: string } | { switch: true }> {
     try {
       const sent = await client.send(row.request, {
         callId: row.callId,
@@ -611,6 +652,8 @@ export class LoopDriver implements TurnDriver {
     } catch (e) {
       if (ac.signal.aborted) return { end: "again" }; // partial output is dropped
       const status = (e as { status?: unknown } | null)?.status;
+      // Eager fallback (upstream `retry.ts` decide(): rate limit and billing go to the fallback at once).
+      if (canSwitch && (status === 429 || status === 402)) return { switch: true };
       if (typeof status === "number" && !(status === 429 || status === 408 || status >= 500)) return { fail: `the model returned HTTP ${status}` };
       if (e instanceof Error && e.name === "MalformedResponseError") return { fail: e.message };
       // A transport error or a dropped stream: the obligation brings the wake, and the same bytes go out again.
@@ -618,6 +661,34 @@ export class LoopDriver implements TurnDriver {
     } finally {
       if (this.#fetches.get(ctx.turnId) === ac) this.#fetches.delete(ctx.turnId);
     }
+  }
+
+  /**
+   * Build the request again for the fallback target and store it with the mark
+   * `target: "fallback"`, in one commit. The next try sends the new bytes. The
+   * summary call of a compaction does not switch: it keeps the wait-and-resend path.
+   */
+  async #switchToFallback(ctx: TurnContext, snap: Snapshot, row: CallRow): Promise<void> {
+    const fb = this.#deps.fallback!;
+    const body: ChatRequestBody = {
+      model: fb.model,
+      messages: [{ role: "system", content: this.#cfg.systemPrompt }, ...snap.messages.map(toApiMessage)],
+      tools: toolDefinitions(this.#cfg.tools),
+    };
+    const request = fb.client.buildBody(body);
+    const now = this.#deps.clock.now();
+    await ctx.step({
+      write: (sql) => {
+        if (!turnIsOpen(sql, ctx.turnId)) throw new StepRaced();
+        sql.exec(
+          "UPDATE pending_call SET request = ?, data = ?, updated_at = ? WHERE call_id = ? AND status = 'pending'",
+          request,
+          JSON.stringify({ ...row.data, target: "fallback" }),
+          now,
+          row.callId,
+        );
+      },
+    });
   }
 
   /** The tool-call turn could not be written. The turn ends, and no tool runs (guide 2.3). */
@@ -766,6 +837,9 @@ export class LoopDriver implements TurnDriver {
       const sequential = a.calls.some((c) => c.function.name === "clarify");
       let blocked = false;
       const opsFor: Array<{ call: ToolCallWire; uid: string; cmd: Command }> = [];
+      // Results are recorded in the order of the tool calls (upstream appends them in call order). An
+      // operation answers later than an inline result, so once an operation is planned, the first call
+      // that would be answered inline waits for the next pass, after the operation results are written.
       for (const { call, uid } of a.unresolved) {
         const done = (content: string): void => {
           const msg: NewMessage = { role: "tool", content, toolCallId: call.id, toolCallUid: uid, toolName: call.function.name, messageUid: `${uid}:r` };
@@ -777,12 +851,25 @@ export class LoopDriver implements TurnDriver {
         try {
           args = call.function.arguments === "" ? {} : (JSON.parse(call.function.arguments) as unknown);
         } catch {
+          if (opsFor.length > 0) break;
           done(JSON.stringify({ error: `the arguments of ${name} are not valid JSON` }));
           continue;
         }
         if (!(this.#cfg.tools as readonly string[]).includes(name)) {
+          if (opsFor.length > 0) break;
           done(JSON.stringify({ error: `Unknown tool '${name}'` }));
           continue;
+        }
+        if (name !== "terminal" && opsFor.length > 0) break; // answered inline: it waits
+        if (this.#deps.hooks) {
+          const blockedBy = await this.#preToolCall(ctx, snap, name, args, call.id);
+          if (blockedBy !== undefined) {
+            // In this rare case the hook runs again in the next pass.
+            if (opsFor.length > 0) break;
+            // Upstream: json.dumps({"error": message}, ensure_ascii=False).
+            done(`{"error": ${JSON.stringify(blockedBy)}}`);
+            continue;
+          }
         }
         if (name === "todo_list") {
           const out = applyTodo(todos, args);
@@ -810,6 +897,7 @@ export class LoopDriver implements TurnDriver {
         // terminal
         const targs = parseTerminal(args);
         if (typeof targs === "string") {
+          if (opsFor.length > 0) break;
           done(JSON.stringify({ error: targs }));
           continue;
         }
@@ -846,6 +934,26 @@ export class LoopDriver implements TurnDriver {
       // All calls were answered inline: look again.
     }
     throw new Error("planning did not settle");
+  }
+
+  /** Run the `pre_tool_call` hook. Returns the block message, or undefined to go on. */
+  async #preToolCall(ctx: TurnContext, snap: Snapshot, name: string, args: unknown, toolCallId: string): Promise<string | undefined> {
+    try {
+      const d = await this.#deps.hooks!.preToolCall({
+        tool_name: name,
+        args: typeof args === "object" && args !== null && !Array.isArray(args) ? args : {},
+        task_id: "",
+        session_id: snap.sessionId,
+        tool_call_id: toolCallId,
+        turn_id: ctx.turnId,
+        api_request_id: "",
+        middleware_trace: [],
+        conversation_id: "",
+      });
+      return d.action === "block" ? d.message : undefined;
+    } catch {
+      return undefined; // upstream `_pre_tool_block`: hook failures never block
+    }
   }
 
   /**
@@ -918,12 +1026,13 @@ export class LoopDriver implements TurnDriver {
   }
 
   async #buildCall(ctx: TurnContext, snap: Snapshot, all: NewMessage[]): Promise<NonNullable<Plan["modelCall"]>> {
+    const fb = snap.fallbackActive && this.#deps.modelClient ? this.#deps.fallback : undefined;
     const body: ChatRequestBody = {
-      model: this.#cfg.model,
+      model: fb ? fb.model : this.#cfg.model,
       messages: [{ role: "system", content: this.#cfg.systemPrompt }, ...all.map(toApiMessage)],
       tools: toolDefinitions(this.#cfg.tools),
     };
-    const request = this.#deps.modelClient ? this.#deps.modelClient.buildBody(body) : JSON.stringify(body);
+    const request = fb ? fb.client.buildBody(body) : this.#deps.modelClient ? this.#deps.modelClient.buildBody(body) : JSON.stringify(body);
     const tokens = this.#deps.modelClient ? Math.ceil(request.length / 4) : estimateTokens(body);
     const threshold = this.#cfg.compress ? Math.floor(this.#cfg.contextWindow * 0.5) : thresholdTokens(this.#cfg.contextWindow, compressionConfig(this.#cfg.compression));
     const seq = snap.modelCalls + 1;
@@ -931,7 +1040,7 @@ export class LoopDriver implements TurnDriver {
       callId: `${ctx.turnId}:c${seq}`,
       seq,
       request,
-      data: { estimated_tokens: tokens, compression_due: tokens > threshold },
+      data: { estimated_tokens: tokens, compression_due: tokens > threshold, ...(fb ? { target: "fallback" } : {}) },
     };
   }
 

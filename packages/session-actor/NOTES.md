@@ -60,6 +60,10 @@ decisions made and every change to an existing contract.
   code uses them yet; `packages/state-port` fills them on import.
 - A message row with no `message_uid` (an imported row) gets `row-<id>` when read.
 
+- Hook seam: `LoopHooks` (`preToolCall`), a structural type that `HookDispatcher` of plugin-host fits. The loop calls it once for each tool call before the tool runs. A block gives the tool result `{"error": "<message>"}` and runs no tool. See `packages/golden/NOTES.md`.
+- Fallback seam: `LoopFallback` (`{client, model}`). A 429 or 402 from the primary rebuilds the request for the fallback client and keeps it for the rest of the turn (`pending_call.data.target`). See `packages/golden/NOTES.md`.
+- Tool results are written in the order of the tool calls. Once an operation is planned, the first call that would be answered inline waits for the next pass.
+
 ## Open points
 
 - The compression hook only checks the 50% threshold. It does not summarise.

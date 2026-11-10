@@ -8,6 +8,8 @@ import {
   createSessionActor,
   executorHandler,
   type LoopConfig,
+  type LoopFallback,
+  type LoopHooks,
   type LoopModelClient,
   type MigrationSet,
   type ModelStep,
@@ -44,6 +46,10 @@ export interface LoopWorldOptions {
    * (`@hermesd/providers`). `script` is then unused.
    */
   provider?: { client: LoopModelClient; model: ProviderModelLike };
+  /** Plugin hooks of the loop (the `pre_tool_call` seam). */
+  hooks?: LoopHooks;
+  /** The fallback model target. Needs `provider`. */
+  fallback?: LoopFallback;
   loop?: Partial<LoopConfig>;
   runtime?: Partial<RuntimeConfig>;
   cron?: boolean;
@@ -131,6 +137,8 @@ export async function createLoopWorld(node: NodeBackendOptions, opts: LoopWorldO
       migrations: code.migrations,
       loop: { replyTarget: "gateway", profileTarget: "actor:profile", ...opts.loop },
       ...(opts.provider ? { modelClient: opts.provider.client } : {}),
+      ...(opts.hooks ? { hooks: opts.hooks } : {}),
+      ...(opts.fallback ? { fallback: opts.fallback } : {}),
     }),
   );
   if (opts.cron !== false) {
