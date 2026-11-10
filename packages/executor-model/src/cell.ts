@@ -110,7 +110,7 @@ export interface CellOptions {
  * The cell has no memory of in-flight commands. It reads the guest each time
  * it needs the state of a command, so a restart cannot lose a result.
  */
-export class ExecutorCell {
+export class ExecutorCell implements Executor {
   readonly workspace: string;
   readonly #vm: SimulatedVm;
   readonly #guest: Guest;
@@ -297,19 +297,6 @@ export class ExecutorCell {
 
   // -------------------------------------------------------------- contract
 
-  /** The contract for one session. The caller of the contract never names the session in `prepare`. */
-  forSession(session: string): Executor {
-    return {
-      prepare: (req) => this.prepare(session, req),
-      start: (opId, epoch) => this.start(opId, epoch),
-      status: (opId) => this.status(opId),
-      cancel: (opId, epoch) => this.cancel(opId, epoch),
-      ack: (opId, epoch) => this.ack(opId, epoch),
-      fence: (s, epoch) => this.fence(s, epoch),
-      describe: (workspace) => this.describe(workspace),
-    };
-  }
-
   async describe(workspace: string): Promise<{ incarnation: Incarnation }> {
     this.#guard();
     if (workspace !== this.workspace) throw new ProtocolError(`unknown workspace ${workspace}`);
@@ -317,7 +304,7 @@ export class ExecutorCell {
     return { incarnation: this.#d.incarnation };
   }
 
-  async prepare(session: string, req: PrepareRequest): Promise<PrepareResponse> {
+  async prepare(req: PrepareRequest): Promise<PrepareResponse> {
     this.#guard();
     const d = this.#d;
     // Refused by number. Nothing else is read.
@@ -331,7 +318,7 @@ export class ExecutorCell {
     }
     d.ops.set(req.opId, {
       opId: req.opId,
-      session,
+      session: req.session,
       intentId: req.intentId,
       incarnation: req.incarnation,
       inputHash: req.inputHash,

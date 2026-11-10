@@ -20,7 +20,7 @@ eachNode("parallel actions on one session", (use, cfg) => {
         b.call("s1", "append", { role: "user", text: "B", expectedTail: 0 }),
       ])) as Array<{ ok: boolean }>;
       assert.deepEqual([r1!.ok, r2!.ok].sort(), [false, true]);
-      assert.equal(w.rows("s1", "messages").length, 1);
+      assert.equal(w.rows("s1", "rt_messages").length, 1);
     }),
   );
 
@@ -31,7 +31,7 @@ eachNode("parallel actions on one session", (use, cfg) => {
       await w.warm();
       await Promise.all(Array.from({ length: 8 }, (_, i) => b.call("s1", "append", { role: "user", text: `m${i}` })));
       assert.deepEqual(
-        w.rows("s1", "messages").map((r) => r.seq),
+        w.rows("s1", "rt_messages").map((r) => r.seq),
         [1, 2, 3, 4, 5, 6, 7, 8],
       );
     }),

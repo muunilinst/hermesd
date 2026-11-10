@@ -7,16 +7,16 @@ import { boot, expectStatus, prepareOp } from "./testing.ts";
 async function setup() {
   const rig = new ModelRig();
   await boot(rig);
-  return { rig, ex: rig.link("s1") };
+  return { rig, ex: rig.link() };
 }
 
 async function incarnation(rig: ModelRig): Promise<number> {
-  return (await rig.link("probe").describe(rig.workspace)).incarnation;
+  return (await rig.link().describe(rig.workspace)).incarnation;
 }
 
 /** Run one operation to the end and acknowledge it. */
 async function runOne(rig: ModelRig, intent: string) {
-  const ex = rig.link("s1");
+  const ex = rig.link();
   const op = await prepareOp(rig, ex, "s1", intent);
   await ex.start(op.opId, 1);
   await rig.settle();
@@ -203,7 +203,7 @@ describe("what failed / what the executor does (section 3.4)", () => {
     const { rig, ex } = await setup();
     const a = await prepareOp(rig, ex, "s1", "a", { hold: "a", stdout: "out" });
     await ex.start(a.opId, 7);
-    const newCaller = rig.link("s1");
+    const newCaller = rig.link();
     const fenced = await newCaller.fence("s1", 8);
     assert.equal(fenced.open[0]?.status.status, "running");
     rig.commands.release("a");

@@ -9,7 +9,7 @@ import { TENANT, boot, expectStatus, prepareOp } from "./testing.ts";
 async function setup() {
   const rig = new ModelRig();
   await boot(rig);
-  return { rig, ex: rig.link("s1") };
+  return { rig, ex: rig.link() };
 }
 
 describe("prepare", () => {
@@ -17,6 +17,7 @@ describe("prepare", () => {
     const { rig, ex } = await setup();
     const op = await prepareOp(rig, ex, "s1", "i1");
     const again = await ex.prepare({
+      session: "s1",
       opId: op.opId,
       intentId: "i1",
       incarnation: op.incarnation,
@@ -30,6 +31,7 @@ describe("prepare", () => {
     const { rig, ex } = await setup();
     const op = await prepareOp(rig, ex, "s1", "i1");
     const res = await ex.prepare({
+      session: "s1",
       opId: op.opId,
       intentId: "i1",
       incarnation: op.incarnation,
@@ -46,7 +48,7 @@ describe("prepare", () => {
     await rig.cell.stopVm();
     await rig.cell.restoreDisks("save-1");
     await rig.cell.startVm();
-    const res = await ex.prepare({ opId, intentId: "late", incarnation: 1, inputHash: "h", cmd: rig.commands.command() });
+    const res = await ex.prepare({ session: "s1", opId, intentId: "late", incarnation: 1, inputHash: "h", cmd: rig.commands.command() });
     assert.deepEqual(res, { kind: "expired" });
     assert.equal(rig.cell.inspect().ops.has(opId), false);
   });
@@ -55,7 +57,7 @@ describe("prepare", () => {
     const { rig, ex } = await setup();
     const opId = await deriveOpId(TENANT, "s1", "future");
     await assert.rejects(
-      ex.prepare({ opId, intentId: "future", incarnation: 99, inputHash: "h", cmd: rig.commands.command() }),
+      ex.prepare({ session: "s1", opId, intentId: "future", incarnation: 99, inputHash: "h", cmd: rig.commands.command() }),
       ProtocolError,
     );
   });
@@ -137,8 +139,8 @@ describe("fence", () => {
 
   it("keeps a separate minimum epoch for each session", async () => {
     const { rig } = await setup();
-    const s1 = rig.link("s1");
-    const s2 = rig.link("s2");
+    const s1 = rig.link();
+    const s2 = rig.link();
     const a = await prepareOp(rig, s2, "s2", "a");
     await s1.fence("s1", 9);
     assert.deepEqual(await s2.start(a.opId, 1), { kind: "accepted" });
@@ -236,7 +238,7 @@ describe("tombstones and retention", () => {
     assert.equal(rec.status.status, "done");
     const shown = expectStatus(await ex.status(a.opId), "done");
     assert.equal(shown.result.stdout, "");
-    const dup = await ex.prepare({ opId: a.opId, intentId: "a", incarnation: a.incarnation, inputHash: "x", cmd: rig.commands.command() });
+    const dup = await ex.prepare({ session: "s1", opId: a.opId, intentId: "a", incarnation: a.incarnation, inputHash: "x", cmd: rig.commands.command() });
     assert.deepEqual(dup, { kind: "conflict" });
   });
 
@@ -253,7 +255,7 @@ describe("tombstones and retention", () => {
   it("applies the ceiling only after the 7 day floor", async () => {
     const rig = new ModelRig({ retention: { ceilingMs: 1000 } });
     await boot(rig);
-    const ex = rig.link("s1");
+    const ex = rig.link();
     assert.equal(rig.cell.retention.ceilingMs, rig.cell.retention.floorMs);
     const a = await prepareOp(rig, ex, "s1", "a", { stdout: "x" });
     await ex.start(a.opId, 1);
@@ -277,7 +279,7 @@ describe("tombstones and retention", () => {
     await rig.cell.startVm();
     assert.deepEqual(rig.cell.collectOldTombstones(), [a.opId]);
     assert.deepEqual(await ex.start(a.opId, 1), { kind: "expired" });
-    const res = await ex.prepare({ opId: a.opId, intentId: "a", incarnation: a.incarnation, inputHash: a.inputHash, cmd: rig.commands.command() });
+    const res = await ex.prepare({ session: "s1", opId: a.opId, intentId: "a", incarnation: a.incarnation, inputHash: a.inputHash, cmd: rig.commands.command() });
     assert.deepEqual(res, { kind: "expired" });
     assert.equal(rig.runCount(a.opId), 1);
   });

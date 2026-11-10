@@ -28,7 +28,7 @@ export async function prepareOp(
   const opId = await deriveOpId(TENANT, session, intent);
   const { incarnation } = await ex.describe(rig.workspace);
   const inputHash = `hash-${intent}`;
-  const res = await ex.prepare({ opId, intentId: intent, incarnation, inputHash, cmd: rig.commands.command(spec) });
+  const res = await ex.prepare({ session, opId, intentId: intent, incarnation, inputHash, cmd: rig.commands.command(spec) });
   assert.deepEqual(res, { kind: "prepared" });
   return { opId, incarnation, inputHash };
 }

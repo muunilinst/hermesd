@@ -109,9 +109,9 @@ export class ModelRig {
     return this.#cell;
   }
 
-  /** A link for one session, with fault injection. It follows the current cell. */
-  link(session: string): FaultLink {
-    return new FaultLink(() => this.#cell.forSession(session));
+  /** A link to the executor, with fault injection. It follows the current cell. */
+  link(): FaultLink {
+    return new FaultLink(() => this.#cell);
   }
 
   runCount(opId: OpId): number {

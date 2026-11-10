@@ -76,8 +76,28 @@ export interface TurnContext {
   write<T>(fn: (sql: Sql, outbox: OutboxWriter) => T): Promise<T>;
   /** Add a message to the transcript. With `expectedTail`, it fails if another message came first. */
   appendMessage(role: string, text: string, opts?: { expectedTail?: number }): Promise<AppendResult>;
-  /** End the turn. The admission becomes terminal and the sweeper gets a close. */
-  finish(status: "done" | "failed", text: string): Promise<void>;
+  /**
+   * One atomic step of the turn: settle rows, write, record the next pending
+   * rows and, if the turn is over, end it. All of it is one transaction. The
+   * new pending rows get their wake obligations and the timer is armed first
+   * (arm, then commit). Use this when no window may lie between two actions,
+   * for example "record the model answer" and "record the tool operations".
+   * Returns the new pending rows, in order.
+   */
+  step(spec: StepSpec): Promise<PendingRow[]>;
+  /** End the turn. The admission becomes terminal (or `unknown`) and the sweeper gets a close. */
+  finish(status: "done" | "failed" | "unknown", text: string): Promise<void>;
+}
+
+export interface StepSpec {
+  /** Pending rows that get their result in this step. */
+  settle?: Array<{ id: string; result: unknown }>;
+  /** Extra writes. They run after `settle` and before the new pending rows. */
+  write?: (sql: Sql, outbox: OutboxWriter) => void;
+  /** The next pending rows. Each one gets a wake obligation. Not allowed together with `finish`. */
+  pend?: Array<{ kind: string; payload: unknown }>;
+  /** End the turn in the same transaction. */
+  finish?: { status: "done" | "failed" | "unknown"; text: string };
 }
 
 export interface AppendResult {

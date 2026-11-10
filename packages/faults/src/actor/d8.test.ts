@@ -10,11 +10,11 @@ import { createWorld, type World } from "./world.ts";
 /** The job writes one message row. The row is the effect that the test counts. */
 const jobs: Record<string, JobFn> = {
   nightly: (sql) => {
-    sql.exec("INSERT INTO messages (turn_id, role, text, created_at) VALUES (NULL, 'job', 'nightly ran', 0)");
+    sql.exec("INSERT INTO rt_messages (turn_id, role, text, created_at) VALUES (NULL, 'job', 'nightly ran', 0)");
   },
 };
 
-const effects = (w: World): number => w.rows("s1", "messages", "role = 'job'").length;
+const effects = (w: World): number => w.rows("s1", "rt_messages", "role = 'job'").length;
 
 async function scheduleNightly(b: ActorBackend, w: World): Promise<void> {
   await b.call("s1", "schedule_job", { job: "nightly", dueAt: b.clock.now() + w.config.minDelayMs });

@@ -7,7 +7,7 @@ import { boot, prepareOp } from "./testing.ts";
 async function setup() {
   const rig = new ModelRig();
   await boot(rig);
-  return { rig, ex: rig.link("s1") };
+  return { rig, ex: rig.link() };
 }
 
 describe("fault link", () => {

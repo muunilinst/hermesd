@@ -43,7 +43,7 @@ export const modelBackend: FaultBackend = {
     return {
       backend: "model",
       workspace: rig.workspace,
-      executor: (session) => faultable(rig.link(session)),
+      executor: () => faultable(rig.link()),
       opId: (session, intentId): Promise<OpId> => deriveOpId(TENANT, session, intentId),
       command: (spec?: CommandSpec): Command => rig.commands.command(spec),
       async release(key) {
