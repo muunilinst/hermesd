@@ -14,6 +14,7 @@
     "@hermesd/host-node": "*",
     "@hermesd/profile-actor": "*",
     "@hermesd/prompt": "*",
+    "@hermesd/providers": "*",
     "@hermesd/runtime": "*",
     "@hermesd/session-actor": "*"
   }

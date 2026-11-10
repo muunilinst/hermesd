@@ -110,10 +110,31 @@ export function defaultLoopConfig(partial: Partial<LoopConfig> = {}): LoopConfig
   };
 }
 
+/**
+ * The provider seam (guide 2.7). It is a structural type, so session-actor needs no
+ * dependency on `@hermesd/providers`: its `ModelClient` fits. Without a client the
+ * loop speaks chat_completions itself (`model/openai.ts`).
+ *
+ * `send` throws when the call gave no answer. An error with a numeric `status` of 429,
+ * 408 or 5xx, a dropped stream (`name` is `StreamDroppedError`) and a transport error are
+ * sent again: the loop waits for the wake obligation, the partial output is dropped, and
+ * the stored bytes go out again with the same call id. `MalformedResponseError` and any
+ * other status end the turn. An abort is an interrupt.
+ */
+export interface LoopModelClient {
+  buildBody(input: { model?: string; messages: unknown[]; tools: unknown[] }): string;
+  send(
+    body: string,
+    ctx: { callId: string; fetch: (req: Request, signal?: AbortSignal) => Promise<Response>; signal?: AbortSignal; apiKey?: string },
+  ): Promise<{ response: ParsedResponse; raw: string }>;
+}
+
 export interface LoopDeps {
   clock: Clock;
   config: LoopConfig;
   migrations?: MigrationSet;
+  /** The model client of the API mode. The default is chat_completions at `config.modelUrl`. */
+  modelClient?: LoopModelClient;
   /** Replace the executor client. The default is the sidecar `config.executorTarget`. */
   executor?: (host: Host) => Executor;
 }
@@ -433,30 +454,42 @@ export class LoopDriver implements TurnDriver {
     }
     const ac = new AbortController();
     this.#fetches.set(ctx.turnId, ac);
-    let res: Response;
-    let text: string;
-    try {
-      res = await ctx.host.fetch(chatRequest(this.#cfg.modelUrl, row.request, row.callId, this.#cfg.apiKey), ac.signal);
-      text = await res.text();
-    } catch {
-      // An abort is an interrupt. Anything else may be sent again: the obligation brings the wake.
-      return ac.signal.aborted ? "again" : "wait";
-    } finally {
-      if (this.#fetches.get(ctx.turnId) === ac) this.#fetches.delete(ctx.turnId);
-    }
-    if (ac.signal.aborted) return "again"; // partial output is dropped
-    if (res.status === 429 || res.status === 408 || res.status >= 500) return "wait";
-    if (!res.ok) {
-      const why = `the model returned HTTP ${res.status}`;
-      if (compression) return this.#finishCompression(ctx, snap, row, { fallbackReason: why });
-      await this.#failCall(ctx, row, why);
-      return "wait";
-    }
     let parsed: ParsedResponse | string;
-    try {
-      parsed = parseChatResponse(JSON.parse(text) as unknown);
-    } catch {
-      parsed = "the model answer is not JSON";
+    let text: string;
+    if (this.#deps.modelClient) {
+      const r = await this.#callClient(ctx, row, ac, this.#deps.modelClient);
+      if ("end" in r) return r.end;
+      if ("fail" in r) {
+        if (compression) return this.#finishCompression(ctx, snap, row, { fallbackReason: r.fail });
+        await this.#failCall(ctx, row, r.fail);
+        return "wait";
+      }
+      parsed = r.parsed;
+      text = r.text;
+    } else {
+      let res: Response;
+      try {
+        res = await ctx.host.fetch(chatRequest(this.#cfg.modelUrl, row.request, row.callId, this.#cfg.apiKey), ac.signal);
+        text = await res.text();
+      } catch {
+        // An abort is an interrupt. Anything else may be sent again: the obligation brings the wake.
+        return ac.signal.aborted ? "again" : "wait";
+      } finally {
+        if (this.#fetches.get(ctx.turnId) === ac) this.#fetches.delete(ctx.turnId);
+      }
+      if (ac.signal.aborted) return "again"; // partial output is dropped
+      if (res.status === 429 || res.status === 408 || res.status >= 500) return "wait";
+      if (!res.ok) {
+        const why = `the model returned HTTP ${res.status}`;
+        if (compression) return this.#finishCompression(ctx, snap, row, { fallbackReason: why });
+        await this.#failCall(ctx, row, why);
+        return "wait";
+      }
+      try {
+        parsed = parseChatResponse(JSON.parse(text) as unknown);
+      } catch {
+        parsed = "the model answer is not JSON";
+      }
     }
     if (typeof parsed === "string") {
       if (compression) return this.#finishCompression(ctx, snap, row, { fallbackReason: parsed });
@@ -557,6 +590,34 @@ export class LoopDriver implements TurnDriver {
     }
     if (made) await finishCompaction({ host: ctx.host, clock: this.#deps.clock, migrations: this.#set });
     return "again";
+  }
+
+  /** One try through the provider seam. It never writes: the caller acts on the outcome. */
+  async #callClient(
+    ctx: TurnContext,
+    row: CallRow,
+    ac: AbortController,
+    client: LoopModelClient,
+  ): Promise<{ parsed: ParsedResponse; text: string } | { end: "again" | "wait" } | { fail: string }> {
+    try {
+      const sent = await client.send(row.request, {
+        callId: row.callId,
+        fetch: (req, signal) => ctx.host.fetch(req, signal),
+        signal: ac.signal,
+        ...(this.#cfg.apiKey ? { apiKey: this.#cfg.apiKey } : {}),
+      });
+      if (ac.signal.aborted) return { end: "again" };
+      return { parsed: sent.response, text: sent.raw };
+    } catch (e) {
+      if (ac.signal.aborted) return { end: "again" }; // partial output is dropped
+      const status = (e as { status?: unknown } | null)?.status;
+      if (typeof status === "number" && !(status === 429 || status === 408 || status >= 500)) return { fail: `the model returned HTTP ${status}` };
+      if (e instanceof Error && e.name === "MalformedResponseError") return { fail: e.message };
+      // A transport error or a dropped stream: the obligation brings the wake, and the same bytes go out again.
+      return { end: "wait" };
+    } finally {
+      if (this.#fetches.get(ctx.turnId) === ac) this.#fetches.delete(ctx.turnId);
+    }
   }
 
   /** The tool-call turn could not be written. The turn ends, and no tool runs (guide 2.3). */
@@ -843,7 +904,7 @@ export class LoopDriver implements TurnDriver {
       callId: `${ctx.turnId}:k${snap.compressions + 1}`,
       // The summary call does not count as a model call of the turn.
       seq: snap.modelCalls,
-      request: JSON.stringify(body),
+      request: this.#deps.modelClient ? this.#deps.modelClient.buildBody(body) : JSON.stringify(body),
       data: {
         purpose: "compression",
         reason: hygiene ? "hygiene" : "threshold",
@@ -862,13 +923,14 @@ export class LoopDriver implements TurnDriver {
       messages: [{ role: "system", content: this.#cfg.systemPrompt }, ...all.map(toApiMessage)],
       tools: toolDefinitions(this.#cfg.tools),
     };
-    const tokens = estimateTokens(body);
+    const request = this.#deps.modelClient ? this.#deps.modelClient.buildBody(body) : JSON.stringify(body);
+    const tokens = this.#deps.modelClient ? Math.ceil(request.length / 4) : estimateTokens(body);
     const threshold = this.#cfg.compress ? Math.floor(this.#cfg.contextWindow * 0.5) : thresholdTokens(this.#cfg.contextWindow, compressionConfig(this.#cfg.compression));
     const seq = snap.modelCalls + 1;
     return {
       callId: `${ctx.turnId}:c${seq}`,
       seq,
-      request: JSON.stringify(body),
+      request,
       data: { estimated_tokens: tokens, compression_due: tokens > threshold },
     };
   }

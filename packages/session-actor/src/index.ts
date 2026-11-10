@@ -1,7 +1,7 @@
 export { PortSessionActor, createSessionActor } from "./actor.ts";
 export type { SessionActorDeps } from "./actor.ts";
 export { LoopDriver, SupersededError, analyze, defaultLoopConfig } from "./loop.ts";
-export type { CompressionInfo, LoopConfig, LoopDeps } from "./loop.ts";
+export type { CompressionInfo, LoopConfig, LoopDeps, LoopModelClient } from "./loop.ts";
 export { PORT_DDL, applySessionSchema } from "./schema.ts";
 export { SESSION_UPSTREAM_DDL, PROFILE_UPSTREAM_DDL, UPSTREAM_SCHEMA_VERSION, UPSTREAM_COMMIT } from "./upstream-ddl.ts";
 export { PRESERVED_TABLES, renderUpstreamDdl } from "./generate-ddl.ts";

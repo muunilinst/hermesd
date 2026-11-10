@@ -2,7 +2,7 @@ import type { Host } from "@hermesd/host";
 import type { Executor } from "@hermesd/executor-protocol";
 import { SessionActor, str, type ActorBehavior, type Clock, type JobFn, type RuntimeConfig } from "@hermesd/runtime";
 import { checkLineage, compactSession, repairLineageRows } from "./lineage.ts";
-import { LoopDriver, defaultLoopConfig, type LoopConfig } from "./loop.ts";
+import { LoopDriver, defaultLoopConfig, type LoopConfig, type LoopModelClient } from "./loop.ts";
 import { DEFAULT_MIGRATIONS, readPortRows, type MigrationSet } from "./migrate.ts";
 import { applySessionSchema } from "./schema.ts";
 
@@ -14,6 +14,8 @@ export interface SessionActorDeps {
   migrations?: MigrationSet;
   /** Replace the executor client. The default is the sidecar `loop.executorTarget`. */
   executor?: (host: Host) => Executor;
+  /** The model client of the API mode (see `LoopModelClient`). The default is chat_completions. */
+  modelClient?: LoopModelClient;
 }
 
 /**
@@ -40,6 +42,7 @@ export class PortSessionActor implements ActorBehavior {
       config: this.#loop,
       migrations: this.#set,
       ...(deps.executor ? { executor: deps.executor } : {}),
+      ...(deps.modelClient ? { modelClient: deps.modelClient } : {}),
     });
     this.#inner = new SessionActor(host, {
       clock: deps.clock,

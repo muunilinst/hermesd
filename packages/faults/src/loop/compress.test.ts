@@ -88,7 +88,7 @@ eachLoopWorld("compression at 50%", (use) => {
         assert.ok(Number(d.tokens_before) >= WINDOW * 0.5, "the measure was at or over 50%");
         assert.ok(Number(d.tokens_before) < WINDOW * 0.5 + 400, "the turn before was under 50%");
         const { child } = assertCompactedOnce(w);
-        assert.deepEqual(await w.b.call("s1", "lineage_problems"), []);
+        assert.deepEqual(await callAgain(w, "lineage_problems"), []);
 
         // The summary request has the summary prompt only. It carries no tools.
         const reqs = w.model.recorder.requests;
@@ -216,7 +216,7 @@ eachLoopWorld("compression at 85% (gateway hygiene)", (use) => {
         const d = data(compressionCalls(w)[0]!);
         assert.equal(d.reason, "hygiene");
         assertCompactedOnce(w);
-        assert.deepEqual(await w.b.call("s1", "lineage_problems"), []);
+        assert.deepEqual(await callAgain(w, "lineage_problems"), []);
         w.assertConsistent();
       });
     }),
@@ -249,8 +249,20 @@ async function drain(w: LoopWorld): Promise<void> {
     await w.wakeAll();
   }
   // A reply that is still in the outbox leaves now.
-  await w.b.call("s1", "flush_outbox", {});
+  await callAgain(w, "flush_outbox");
   await w.b.settle();
+}
+
+/** A call may meet a crash that is still armed. The crash fires once, so the second try runs on a new activation. */
+async function callAgain(w: LoopWorld, method: string): Promise<unknown> {
+  for (let i = 0; i < 3; i++) {
+    try {
+      return await w.b.call("s1", method, {});
+    } catch {
+      await w.b.settle();
+    }
+  }
+  return w.b.call("s1", method, {});
 }
 
 function assertOneCompaction(w: LoopWorld): void {
@@ -352,7 +364,7 @@ eachLoopWorld("D1 crash during the summary call", (use) => {
             await w.send(text(WARM + 1, CHARS)).catch(() => {});
             await drain(w);
             assertOneCompaction(w);
-            assert.deepEqual(await w.b.call("s1", "lineage_problems"), []);
+            assert.deepEqual(await callAgain(w, "lineage_problems"), []);
           });
         }),
       );

@@ -8,6 +8,7 @@ import {
   createSessionActor,
   executorHandler,
   type LoopConfig,
+  type LoopModelClient,
   type MigrationSet,
   type ModelStep,
   type ScriptedToolCall,
@@ -28,8 +29,21 @@ export interface Reply {
   key: string;
 }
 
+/** What the tests need of a scripted model from `@hermesd/providers`. */
+export interface ProviderModelLike {
+  readonly fetch: (req: Request, signal?: AbortSignal) => Promise<Response>;
+  readonly requests: ReadonlyArray<{ callId: string | null; path: string; body: unknown }>;
+  readonly aborted: number;
+  release(name: string): void;
+}
+
 export interface LoopWorldOptions {
   script: ModelStep[];
+  /**
+   * Run the loop through the provider seam: a model client and the scripted model behind it
+   * (`@hermesd/providers`). `script` is then unused.
+   */
+  provider?: { client: LoopModelClient; model: ProviderModelLike };
   loop?: Partial<LoopConfig>;
   runtime?: Partial<RuntimeConfig>;
   cron?: boolean;
@@ -42,6 +56,8 @@ export interface LoopWorldOptions {
 export interface LoopWorld {
   readonly b: ActorBackend;
   readonly model: ScriptedModel;
+  /** The scripted model of the provider seam, when `provider` was set. */
+  readonly provider: ProviderModelLike | null;
   readonly rig: ModelRig;
   /** The link between the actors and the executor model. Faults are set here. */
   readonly link: FaultLink;
@@ -78,7 +94,8 @@ export async function tick(n = 5): Promise<void> {
 
 export async function createLoopWorld(node: NodeBackendOptions, opts: LoopWorldOptions): Promise<LoopWorld> {
   const model = new ScriptedModel(opts.script);
-  const b = createNodeBackend({ ...node, fetch: (req, signal) => model.fetch(req, signal) });
+  const served = opts.provider?.model ?? model;
+  const b = createNodeBackend({ ...node, fetch: (req, signal) => served.fetch(req, signal) });
   const rig = new ModelRig();
   await rig.cell.startVm();
   const link = rig.link();
@@ -113,6 +130,7 @@ export async function createLoopWorld(node: NodeBackendOptions, opts: LoopWorldO
       runtime: config,
       migrations: code.migrations,
       loop: { replyTarget: "gateway", profileTarget: "actor:profile", ...opts.loop },
+      ...(opts.provider ? { modelClient: opts.provider.client } : {}),
     }),
   );
   if (opts.cron !== false) {
@@ -124,6 +142,7 @@ export async function createLoopWorld(node: NodeBackendOptions, opts: LoopWorldO
   const w: LoopWorld = {
     b,
     model,
+    provider: opts.provider?.model ?? null,
     rig,
     link,
     replies,
