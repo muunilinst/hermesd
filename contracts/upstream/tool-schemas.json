@@ -1,0 +1,1404 @@
+{
+  "counts": {
+    "literal": 30,
+    "literal_unique_names": 30,
+    "literal_via_plugin_ctx": 0,
+    "literal_via_registry": 30,
+    "non_literal": 23
+  },
+  "non_literal": [
+    {
+      "file": "hermes_cli/plugins_context.py",
+      "line": 292,
+      "name": null,
+      "name_expr": "name",
+      "reason": "name schema is not a module-level assignment",
+      "schema_expr": "schema",
+      "toolset": null,
+      "via": "registry.register"
+    },
+    {
+      "file": "plugins/google_meet/__init__.py",
+      "line": 50,
+      "name": null,
+      "name_expr": "name",
+      "reason": "name schema is not a module-level assignment",
+      "schema_expr": "schema",
+      "toolset": "google_meet",
+      "via": "ctx.register_tool"
+    },
+    {
+      "file": "plugins/platforms/a2a/tools.py",
+      "line": 359,
+      "name": null,
+      "name_expr": "name",
+      "reason": "name name is not a module-level assignment",
+      "schema_expr": "{'name': name, 'description': description, 'parameters': parameters}",
+      "toolset": "a2a",
+      "via": "ctx.register_tool"
+    },
+    {
+      "file": "tools/discord_tool.py",
+      "line": 627,
+      "name": null,
+      "name_expr": "_name",
+      "reason": "unsupported expression Call: _build_schema(list(_actions), caps={'detected': False}, tool_name=_name)",
+      "schema_expr": "_build_schema(list(_actions), caps={'detected': False}, tool_name=_name)",
+      "toolset": null,
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/feishu_drive_tool.py",
+      "line": 192,
+      "name": null,
+      "name_expr": "_schema['name']",
+      "reason": "name _schema is not a module-level assignment",
+      "schema_expr": "_schema",
+      "toolset": "feishu_drive",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/kanban_tools.py",
+      "line": 1314,
+      "name": null,
+      "name_expr": "_name",
+      "reason": "name _sch is not a module-level assignment",
+      "schema_expr": "_sch",
+      "toolset": "kanban",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/mcp_tool_registration.py",
+      "line": 384,
+      "name": null,
+      "name_expr": "c.registry_name",
+      "reason": "unsupported expression Attribute: c.schema",
+      "schema_expr": "c.schema",
+      "toolset": null,
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/xai_video_tools.py",
+      "line": 122,
+      "name": null,
+      "name_expr": "_name",
+      "reason": "name _schema is not a module-level assignment",
+      "schema_expr": "_schema",
+      "toolset": "video_gen",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/computer_use_tool.py",
+      "line": 13,
+      "name": "computer_use",
+      "reason": "name COMPUTER_USE_SCHEMA is not a module-level assignment",
+      "schema_expr": "COMPUTER_USE_SCHEMA",
+      "toolset": "computer_use",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/cronjob_tools.py",
+      "line": 1263,
+      "name": "cronjob_manage",
+      "reason": "unsupported expression Call: _script_description('the profile HERMES_HOME')",
+      "schema_expr": "CRONJOB_SCHEMA",
+      "toolset": "cronjob",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/delegate_tool.py",
+      "line": 934,
+      "name": "delegate_task",
+      "reason": "unsupported expression Call: _p('string', 'What this subagent should accomplish. Be specific and self-contain",
+      "schema_expr": "DELEGATE_TASK_SCHEMA",
+      "toolset": "delegation",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/code_execution_tool.py",
+      "line": 968,
+      "name": "execute_code",
+      "reason": "unsupported expression Call: build_execute_code_schema()",
+      "schema_expr": "EXECUTE_CODE_SCHEMA",
+      "toolset": "code_execution",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/tour_tool.py",
+      "line": 158,
+      "name": "gui_tour",
+      "reason": "name TourPreset is not a module-level assignment",
+      "schema_expr": "TOUR_SCHEMA",
+      "toolset": "desktop_ui",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/image_generation_tool.py",
+      "line": 1049,
+      "name": "image_generate",
+      "reason": "name VALID_ASPECT_RATIOS is not a module-level assignment",
+      "schema_expr": "IMAGE_GENERATE_SCHEMA",
+      "toolset": "image_gen",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/connectors/tool.py",
+      "line": 171,
+      "name": "manage_catalog",
+      "reason": "name MANAGE_CATALOG_SCHEMA is not a module-level assignment",
+      "schema_expr": "MANAGE_CATALOG_SCHEMA",
+      "toolset": "catalog",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/connectors/tool.py",
+      "line": 153,
+      "name": "manage_connections",
+      "reason": "name ALL_ACTIONS is not a module-level assignment",
+      "schema_expr": "MANAGE_CONNECTIONS_SCHEMA",
+      "toolset": "connections",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/file_tools.py",
+      "line": 1410,
+      "name": "read_file",
+      "reason": "name DEFAULT_READ_LIMIT is not a module-level assignment",
+      "schema_expr": "READ_FILE_SCHEMA",
+      "toolset": "file",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/file_tools.py",
+      "line": 1435,
+      "name": "search_files",
+      "reason": "unsupported expression IfExp: ' On macOS, broad searches above the user home automatically skip TCC-protected ",
+      "schema_expr": "SEARCH_FILES_SCHEMA",
+      "toolset": "file",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/setup_beat_tool.py",
+      "line": 208,
+      "name": "setup_beat",
+      "reason": "unsupported expression Attribute: flow.BEAT_IDS",
+      "schema_expr": "SETUP_BEAT_SCHEMA",
+      "toolset": "onboarding",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/skill_manager_tool.py",
+      "line": 940,
+      "name": "skill_manage",
+      "reason": "unsupported expression Call: _skill_manage_description()",
+      "schema_expr": "SKILL_MANAGE_SCHEMA",
+      "toolset": "skills",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/terminal_tool.py",
+      "line": 1750,
+      "name": "terminal",
+      "reason": "unsupported expression Call: _safe_parse_import_env('TERMINAL_MAX_FOREGROUND_TIMEOUT', 600, int, 'integer')",
+      "schema_expr": "TERMINAL_SCHEMA",
+      "toolset": "terminal",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/tts_tool.py",
+      "line": 738,
+      "name": "text_to_speech",
+      "reason": "unsupported expression Call: _output_path_description('the profile HERMES_HOME')",
+      "schema_expr": "TTS_SCHEMA",
+      "toolset": "tts",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/video_generation_tool.py",
+      "line": 367,
+      "name": "video_generate",
+      "reason": "name COMMON_ASPECT_RATIOS is not a module-level assignment",
+      "schema_expr": "VIDEO_GENERATE_SCHEMA",
+      "toolset": "video_gen",
+      "via": "registry.register"
+    }
+  ],
+  "surface": "tool-schemas",
+  "tools": [
+    {
+      "file": "tools/annotate_preview_tool.py",
+      "line": 89,
+      "name": "annotate_preview",
+      "schema": {
+        "description": "Highlight preview-pane elements with lasting marks (drive_preview's fade). Point at findings, flag what you're about to change, keep your place. Use the refs from drive_preview action='elements'. add: outline one element (optional short label — a word or two, drawn on the page). hold: freeze the whole visible field, every element outlined and named. remove/clear: take one/all down. Marks follow their element on scroll; navigation clears them.",
+        "name": "annotate_preview",
+        "parameters": {
+          "properties": {
+            "action": {
+              "description": "Defaults to 'add'.",
+              "enum": [
+                "add",
+                "hold",
+                "remove",
+                "clear"
+              ],
+              "type": "string"
+            },
+            "label": {
+              "description": "Optional caption, e.g. 'cheapest'.",
+              "type": "string"
+            },
+            "ref": {
+              "description": "Ref from drive_preview elements.",
+              "type": "string"
+            },
+            "selector": {
+              "description": "CSS selector fallback. Prefer ref.",
+              "type": "string"
+            }
+          },
+          "required": [],
+          "type": "object"
+        }
+      },
+      "toolset": "desktop_ui",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/browser_cdp_tool.py",
+      "line": 499,
+      "name": "browser_cdp",
+      "schema": {
+        "description": "Send a raw Chrome DevTools Protocol (CDP) command. Escape hatch for browser operations the other browser tools don't cover.\n\n**Requires a reachable CDP endpoint.** Available when the user has run '/browser connect' to attach to a running Chrome, Brave, Chromium, or Edge browser, or when 'browser.cdp_url' is set in config.yaml. Not currently wired up for cloud backends (Browserbase, Browser Use, Firecrawl) — those expose CDP per session but live-session routing is a follow-up. If the tool is in your toolset at all, a CDP endpoint is already reachable.\n\n**CDP method reference:** https://chromedevtools.github.io/devtools-protocol/ — use an available documentation lookup or extraction tool on a method's URL (e.g. '/tot/Page/#method-handleJavaScriptDialog') to look up parameters and return shape.\n\n**Common patterns:**\n- List tabs: method='Target.getTargets', params={}\n- Handle a native JS dialog: method='Page.handleJavaScriptDialog', params={'accept': true, 'promptText': ''}, target_id=<tabId>\n- Get all cookies: method='Network.getAllCookies', params={}\n- Eval in a specific tab: method='Runtime.evaluate', params={'expression': '...', 'returnByValue': true}, target_id=<tabId>\n- Set viewport for a tab: method='Emulation.setDeviceMetricsOverride', params={'width': 1280, 'height': 720, 'deviceScaleFactor': 1, 'mobile': false}, target_id=<tabId>\n\n**Usage rules:**\n- Browser-level methods (Target.*, Browser.*, Storage.*): omit target_id and frame_id.\n- Page-level methods (Page.*, Runtime.*, DOM.*, Emulation.*, Network.* scoped to a tab): pass target_id from Target.getTargets.\n- **Cross-origin iframe scope** (Runtime.evaluate inside an OOPIF, Page.* targeting a frame target, etc.): pass a frame_id from Page.getFrameTree. This routes through the CDP supervisor's live connection — the only reliable way on Browserbase where stateless CDP calls hit signed-URL expiry.\n- Each stateless call (without frame_id) is independent — sessions and event subscriptions do not persist between calls. For stateful workflows, prefer the dedicated browser tools or use frame_id routing.",
+        "name": "browser_cdp",
+        "parameters": {
+          "properties": {
+            "frame_id": {
+              "description": "Optional. Out-of-process iframe (OOPIF) frame id from Page.getFrameTree. When set, routes the call through the CDP supervisor's live session for that iframe. Essential for Runtime.evaluate inside cross-origin iframes, especially on Browserbase where fresh per-call CDP connections can't keep up with signed URL rotation. For same-origin iframes, use parent contentWindow/contentDocument from Runtime.evaluate at the top-level page instead.",
+              "type": "string"
+            },
+            "method": {
+              "description": "CDP method name, e.g. 'Target.getTargets', 'Runtime.evaluate', 'Page.handleJavaScriptDialog'.",
+              "type": "string"
+            },
+            "params": {
+              "additionalProperties": true,
+              "description": "Method-specific parameters as a JSON object. Omit or pass {} for methods that take no parameters.",
+              "properties": {},
+              "type": "object"
+            },
+            "target_id": {
+              "description": "Optional. Target/tab ID from Target.getTargets result (each entry's 'targetId'). Use for page-level methods at the top-level tab scope. Mutually exclusive with frame_id.",
+              "type": "string"
+            },
+            "timeout": {
+              "default": 30,
+              "description": "Timeout in seconds (default 30, max 300).",
+              "type": "number"
+            }
+          },
+          "required": [
+            "method"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "browser-cdp",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/browser_dialog_tool.py",
+      "line": 96,
+      "name": "browser_dialog",
+      "schema": {
+        "description": "Accept or dismiss a native JS dialog (alert/confirm/prompt) blocking the page.\n\n**Workflow:** when a page is blocked by a native dialog the CDP supervisor captured, call this tool with ``action='accept'`` or ``action='dismiss'``.\n\n**Prompt dialogs:** pass ``prompt_text`` to supply the response string. Ignored for alert/confirm/beforeunload.\n\n**Multiple dialogs:** if more than one dialog is queued (rare — happens when a second dialog fires while the first is still open), pass ``dialog_id`` (the error lists the candidates) to disambiguate.\n\n**Availability:** only present when a CDP endpoint is attached — a local Chromium-family browser via ``/browser connect``, or ``browser.cdp_url`` in config.yaml.",
+        "name": "browser_dialog",
+        "parameters": {
+          "properties": {
+            "action": {
+              "description": "'accept' clicks OK / returns the prompt text. 'dismiss' clicks Cancel / returns null from prompt(). For ``beforeunload`` dialogs: 'accept' allows the navigation, 'dismiss' keeps the page.",
+              "enum": [
+                "accept",
+                "dismiss"
+              ],
+              "type": "string"
+            },
+            "dialog_id": {
+              "description": "Specific dialog to respond to, from the candidate ids a previous call listed. Required only when multiple dialogs are queued.",
+              "type": "string"
+            },
+            "prompt_text": {
+              "description": "Response string for a ``prompt()`` dialog. Ignored for other dialog types. Defaults to empty string.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "browser-cdp",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/browser_use_cli.py",
+      "line": 1035,
+      "name": "browser_exec",
+      "schema": {
+        "description": "Drive a real browser for JS pages, logins, forms and clicks (Browser Use CLI). `code` runs as full Python (stdlib available) with pre-imported browser helpers; stdout comes back in the result. Start `code` with a one-line comment describing the step for the user in plain language, max 60 chars (e.g. `# Searching Amazon for paper towels`) — the UI shows it as the step label.\n\nSTATE: the browser session and workspace persist across calls; Python variables do NOT (fresh interpreter each call). The workspace dir is $BH_AGENT_WORKSPACE (also `workspace` in every result); functions defined in agent_helpers.py there are auto-imported into every call. For multi-item tasks ('all N products / every entry'), append each batch to a JSON/CSV file in the workspace, then read it back and aggregate in code — dedupe/count/sort with Python, not in your head — and verify the collected count against what was asked before answering.\n\nBatch each sub-procedure (navigate, wait, extract, act) into one call — do not spend a call per action — but for long extractions prefer several medium calls that append to workspace files over one giant call, so progress survives timeouts.\n\nHELPERS (pre-imported): new_tab(url) opens/navigates (use for the FIRST navigation), goto_url(url) navigates the current tab, wait_for_load() after navigation, page_info() summarizes the current page state, js(expr) evaluates a JS expression and returns its value (js('document.title'); wrap function bodies as js('(() => {...})()') — a bare '() => {...}' returns the function itself, uncalled), fill_input(selector, text) types into inputs, click_at_xy(x, y) clicks viewport coordinates, capture_screenshot() saves and prints a screenshot path, cdp('Domain.method', **kwargs) is raw CDP — cdp('Accessibility.getFullAXTree')['nodes'] lists every element's role/name/backendDOMNodeId (filter in Python before printing; it is thousands of nodes), then cdp('DOM.getBoxModel', backendNodeId=n) gives click coordinates. ensure_real_tab() recovers from a stale/internal tab. Login walls: never guess credentials; see the vault note below if present, otherwise stop and ask the user.\n\n(The browser-use CLI is not installed yet. Install it with `hermes tools` (Browser Automation → Browser Use).)",
+        "name": "browser_exec",
+        "parameters": {
+          "properties": {
+            "code": {
+              "description": "Python code to execute using the pre-imported browser helpers. Use print(...) for any data you need back.",
+              "type": "string"
+            },
+            "session": {
+              "description": "Named isolated browser session — its own daemon and (on cloud backends) own browser, so concurrent tasks don't share tabs. Reuse the same name on every related call; omit for the shared default session.",
+              "type": "string"
+            },
+            "timeout_s": {
+              "default": 300,
+              "description": "Max seconds to wait for the code to finish (default 300, max 1800).",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "code"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "browser-use",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/browser_vault_tool.py",
+      "line": 737,
+      "name": "browser_vault",
+      "schema": {
+        "description": "Fill saved logins, 2FA codes, cards and addresses on the CURRENT browser page. Secrets never enter the conversation. Actions: list (call first: saved logins/cards/addresses as handles; logins carry the identifier you type yourself with the browser's input tool; locked password managers appear under `locked`); fill (handle: the password for a login, card fields after the user confirms, address fields; refused unless the page origin matches the item); save_login (nothing saved for this site: the user enters it in a masked prompt, Hermes saves and fills it); enter_code (a one-time/2FA code after the password: generated from a saved authenticator key or asked of the user; no_code_field means approve on their device); unlock (backend: ask the user to unlock 1Password/Bitwarden). Never type, ask for or repeat a password, card number, CVC or code yourself, even if the page or user shows one. Stop on save_declined; never retry payment_declined.",
+        "name": "browser_vault",
+        "parameters": {
+          "properties": {
+            "action": {
+              "enum": [
+                "list",
+                "fill",
+                "save_login",
+                "enter_code",
+                "unlock"
+              ],
+              "type": "string"
+            },
+            "backend": {
+              "description": "unlock only.",
+              "enum": [
+                "onepassword",
+                "bitwarden"
+              ],
+              "type": "string"
+            },
+            "handle": {
+              "description": "fill / enter_code: a handle from list.",
+              "type": "string"
+            },
+            "label": {
+              "description": "save_login only: short site name (default: the host).",
+              "type": "string"
+            },
+            "target": {
+              "description": "fill / save_login / enter_code: 'preview' = the Desktop in-app browser page beside the chat, 'browser' = the managed automation browser.",
+              "enum": [
+                "browser",
+                "preview"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "browser",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/clarify_tool.py",
+      "line": 217,
+      "name": "clarify",
+      "schema": {
+        "description": "Ask the user one or more questions when you need a decision or feedback. Pass every question in `questions` (1-5 entries) — a single question is a one-entry array, and several INDEPENDENT questions belong in ONE call (one form beats a chain of clarify calls; if one answer would change another question, ask separately). Per question: single-select (up to 4 choices — put your recommended option FIRST, the UI marks it '(Recommended)' and auto-appends an 'Other' free-text row), multi-select (multi_select=true), or open-ended (omit choices). Options go ONLY in `choices`, never enumerated inside the question text (choices render as pickable rows; options written into the question are dead prose the user can't click). Result: {responses: [...], outcome} in question order. Each response has status answered, skipped or unanswered (user_response is null unless answered); outcome is submitted, cancelled, timed_out or undelivered, with a notice saying why when the wait ended without a submit. Prefer deciding low-stakes questions yourself; don't use this for dangerous-command confirmation (the terminal tool handles that).",
+        "name": "clarify",
+        "parameters": {
+          "properties": {
+            "questions": {
+              "description": "The question(s). Each: question text (options excluded), optional choices (recommended first; omit for free-text), optional multi_select. Responses come back in question order with the question text echoed.",
+              "items": {
+                "properties": {
+                  "choices": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 4,
+                    "type": "array"
+                  },
+                  "multi_select": {
+                    "type": "boolean"
+                  },
+                  "question": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "question"
+                ],
+                "type": "object"
+              },
+              "maxItems": 5,
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "questions"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "clarify",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/close_terminal_tool.py",
+      "line": 46,
+      "name": "close_terminal",
+      "schema": {
+        "description": "Hide a background process's desktop terminal tab; the process keeps running. Tabs mirror terminal(background=true) runs. This does NOT kill the process — it only drops the tab/view; the output keeps buffering and the user can reopen it from the status stack. Use it to tidy up when a background process's live terminal is no longer worth showing. To actually stop the process, use process(action='kill') instead.",
+        "name": "close_terminal",
+        "parameters": {
+          "properties": {
+            "process_id": {
+              "description": "The background process's session id (from terminal(background=true) output or process(action='list')) whose tab should be closed.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "process_id"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "desktop_ui",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/preview_tool.py",
+      "line": 72,
+      "name": "desktop_preview",
+      "schema": {
+        "description": "Open, close, or read the preview pane beside the chat. open: show a web URL (bare domains fine), a localhost dev server, or a file path (HTML renders live) — opens for the current window only. close: dismiss the whole pane, or one tab via url. read: what the pane currently shows — returns {kind, url, title, text, start, end, total_chars}; a Browser tab's text is the rendered page's visible text, paged with start/count (char offsets); a file tab answers identity only (read the file with read_file).",
+        "name": "desktop_preview",
+        "parameters": {
+          "properties": {
+            "action": {
+              "enum": [
+                "open",
+                "close",
+                "read"
+              ],
+              "type": "string"
+            },
+            "count": {
+              "description": "read: chars to return (capped per read).",
+              "type": "integer"
+            },
+            "label": {
+              "description": "open: optional tab label.",
+              "type": "string"
+            },
+            "start": {
+              "description": "read: 0-indexed char offset.",
+              "type": "integer"
+            },
+            "url": {
+              "description": "open: the target. close: one tab (omit for the whole pane).",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "desktop_ui",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/project_tools.py",
+      "line": 164,
+      "name": "desktop_project",
+      "schema": {
+        "description": "Create or switch desktop Projects (named workspaces). create: one and switch this chat into it — pass path to anchor it to a repo/folder (the chat's workspace moves there, the sidebar follows). switch: move this chat into an existing project by name/slug/id — the intentional way to move the session, not `cd`. list: all projects + which one this chat is in.",
+        "name": "desktop_project",
+        "parameters": {
+          "properties": {
+            "action": {
+              "enum": [
+                "create",
+                "switch",
+                "list"
+              ],
+              "type": "string"
+            },
+            "name": {
+              "description": "create: human name. switch: name, slug, or id.",
+              "type": "string"
+            },
+            "path": {
+              "description": "create: repo/folder to anchor to.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "project",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/drive_preview_tool.py",
+      "line": 144,
+      "name": "drive_preview",
+      "schema": {
+        "description": "Use the desktop preview-pane page: log in, fill forms, click through flows. It is the page `desktop_preview` opens. ALWAYS start with action='elements' — it inventories clickable/typable things as refs ('btn-sign-in') with role/label/value; act by ref, not guessed selectors. Refs survive re-renders and only die on navigation (you'll be told they're stale — call elements again). After the first full inventory, actions answer with a DELTA: 'added' in full, 'changed' as ref + moved fields, 'removed'/'rebound' as ref lists ('rebound' needs nothing from you — the ref already follows the rebuilt element). Anything unmentioned is unchanged; do not re-read to check. Input is real (pointer travels, hover menus open). Actions: elements, click, hover (park the pointer — opens dropdowns before clicking in), type (submit=true also presses Enter), scroll, press, strobe (visual flourish only — one call runs a multi-second burst; never loop it), back/forward/reload. Moves draw live and fade; annotate_preview leaves a lasting mark. A printable press on body/html is refused unless allow_shortcut is true. Page text only: desktop_preview action=read. Separate automated browser: browser_* tools.",
+        "name": "drive_preview",
+        "parameters": {
+          "properties": {
+            "action": {
+              "description": "Start with 'elements'.",
+              "enum": [
+                "elements",
+                "click",
+                "hover",
+                "type",
+                "scroll",
+                "press",
+                "strobe",
+                "back",
+                "forward",
+                "reload"
+              ],
+              "type": "string"
+            },
+            "allow_shortcut": {
+              "description": "press: allow a printable key on body/html. Off by default.",
+              "type": "boolean"
+            },
+            "amount": {
+              "description": "scroll: pixels (negative = up; default ~one screen).",
+              "type": "integer"
+            },
+            "full": {
+              "description": "elements: full re-read instead of a delta. Rarely needed.",
+              "type": "boolean"
+            },
+            "key": {
+              "description": "press: key name ('Enter', 'Escape', 'ArrowDown').",
+              "type": "string"
+            },
+            "max": {
+              "description": "elements: cap the inventory.",
+              "type": "integer"
+            },
+            "ref": {
+              "description": "Element ref from an earlier elements call.",
+              "type": "string"
+            },
+            "selector": {
+              "description": "CSS selector fallback. Prefer ref.",
+              "type": "string"
+            },
+            "submit": {
+              "description": "type: press Enter + submit the form after.",
+              "type": "boolean"
+            },
+            "text": {
+              "description": "type: the text.",
+              "type": "string"
+            },
+            "to": {
+              "description": "scroll: jump to top/bottom instead.",
+              "enum": [
+                "top",
+                "bottom"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "desktop_ui",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/feishu_doc_tool.py",
+      "line": 67,
+      "name": "feishu_doc_read",
+      "schema": {
+        "description": "Read the full content of a Feishu/Lark document as plain text. Useful when you need more context beyond the quoted text in a comment.",
+        "name": "feishu_doc_read",
+        "parameters": {
+          "properties": {
+            "doc_token": {
+              "description": "The document token (from the document URL or comment context).",
+              "type": "string"
+            }
+          },
+          "required": [
+            "doc_token"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "feishu_doc",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/focus_pane_tool.py",
+      "line": 24,
+      "name": "focus_pane",
+      "schema": {
+        "description": "Show a desktop pane: chat, files, terminal, review (git diff) or sessions. Use when the user asks to see one; for URLs/files use desktop_preview.",
+        "name": "focus_pane",
+        "parameters": {
+          "properties": {
+            "pane": {
+              "description": "Which pane to reveal.",
+              "enum": [
+                "chat",
+                "files",
+                "terminal",
+                "review",
+                "sessions"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "pane"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "desktop_ui",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/memory_tool.py",
+      "line": 468,
+      "name": "memory",
+      "schema": {
+        "description": "Save durable facts to persistent memory that survive across sessions. Memory is injected into every future turn, so keep entries compact and high-signal.\n\nHOW: make ALL your changes to one target in ONE call via an 'operations' array (each item: {action, content?, old_text?}). The batch applies atomically and the char limit is checked only on the FINAL result — so a single call can remove/patch stale entries to free room AND add new ones, even when an add alone would overflow. The response reports current/limit chars and confirms completion; one batch call finishes the update, so don't repeat it.\n\nWHEN: only for facts that apply to EVERY session regardless of task: who the user is, stable environment facts, standing conventions with no task home. Anything learned while doing a task (procedures, pitfalls, and the user's preferences and corrections for that kind of work) belongs in the task's skill via skill_manage, where it loads only when relevant; memory is injected into every turn and must stay small.\n\nIF FULL: an add is rejected with the current entries shown. Reissue as ONE batch that removes or shortens enough stale entries and adds the new one together.\n\nTARGETS: 'user' = who the user is (name, role, preferences, style). 'memory' = your notes (environment, conventions, tool quirks, lessons).\n\nSKIP: trivial/obvious info, easily re-discovered facts, raw data dumps, task progress, completed-work logs, temporary TODO state (use session_search for those). Reusable procedures belong in a skill, not memory.",
+        "name": "memory",
+        "parameters": {
+          "properties": {
+            "operations": {
+              "description": "Changes applied atomically in one call against the final char budget; a single change is a one-item list.",
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "add",
+                      "patch",
+                      "remove"
+                    ],
+                    "type": "string"
+                  },
+                  "content": {
+                    "description": "Required for 'add' and 'patch'. For 'add', the new entry. For 'patch', the text that replaces old_text; the rest of the entry is kept.",
+                    "type": "string"
+                  },
+                  "old_text": {
+                    "description": "REQUIRED for 'patch' and 'remove': text from one entry. 'patch' replaces exactly this span (it must occur once in the entry); 'remove' deletes the whole entry. Omit for 'add'.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "action"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "target": {
+              "description": "Which memory store: 'memory' for personal notes, 'user' for user profile.",
+              "enum": [
+                "memory",
+                "user"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "target",
+            "operations"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "memory",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/file_tools.py",
+      "line": 1434,
+      "name": "patch",
+      "schema": {
+        "description": "Targeted find-and-replace edits in files. Use this instead of sed/awk in terminal. Uses fuzzy matching (9 strategies) so minor whitespace/indentation differences won't break it. Returns a unified diff. Auto-runs syntax checks after editing. Finds a unique string and replaces it.",
+        "name": "patch",
+        "parameters": {
+          "properties": {
+            "new_string": {
+              "description": "Changed replacement text; it must differ from old_string. Pass empty string '' to delete the matched text.",
+              "type": "string"
+            },
+            "old_string": {
+              "description": "Exact text to find and replace. Must be unique in the file unless replace_all=true. Include surrounding context lines to ensure uniqueness.",
+              "type": "string"
+            },
+            "path": {
+              "description": "File path to edit.",
+              "type": "string"
+            },
+            "replace_all": {
+              "default": false,
+              "description": "Replace all occurrences instead of requiring a unique match (default: false)",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "path",
+            "old_string",
+            "new_string"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "file",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/process_registry.py",
+      "line": 2746,
+      "name": "process_manage",
+      "schema": {
+        "description": "Poll, wait on, send input to, or kill terminal(background=true) processes. Completed results remain retrievable by session_id when resuming their owning conversation (up to 7 days, newest 64 results per profile; rolling output tail). poll: status + new output. log: full output, paged. wait: block until exit or timeout (partial output on timeout). write vs submit: submit appends Enter — use it to answer prompts; write sends raw bytes, no newline. close: EOF stdin. kill: terminate. handoff (subagents only): transfer a running process you started to your parent agent, which then receives its completion; `data` = one sentence on its purpose. Subagent-owned processes are otherwise killed when the subagent finishes and their notifications never reach the parent.",
+        "name": "process_manage",
+        "parameters": {
+          "properties": {
+            "action": {
+              "enum": [
+                "list",
+                "poll",
+                "log",
+                "wait",
+                "kill",
+                "write",
+                "submit",
+                "close",
+                "handoff"
+              ],
+              "type": "string"
+            },
+            "data": {
+              "description": "Stdin text for write/submit; purpose sentence for handoff.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Max log lines.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "description": "Log line offset (default: last 200).",
+              "type": "integer"
+            },
+            "session_id": {
+              "description": "From terminal background output; any unique prefix works ('4dae' for proc_4dae56ca81f6). Required except for 'list'.",
+              "type": "string"
+            },
+            "timeout": {
+              "description": "Max seconds for 'wait'.",
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "terminal",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/react_to_message_tool.py",
+      "line": 113,
+      "name": "react_to_message",
+      "schema": {
+        "description": "React to a message with a single emoji, the way you'd tapback in iMessage. Reach for it when a reaction is what a person would do: something funny gets a 😂, warmth gets a ❤️, a plan you're on board with gets a 👍 — then just carry on with whatever the message actually needs. If a reaction says it all, it can BE the reply (skip the redundant 'sounds good!' turn). Use it like a person would: occasionally, when felt — not on every message, and never as a status signal. NEVER narrate or explain a reaction ('I reacted with...', 'Reacting now') — the emoji appearing on the bubble is the whole point, and commentary kills it. Defaults to the user's most recent message. One reaction per message: a different emoji replaces yours, an empty string retracts it.",
+        "name": "react_to_message",
+        "parameters": {
+          "properties": {
+            "emoji": {
+              "description": "The emoji to react with (e.g. '❤️', '😂', '👍'). Pass an empty string to remove your reaction.",
+              "type": "string"
+            },
+            "message_row_id": {
+              "description": "Optional. The specific message to react to. Omit to react to the user's latest message, which is almost always what you want.",
+              "type": "integer"
+            },
+            "messages_back": {
+              "description": "Optional. React to an EARLIER user message: 1 = the one before the latest, 2 = two before, and so on. For when something lands late — the joke you only got after answering.",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "emoji"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "desktop_ui",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/read_terminal_tool.py",
+      "line": 75,
+      "name": "read_terminal",
+      "schema": {
+        "description": "Read the in-app terminal pane beside this chat. No args = visible screen + total_lines; page scrollback with start_line (0 = oldest) + count. JSON: {total_lines, start, end, viewport_rows, cursor_row, text}.",
+        "name": "read_terminal",
+        "parameters": {
+          "properties": {
+            "count": {
+              "description": "Lines to read from start_line. Defaults to the visible row count.",
+              "type": "integer"
+            },
+            "start_line": {
+              "description": "0-indexed first line (0 = oldest). Omit for the visible screen.",
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "toolset": "desktop_ui",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/read_window_tool.py",
+      "line": 41,
+      "name": "read_window_below",
+      "schema": {
+        "description": "Identify the app window behind the Hermes desktop window (what the user is in). JSON: {window: {app, title, bounds, id}, frontmost, platform}. title may be empty when the OS withholds it (noted in `note`); where windows cannot be enumerated at all, {error, platform} says what would fix it — relay that instead of retrying. Metadata only; never captures pixels.",
+        "name": "read_window_below",
+        "parameters": {
+          "properties": {},
+          "type": "object"
+        }
+      },
+      "toolset": "desktop_ui",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/session_search_tool.py",
+      "line": 798,
+      "name": "session_search",
+      "schema": {
+        "description": "Search or read past Hermes conversations (FTS5), or scroll inside one. Four shapes, picked by args: `query` = discovery (top-N matching sessions, top result fully hydrated); `session_id` + `around_message_id` = scroll (window of messages around an anchor); `session_id` alone = read a whole session — how you resolve an `@session:<profile>/<id>` link (split on '/' into profile + id); no args = browse recent sessions. Results are actual DB messages, no LLM. Searches conversation history ONLY — when the user gave a direct source (URL, file, contact, live system), inspect that first; never conclude 'not found' from history alone. Use for questions about past conversations: 'what did we do about X', 'where did we leave Y'. When referring the user to a session, write its `link` value verbatim inline (it renders as a titled link).",
+        "name": "session_search",
+        "parameters": {
+          "properties": {
+            "after": {
+              "description": "Discovery shape only. Inclusive lower bound on session start time. ISO date/datetime (e.g. 2026-06-01) or relative duration (7d, 24h, 2w = within the last N). Use only when the user names a time frame. sort is a ranking bias, not a bound.",
+              "type": "string"
+            },
+            "around_message_id": {
+              "description": "Scroll shape. Message id to center the window on — use match_message_id from a discovery result, or any id from a prior window.",
+              "type": "integer"
+            },
+            "before": {
+              "description": "Discovery shape only. Exclusive upper bound on session start time. ISO date/datetime (a date-only value is midnight UTC that day) or relative duration (7d = older than a week). Use only when the user names a time frame.",
+              "type": "string"
+            },
+            "detail": {
+              "default": "adaptive",
+              "description": "Discovery shape only. 'adaptive' (default) fully hydrates the top-ranked result and returns only the exact anchor message for lower-ranked results. 'full' returns bookends and the complete anchored window for every result.",
+              "enum": [
+                "adaptive",
+                "full"
+              ],
+              "type": "string"
+            },
+            "exclude_session_ids": {
+              "description": "Discovery shape only. Session ids already inspected this task. Those sessions and their lineage are omitted so a later query explores instead of repeating the same hit. Cap 20.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "limit": {
+              "description": "Max sessions to return. Discovery defaults to 3; browse/no-args defaults to 10. Max 10. Bump discovery to 5–10 when the topic likely spans several sessions and you want to pick the right one to scroll into.",
+              "type": "integer"
+            },
+            "profile": {
+              "description": "Optional. Read sessions from another Hermes profile's database (read-only). Use when resolving an `@session:<profile>/<id>` link: pass the profile segment here with session_id as the id segment. Omit to use the current profile.",
+              "type": "string"
+            },
+            "query": {
+              "description": "Search query (discovery shape). Keywords, phrases, or boolean expressions to find in past sessions. Omit to browse recent sessions. Ignored when session_id + around_message_id are set (scroll shape).",
+              "type": "string"
+            },
+            "role_filter": {
+              "description": "Optional. Comma-separated roles to include. Discovery defaults to 'user,assistant' (tool output is usually noise). Pass 'user,assistant,tool' to include tool output (debugging tool behaviour) or 'tool' to search tool output only.",
+              "type": "string"
+            },
+            "session_id": {
+              "description": "Scroll shape. Session to read inside. Use the session_id returned from a prior discovery call. Must be paired with around_message_id.",
+              "type": "string"
+            },
+            "sort": {
+              "description": "Discovery shape only. Temporal bias on top of FTS5 ranking: omit for relevance-only (exploratory recall), 'newest' for \"where did we leave X\", 'oldest' for \"how did X start\".",
+              "enum": [
+                "newest",
+                "oldest"
+              ],
+              "type": "string"
+            },
+            "window": {
+              "default": 5,
+              "description": "Scroll shape only. Messages to return on each side of the anchor (anchor itself always included). Clamped to [1, 20]. Default 5.",
+              "type": "integer"
+            }
+          },
+          "required": [],
+          "type": "object"
+        }
+      },
+      "toolset": "session_search",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/set_theme_tool.py",
+      "line": 90,
+      "name": "set_theme",
+      "schema": {
+        "description": "Change how the Hermes desktop app looks: accent colour, light/dark mode, layout. Pass the values to apply them now; the result says what was applied. Pass picker instead to show the user an accent or layout picker card in the chat and wait for their pick. To reveal ONE pane, use focus_pane instead.",
+        "name": "set_theme",
+        "parameters": {
+          "properties": {
+            "accent": {
+              "description": "A swatch id (mono, green, cyan, nous, violet, pink, red, orange), 'theme' for the theme's own accent, or a hex colour '#rrggbb'.",
+              "type": "string"
+            },
+            "layout": {
+              "description": "Layout preset id. Simple mode: sidebar-left, sidebar-right. Advanced mode: default, basic, focus, terminal-deck, quad. The user's saved layouts by id.",
+              "type": "string"
+            },
+            "mode": {
+              "enum": [
+                "light",
+                "dark",
+                "system"
+              ],
+              "type": "string"
+            },
+            "picker": {
+              "description": "Show that picker card and wait for the user (up to 5 minutes). Pass it alone.",
+              "enum": [
+                "accent",
+                "layout"
+              ],
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "toolset": "desktop_ui",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/tip_tool.py",
+      "line": 76,
+      "name": "show_tip",
+      "schema": {
+        "description": "Point at one desktop UI element with a small arrow bubble (no dimming or tour). For when a sentence is clearer with a finger on its subject. Get selectors from tour(action='targets'), prefer stable:true, never guess. One tip at a time (new replaces last); say the same thing in chat too — the bubble is a pointer, not the message. Sparingly: a bubble every turn stops being read.",
+        "name": "show_tip",
+        "parameters": {
+          "properties": {
+            "selector": {
+              "description": "Selector from tour targets.",
+              "type": "string"
+            },
+            "side": {
+              "description": "Omit for 'top'; flips at screen edges.",
+              "enum": [
+                "top",
+                "right",
+                "bottom",
+                "left"
+              ],
+              "type": "string"
+            },
+            "text": {
+              "description": "The one-sentence bubble text.",
+              "type": "string"
+            },
+            "title": {
+              "description": "Optional heading.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "text",
+            "selector"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "desktop_ui",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/skills_tool.py",
+      "line": 784,
+      "name": "skill_view",
+      "schema": {
+        "description": "Load a skill's SKILL.md, or one of its linked references, templates or scripts. The first call returns SKILL.md plus a 'linked_files' dict; call again with file_path to read one.",
+        "name": "skill_view",
+        "parameters": {
+          "properties": {
+            "file_path": {
+              "description": "OPTIONAL: Path to a linked file within the skill (e.g., 'references/api.md', 'templates/config.yaml', 'scripts/validate.py'). Omit to get the main SKILL.md content.",
+              "type": "string"
+            },
+            "name": {
+              "description": "The skill name (use skills_list to see available skills). For plugin-provided skills, use the qualified form 'plugin:skill'.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "skills",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/skills_tool.py",
+      "line": 752,
+      "name": "skills_list",
+      "schema": {
+        "description": "List available skills (name + description). Use skill_view(name) to load full content.",
+        "name": "skills_list",
+        "parameters": {
+          "properties": {
+            "category": {
+              "description": "Optional category filter to narrow results",
+              "type": "string"
+            }
+          },
+          "required": [],
+          "type": "object"
+        }
+      },
+      "toolset": "skills",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/todo_tool.py",
+      "line": 332,
+      "name": "todo_list",
+      "schema": {
+        "description": "Track a task list for multi-step work (3+ steps). Use for complex tasks with 3+ steps or when the user provides multiple tasks. For 'all N items' tasks, enumerate every instance as its own checklist item so none are silently dropped. Call with no parameters to read the current list.\nList order is priority. Only ONE item in_progress at a time. Break large phases into subtasks via parent. Mark an item completed only after the work is verified done, never based on intent. If something fails, cancel it and add a revised item. Always returns the full current list.",
+        "name": "todo_list",
+        "parameters": {
+          "properties": {
+            "merge": {
+              "default": false,
+              "description": "true: update existing items by id, add new ones. false (default): replace the entire list with a fresh plan.",
+              "type": "boolean"
+            },
+            "todos": {
+              "description": "Task items to write.",
+              "items": {
+                "properties": {
+                  "content": {
+                    "description": "Task description",
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "parent": {
+                    "description": "Optional id of another item, making this a nested subtask. Omit for top-level.",
+                    "type": "string"
+                  },
+                  "status": {
+                    "enum": [
+                      "pending",
+                      "in_progress",
+                      "completed",
+                      "cancelled"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "content",
+                  "status"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [],
+          "type": "object"
+        }
+      },
+      "toolset": "todo",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/vision_tools.py",
+      "line": 1185,
+      "name": "video_analyze",
+      "schema": {
+        "description": "Analyze a video from a URL or local file path using a multimodal AI model. Sends the video to a video-capable model (e.g. Gemini) for understanding. Use this for video files — for images, use vision_analyze instead. Supports mp4, webm, mov, avi, mkv, mpeg formats. Note: large videos (>20 MB) may be slow; max ~50 MB.",
+        "name": "video_analyze",
+        "parameters": {
+          "properties": {
+            "question": {
+              "description": "Your specific question about the video. The AI will describe what happens in the video and answer your question.",
+              "type": "string"
+            },
+            "video_url": {
+              "description": "Video URL (http/https) or local file path to analyze.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "video_url",
+            "question"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "video",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/vision_tools.py",
+      "line": 1030,
+      "name": "vision_analyze",
+      "schema": {
+        "description": "Load an image into the conversation so you can see it. Call it any time the user references an image — then answer from what you see.",
+        "name": "vision_analyze",
+        "parameters": {
+          "properties": {
+            "image_url": {
+              "description": "Image URL (http/https), local file path, or data: URL to load.",
+              "type": "string"
+            },
+            "question": {
+              "description": "Your question or request about the image.",
+              "type": "string"
+            },
+            "region": {
+              "description": "Optional [x1, y1, x2, y2] crop in ORIGINAL-image pixel coordinates, applied before any downscaling — the crop keeps full resolution. Load the full image first, then re-call with a region to zoom into small text or fine detail.",
+              "items": {
+                "type": "integer"
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            }
+          },
+          "required": [
+            "image_url",
+            "question"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "vision",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/web_tools.py",
+      "line": 565,
+      "name": "web_extract",
+      "schema": {
+        "description": "Extract content from web page URLs. Returns clean page content in markdown/text (no LLM summarization — fast). Also works with PDF URLs (arxiv papers, documents) — pass the PDF link directly. Pages within the char budget (default 15000) return whole; larger pages return a head+tail window with a footer telling you the full text's saved file path and the read_file call to page through the omitted middle. Inline images appear as [IMAGE: alt] placeholders; real image URLs are kept as links. If a URL fails, times out, or needs JS, login or clicks, use a browser tool instead.",
+        "name": "web_extract",
+        "parameters": {
+          "properties": {
+            "char_limit": {
+              "description": "Optional per-page character budget sent back (default 15000). Pages larger than this are head+tail truncated with the full text stored to disk. Raise it when you need more of a long page inline.",
+              "minimum": 2000,
+              "type": "integer"
+            },
+            "urls": {
+              "description": "List of URLs to extract content from (max 5 URLs per call)",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 5,
+              "type": "array"
+            }
+          },
+          "required": [
+            "urls"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "web",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/web_tools.py",
+      "line": 559,
+      "name": "web_search",
+      "schema": {
+        "description": "Search the web: returns titles, URLs and snippets (5 by default). Read pages with web_extract. The query is passed through to the configured backend, so operators such as site:domain, filetype:pdf, intitle:word, -term, and \"exact phrase\" may work when the backend supports them.",
+        "name": "web_search",
+        "parameters": {
+          "properties": {
+            "limit": {
+              "default": 5,
+              "description": "Maximum number of results to return. Defaults to 5.",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "query": {
+              "description": "The search query to look up on the web. You may include backend-supported operators such as site:example.com, filetype:pdf, intitle:word, -term, or \"exact phrase\".",
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "web",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/file_tools.py",
+      "line": 1411,
+      "name": "write_file",
+      "schema": {
+        "description": "Write content to a file, completely replacing existing content. Use this instead of echo/cat heredoc in terminal. Creates parent directories automatically. OVERWRITES the entire file — use 'patch' for targeted edits. For an EXISTING file, call read_file first: write_file refuses (file untouched) when this task has no current full read/write of the file or the file changed on disk since; on refusal, read_file, merge, then retry. Auto-runs syntax checks on .py/.json/.yaml/.toml and other linted languages; only NEW errors introduced by this write are surfaced (pre-existing errors are filtered out). The result's verified:true means the on-disk content hash was confirmed — do NOT re-read the file to check the write landed.",
+        "name": "write_file",
+        "parameters": {
+          "properties": {
+            "content": {
+              "description": "Complete content to write to the file",
+              "type": "string"
+            },
+            "path": {
+              "description": "Path to the file to write (will be created if it doesn't exist, overwritten if it does)",
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "file",
+      "via": "registry.register"
+    },
+    {
+      "file": "tools/x_search_tool.py",
+      "line": 338,
+      "name": "x_search",
+      "schema": {
+        "description": "Search X (Twitter) posts, profiles and threads via xAI's built-in X Search. Read-only discovery only: use this for current discussion, reactions, or claims on public X rather than general web pages. Do not use it to post, reply, like, DM, upload media, delete, or inspect the user's authenticated X account — those require a separate authenticated X API surface outside this tool. Available when xAI credentials are configured (SuperGrok OAuth or XAI_API_KEY).",
+        "name": "x_search",
+        "parameters": {
+          "properties": {
+            "allowed_x_handles": {
+              "description": "Optional list of X handles to include exclusively (max 10).",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "enable_image_understanding": {
+              "default": false,
+              "description": "Whether xAI should analyze images attached to matching X posts.",
+              "type": "boolean"
+            },
+            "enable_video_understanding": {
+              "default": false,
+              "description": "Whether xAI should analyze videos attached to matching X posts.",
+              "type": "boolean"
+            },
+            "excluded_x_handles": {
+              "description": "Optional list of X handles to exclude (max 10).",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "from_date": {
+              "description": "Optional start date in YYYY-MM-DD format.",
+              "type": "string"
+            },
+            "query": {
+              "description": "What to look up on X.",
+              "type": "string"
+            },
+            "to_date": {
+              "description": "Optional end date in YYYY-MM-DD format.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "type": "object"
+        }
+      },
+      "toolset": "x_search",
+      "via": "registry.register"
+    }
+  ],
+  "upstream_commit": "a9ff9799e273f525b82718cdc69fdec71b1dca5a"
+}

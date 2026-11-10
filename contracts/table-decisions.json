@@ -1,0 +1,138 @@
+{
+  "comment": "One decision per state.db table, from porting guide rev 5.1 section 2.4 and the owners in section 6.4. decision is preserve, replace or not_supported. owner is session, profile, gateway or executor. inGuide is false for tables the guide does not name; those decisions are provisional and need review.",
+  "guideSection": "2.4",
+  "tables": {
+    "async_delegations": {
+      "decision": "preserve",
+      "owner": "session",
+      "inGuide": true,
+      "note": "Delegation state with delivery state and attempts. It is an outbox for delegation results."
+    },
+    "compression_locks": {
+      "decision": "replace",
+      "owner": "session",
+      "inGuide": true,
+      "note": "Time-based lease between processes. Replaced by single-writer actor ownership plus Host.epoch(); written as expired on export."
+    },
+    "conversation_generations": {
+      "decision": "preserve",
+      "owner": "profile",
+      "inGuide": true,
+      "note": "Monotonic generation per chat peer. Never garbage-collected: a reset would reissue a retired affinity scope."
+    },
+    "delivery_obligations": {
+      "decision": "preserve",
+      "owner": "session",
+      "inGuide": true,
+      "note": "Owed replies (gateway outbox). Created lazily upstream by gateway/delivery_ledger.py. The port keeps it as the reply outbox in the session actor."
+    },
+    "gateway_heartbeats": {
+      "decision": "not_supported",
+      "owner": "gateway",
+      "inGuide": true,
+      "note": "Process liveness for the orphan sweep. Stays with each gateway host process; the actor has no such process."
+    },
+    "gateway_hygiene_state": {
+      "decision": "preserve",
+      "owner": "gateway",
+      "inGuide": true,
+      "note": "Gateway failure streaks, kept with the gateway router."
+    },
+    "gateway_routing": {
+      "decision": "preserve",
+      "owner": "gateway",
+      "inGuide": true,
+      "note": "Gateway routing entries, kept with the gateway router."
+    },
+    "messages": {
+      "decision": "preserve",
+      "owner": "session",
+      "inGuide": true,
+      "note": "Conversation rows. Keep every column, active=0 on compacted rows, and never split a tool call from its result."
+    },
+    "messages_fts": {
+      "decision": "replace",
+      "owner": "profile",
+      "inGuide": true,
+      "note": "FTS5 word index. Use platform FTS5 where it exists, else a side index. Regenerated, as upstream regenerates it on recovery."
+    },
+    "messages_fts_trigram": {
+      "decision": "replace",
+      "owner": "profile",
+      "inGuide": true,
+      "note": "FTS5 trigram index for CJK substring search. Same rule as messages_fts."
+    },
+    "runtime_epoch": {
+      "decision": "replace",
+      "owner": "session",
+      "inGuide": true,
+      "note": "Owner epoch of the session authority. Replaced by the actor's own owner epoch (Host.epoch()); the epoch is exported on the way back."
+    },
+    "schema_version": {
+      "decision": "preserve",
+      "owner": "profile",
+      "inGuide": true,
+      "note": "Migration state."
+    },
+    "session_admissions": {
+      "decision": "preserve",
+      "owner": "session",
+      "inGuide": true,
+      "note": "Durable input queue, unique by (principal_id, target_session_id, request_id). Status set queued, started, unknown, terminal. This is the inbox; the port does not invent a second one."
+    },
+    "session_model_usage": {
+      "decision": "preserve",
+      "owner": "session",
+      "inGuide": true,
+      "note": "Token and cost attribution."
+    },
+    "session_turn_leases": {
+      "decision": "replace",
+      "owner": "session",
+      "inGuide": true,
+      "note": "Time-based lease between processes. Replaced by single-writer actor ownership plus Host.epoch(); written as expired on export."
+    },
+    "sessions": {
+      "decision": "preserve",
+      "owner": "session",
+      "inGuide": true,
+      "note": "Conversation rows. Keep every column. The profile actor keeps the list of sessions as a derived index."
+    },
+    "state_meta": {
+      "decision": "preserve",
+      "owner": "profile",
+      "inGuide": true,
+      "note": "Key-value metadata, including FTS layout markers."
+    },
+    "system_prompts": {
+      "decision": "preserve",
+      "owner": "session",
+      "inGuide": true,
+      "note": "Deduplicated system prompts keyed by hash. Kept in the session actor with sessions and messages."
+    },
+    "telegram_dm_topic_bindings": {
+      "decision": "not_supported",
+      "owner": "gateway",
+      "inGuide": false,
+      "note": "PROVISIONAL, not in guide 2.4. Created only when a user opts in with /topic. Telegram adapters stay in the Python gateway host, so the tables stay there. Review before milestone 1."
+    },
+    "telegram_dm_topic_mode": {
+      "decision": "not_supported",
+      "owner": "gateway",
+      "inGuide": false,
+      "note": "PROVISIONAL, not in guide 2.4. Same reasoning as telegram_dm_topic_bindings."
+    },
+    "worker_executions": {
+      "decision": "preserve",
+      "owner": "session",
+      "inGuide": true,
+      "note": "Managed cron, child, compute and kanban runs. Statuses registered, running, unknown, terminal. Milestone 1 decides whether tool operations reuse this table or get a sibling in the executor."
+    },
+    "worker_receipts": {
+      "decision": "preserve",
+      "owner": "session",
+      "inGuide": true,
+      "note": "Ordered, digest-checked results of worker runs, primary key (execution_id, sequence)."
+    }
+  }
+}
