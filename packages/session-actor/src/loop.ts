@@ -747,14 +747,16 @@ export class LoopDriver implements TurnDriver {
       const turn = sql.exec("SELECT interrupted FROM loop_turn WHERE turn_id = ?", ctx.turnId)[0];
       if (turn && num(turn.interrupted) === 1 && !plan.finish) throw new StepRaced();
       if (!turn) insertPortRow(sql, this.#set, "loop_turn", { turn_id: ctx.turnId, interrupted: 0, model_calls: 0 }, {});
-      ensureSession(sql, { id: snap.sessionId, source: "teenytiny", model: this.#cfg.model, systemPrompt: this.#cfg.systemPrompt, systemPromptHash: promptHash }, now);
+      // A compact call may have made a child since the snapshot. The step writes to the current session.
+      const sid = currentSessionId(sql, snap.sessionId);
+      ensureSession(sql, { id: sid, source: "teenytiny", model: this.#cfg.model, systemPrompt: this.#cfg.systemPrompt, systemPromptHash: promptHash }, now);
       for (const m of plan.messages) {
-        const id = insertMessage(sql, snap.sessionId, m, now);
+        const id = insertMessage(sql, sid, m, now);
         if (id !== undefined && m.content && this.#cfg.profileTarget) {
           outbox.enqueue(this.#cfg.profileTarget, "index", { seq: id, role: m.role, text: m.content });
         }
       }
-      if (t.usage) recordUsage(sql, snap.sessionId, this.#cfg.model, t.usage.usage, now);
+      if (t.usage) recordUsage(sql, sid, this.#cfg.model, t.usage.usage, now);
       if (plan.todoWrite) {
         sql.exec("DELETE FROM todo_item");
         plan.todoWrite.forEach((item, i) => insertPortRow(sql, this.#set, "todo_item", { id: item.id, position: i }, { ...item }));
@@ -809,7 +811,7 @@ export class LoopDriver implements TurnDriver {
       t.after?.(sql, now);
       if (plan.finish) {
         if (plan.finishReply) this.#reply(outbox, ctx.turnId, plan.finish.status === "done" ? plan.finish.text : `error: ${plan.finish.text}`);
-        this.#sessionUpsert(sql, outbox, snap.sessionId, plan.finish.status, now);
+        this.#sessionUpsert(sql, outbox, sid, plan.finish.status, now);
       }
     };
     await ctx.step({
@@ -1213,8 +1215,9 @@ export class LoopDriver implements TurnDriver {
       settle,
       write: (sql, outbox) => {
         if (!turnIsOpen(sql, ctx.turnId)) throw new StepRaced();
-        ensureSession(sql, { id: snap.sessionId, source: "teenytiny", model: this.#cfg.model, systemPrompt: this.#cfg.systemPrompt, systemPromptHash: promptHash }, now);
-        for (const m of messages) insertMessage(sql, snap.sessionId, m, now);
+        const sid = currentSessionId(sql, snap.sessionId);
+        ensureSession(sql, { id: sid, source: "teenytiny", model: this.#cfg.model, systemPrompt: this.#cfg.systemPrompt, systemPromptHash: promptHash }, now);
+        for (const m of messages) insertMessage(sql, sid, m, now);
         for (const { op, out } of o.recorded) {
           sql.exec("UPDATE pending_op SET status = ?, updated_at = ? WHERE op_id = ?", out.status, now, op.opId);
         }
@@ -1226,7 +1229,7 @@ export class LoopDriver implements TurnDriver {
             ? "Stopped."
             : `error: ${o.finish.text}`;
         this.#reply(outbox, ctx.turnId, text);
-        this.#sessionUpsert(sql, outbox, snap.sessionId, o.finish.status, now);
+        this.#sessionUpsert(sql, outbox, sid, o.finish.status, now);
       },
       finish: o.finish,
     });
