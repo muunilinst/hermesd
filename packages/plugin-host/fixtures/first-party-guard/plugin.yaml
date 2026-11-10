@@ -1,0 +1,8 @@
+# A first-party JS plugin. It runs in the actor.
+name: guard
+version: 1.0.0
+description: Blocks dangerous terminal commands and adds a safety note to each prompt.
+runtime: js
+provides_hooks: [pre_tool_call, pre_llm_call]
+pure_hooks: [pre_tool_call, pre_llm_call]
+capabilities: []

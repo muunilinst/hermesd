@@ -1,0 +1,12 @@
+# A portable plugin: a manifest, skills and an HTTP MCP server. No code.
+name: portable-notes
+version: 0.3.0
+description: >
+  Note taking skills and a remote notes server.
+provides_tools: []
+provides_hooks: []
+capabilities: [network]
+mcp_servers:
+  - name: notes
+    transport: http
+    url: "https://mcp.example.test/notes"
