@@ -36,6 +36,7 @@ mechanism and each fault test (D1 to D17).
 | `packages/host` | the `Host` interface (guide 4.6). agent code imports only this, never a platform SDK |
 | `packages/host-node` | in-memory platform simulator with Durable Objects and Rivet rule sets, crash and timer fault hooks |
 | `packages/host-cloudflare` | the Durable Objects adapter (also the TeenyTiny v2 adapter); tests run on local workerd |
+| `packages/host-rivet` | the Rivet Actors adapter on the 3.0 APIs; tests run on real rivetkit |
 | `packages/runtime` | adapter-independent rules: wake obligations, outbox, `session_admissions` inbox, sweeper |
 | `packages/executor-protocol` | the executor contract (guide 3.4), `deriveOpId`, and the guest launch reconciliation table |
 | `packages/executor-model` | in-memory reference executor cell, simulated VM lifecycle and guest |
