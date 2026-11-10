@@ -135,11 +135,38 @@ test("pre_tool_call: the first block wins, in directory order", async () => {
   assert.deepEqual(await reg.preToolCall({ tool_name: "x" }), { action: "block", message: "first", plugin: "p1" });
 });
 
-test("pre_tool_call: approve, unknown actions and crashes do not block", async () => {
+test("pre_tool_call: approve, unknown actions and a block with no message do not block", async () => {
   const reg = new HookRegistry();
   reg.register({ plugin: "a", dir: "a", hook: "pre_tool_call", run: () => ({ action: "approve" }) });
   reg.register({ plugin: "b", dir: "b", hook: "pre_tool_call", run: () => ({ action: "something_new" }) });
-  reg.register({ plugin: "c", dir: "c", hook: "pre_tool_call", run: () => { throw new Error("x"); } });
-  reg.register({ plugin: "d", dir: "d", hook: "pre_tool_call", run: () => undefined });
+  reg.register({ plugin: "c", dir: "c", hook: "pre_tool_call", run: () => ({ action: "block" }) });
+  reg.register({ plugin: "d", dir: "d", hook: "pre_tool_call", run: () => ({ action: "block", message: "" }) });
+  reg.register({ plugin: "e", dir: "e", hook: "pre_tool_call", run: () => undefined });
   assert.deepEqual(await reg.preToolCall({}), { action: "approve" });
+});
+
+test("pre_tool_call fails closed: a crash and a timeout block the tool (upstream rule)", async () => {
+  const crash = new HookRegistry();
+  function guard(): never {
+    const e = new Error("x".repeat(300));
+    e.name = "RuntimeError";
+    throw e;
+  }
+  crash.register({ plugin: "c", dir: "c", hook: "pre_tool_call", run: guard });
+  const d = await crash.preToolCall({});
+  assert.equal(d.action, "block");
+  assert.equal(d.action === "block" && d.message, `pre_tool_call plugin callback guard raised RuntimeError: ${"x".repeat(200)}`);
+
+  const clock = new VirtualClock();
+  const slow = new HookRegistry({ timers: clock, timeoutMs: 10 });
+  slow.register({ plugin: "s", dir: "s", hook: "pre_tool_call", run: () => new Promise(() => {}) });
+  const p = slow.preToolCall({});
+  await tick();
+  clock.advance(10);
+  assert.deepEqual(await p, { action: "block", message: "pre_tool_call plugin callback timed out or is still running", plugin: "s" });
+
+  // Other hooks stay fail-open.
+  const open = new HookRegistry();
+  open.register({ plugin: "o", dir: "o", hook: "post_tool_call", run: guard });
+  assert.deepEqual(await open.invoke("post_tool_call", {}), []);
 });

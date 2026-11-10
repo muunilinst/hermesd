@@ -6,6 +6,9 @@
  *   fixed list, because upstream adds new ones freely.
  * - A callback that throws, or runs past the time budget (30 s by default), is
  *   logged and skipped. The other callbacks still run.
+ * - The one exception is `pre_tool_call`, a policy hook. Upstream fails it
+ *   closed: a callback that throws or times out gives a block directive, so the
+ *   tool does not run (hermes_cli/plugins_dispatch.py: `_run_hook_callbacks`).
  * - Callbacks run one after the other, in alphabetical order by plugin
  *   directory. That order is what makes the pre_llm_call join stable.
  */
@@ -94,6 +97,24 @@ export interface HookRegistration {
   dir: string;
   hook: string;
   run: HookCallback;
+  /** The callback name for error text (Python `__name__`). Default: the name of `run`. */
+  name?: string;
+}
+
+/** Hooks that fail closed (upstream `_HOOK_TIMEOUT_FAIL_CLOSED_HOOKS`). */
+const FAIL_CLOSED_HOOKS: ReadonlySet<string> = new Set(["pre_tool_call"]);
+
+/** Upstream `_PRE_TOOL_CALL_TIMEOUT_BLOCK_MESSAGE`. */
+export const PRE_TOOL_CALL_TIMEOUT_MESSAGE = "pre_tool_call plugin callback timed out or is still running";
+
+type RunResult = { ok: true; value: unknown } | { ok: false; block: string };
+
+/** Upstream `_policy_error_block_directive`: names the callback and the error, cut to 200 characters. */
+function errorBlockMessage(hook: string, reg: HookRegistration, err: unknown): string {
+  const cb = reg.name ?? (reg.run.name || "<lambda>");
+  const type = err instanceof Error ? err.name : "Error";
+  const text = err instanceof Error ? err.message : String(err);
+  return `${hook} plugin callback ${cb} raised ${type}: ${text.slice(0, 200)}`;
 }
 
 export interface HookRegistryOptions {
@@ -134,15 +155,16 @@ export class HookRegistry implements HookDispatcher {
     for (const reg of regs) {
       const res = await this.#runOne(reg, kwargs);
       if (res.ok) out.push({ plugin: reg.plugin, dir: reg.dir, hook, value: res.value });
+      else if (FAIL_CLOSED_HOOKS.has(hook)) out.push({ plugin: reg.plugin, dir: reg.dir, hook, value: { action: "block", message: res.block } });
     }
     return out;
   }
 
-  async #runOne(reg: HookRegistration, kwargs: HookKwargs): Promise<{ ok: true; value: unknown } | { ok: false }> {
+  async #runOne(reg: HookRegistration, kwargs: HookKwargs): Promise<RunResult> {
     const ac = new AbortController();
     return new Promise((resolve) => {
       let done = false;
-      const finish = (r: { ok: true; value: unknown } | { ok: false }) => {
+      const finish = (r: RunResult) => {
         if (done) return;
         done = true;
         cancel();
@@ -153,7 +175,7 @@ export class HookRegistry implements HookDispatcher {
         // A synchronous loop cannot be stopped here (see NOTES.md).
         ac.abort();
         this.#log({ kind: "timeout", plugin: reg.plugin, hook: reg.hook, message: `no result after ${this.timeoutMs} ms` });
-        finish({ ok: false });
+        finish({ ok: false, block: PRE_TOOL_CALL_TIMEOUT_MESSAGE });
       });
       Promise.resolve()
         // Each callback gets its own shallow copy, so one cannot change the next one's view.
@@ -162,7 +184,7 @@ export class HookRegistry implements HookDispatcher {
           (value) => finish({ ok: true, value }),
           (err: unknown) => {
             if (!done) this.#log({ kind: "error", plugin: reg.plugin, hook: reg.hook, message: String(err) });
-            finish({ ok: false });
+            finish({ ok: false, block: errorBlockMessage(reg.hook, reg, err) });
           },
         );
     });
@@ -185,8 +207,10 @@ export class HookRegistry implements HookDispatcher {
     for (const e of await this.invoke("pre_tool_call", kwargs)) {
       const v = e.value;
       if (v && typeof v === "object" && (v as { action?: unknown }).action === "block") {
+        // Upstream: a block directive needs a message, because the message is the tool result.
+        // A block with no message (or an empty one) is ignored.
         const m = (v as { message?: unknown }).message;
-        return { action: "block", message: typeof m === "string" ? m : "blocked by plugin", plugin: e.plugin };
+        if (typeof m === "string" && m !== "") return { action: "block", message: m, plugin: e.plugin };
       }
     }
     return { action: "approve" };
