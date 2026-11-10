@@ -33,26 +33,36 @@ demonstrates a mechanism.
 
 | Test | Phase | model | node | guest-process | durable-objects | teenytiny-1node | teenytiny-2node | rivet |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| D1 | 1 | - | - | - | - | - | - | - |
-| D2 | 0 | pass | - | - | - | - | - | - |
+| D1 | 1 | - | pass | - | - | - | - | - |
+| D2 | 0 | pass | pass (actor side) | - | - | - | - | - |
 | D3 | 1 | - | pass | - | - | - | - | - |
 | D4 | 0 | pass | - | - | - | - | - | - |
-| D5 | 0 | pass | - | - | - | - | - | - |
+| D5 | 0 | pass | pass (actor side) | - | - | - | - | - |
 | D6 | 1 | - | pass (store side) | - | - | - | - | - |
-| D7 | 1 | - | - | - | - | - | - | - |
+| D7 | 1 | - | pass | - | - | - | - | - |
 | D8 | 1 | - | pass | - | - | - | - | - |
 | D9 | 1 | - | pass | - | - | - | - | - |
-| D10 | 0 | pass | - | - | - | - | - | - |
+| D10 | 0 | pass | pass (actor side) | - | - | - | - | - |
 | D11 | 0 | pass | - | - | - | - | - | - |
 | D12 | 1 | - | pass | - | - | - | - | - |
-| D13 | 0 | pass | - | - | - | - | - | - |
+| D13 | 0 | pass | pass (actor side) | - | - | - | - | - |
 | D14 | 0 | - | - | pass | - | - | - | - |
 | D15 | 0 | - | - | pass | - | - | - | - |
 | D16 | 0 | pass (cell side) | - | pass | - | - | - | - |
-| D17 | 0 | pass | - | - | - | - | - | - |
+| D17 | 0 | pass | pass (actor side) | - | - | - | - | - |
 
 Phase 0 runs against the executor with upstream Hermes as the agent, so the
 actor hosts do not apply to its tests until phase 3 reruns them.
+
+## Other tests from guide 7.4
+
+| Test | node |
+| --- | --- |
+| Cancellation at each point of a turn | pass |
+| Clarify wait survives a restart under new code with old rows | pass |
+| Inbox crash between receive and admission write | pass |
+| Two parallel Rivet actions do not both append | pass |
+| Immediate code update during a 60 s model call (Durable Objects) | needs a deployed Worker |
 
 ## Open questions (guide section 10.3)
 
