@@ -16,7 +16,11 @@ import { readPortRows, type MigrationSet } from "./migrate.ts";
  * any number of times.
  *
  * Rule kept: a tool call and its result are never split. The cut falls before
- * an assistant message whose tool results are not all there.
+ * an assistant message whose tool results are not all there. The rows after
+ * the cut (the unresolved tail) are copied into the child, in order, after the
+ * summary, in the same commit as the child. Upstream also keeps a protected
+ * tail. A result that arrives later is written to the child, next to its call.
+ * Commit 2 turns every parent row inactive, so no row is active in both sessions.
  */
 
 export interface CompactionDeps {
@@ -58,7 +62,16 @@ export async function compactSession(d: CompactionDeps, summary: string): Promis
     const childId = `${parent}~c${n}`;
     ensureSession(sql, { id: childId, source: d.source, model: d.model, systemPrompt: d.systemPrompt, systemPromptHash: d.systemPromptHash, parent }, now);
     const id = insertMessage(sql, childId, { role: "user", content: summary, messageUid: `${childId}:summary`, compressedSummary: true }, now);
-    insertPortRow(sql, d.migrations, "compaction_link", { child_id: childId, parent_id: parent, cutoff_message_id: cutoff, status: "started" }, { summary_message_id: id ?? null });
+    // The unresolved tail moves to the child with its tool_calls and tool_call_id fields.
+    const rows = loadActiveMessages(sql, parent);
+    const tail = rows.filter((r) => r.id! > cutoff);
+    for (const r of tail) {
+      const { id: _parentRowId, ...copy } = r;
+      insertMessage(sql, childId, copy, now);
+    }
+    // The tail is copied, so commit 2 retires every parent row up to the last one.
+    const lastId = rows[rows.length - 1]!.id!;
+    insertPortRow(sql, d.migrations, "compaction_link", { child_id: childId, parent_id: parent, cutoff_message_id: lastId, status: "started" }, { summary_message_id: id ?? null, replaced_up_to: cutoff, tail: tail.length });
     setCurrentSessionId(sql, childId);
     if (d.profileTarget) enqueueOutbox(sql, now, d.profileTarget, "session_upsert", { sessionId: childId, parent, status: "compacted-child" });
     return childId;
