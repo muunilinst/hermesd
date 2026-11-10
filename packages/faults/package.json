@@ -9,6 +9,9 @@
   "dependencies": {
     "@hermesd/executor-model": "*",
     "@hermesd/executor-protocol": "*",
-    "@hermesd/guest-helper": "*"
+    "@hermesd/guest-helper": "*",
+    "@hermesd/host": "*",
+    "@hermesd/host-node": "*",
+    "@hermesd/runtime": "*"
   }
 }
