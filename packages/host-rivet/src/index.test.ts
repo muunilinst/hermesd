@@ -58,7 +58,7 @@ describe("RivetHost with a fake context", () => {
     await h.tx((s) => s.exec("INSERT INTO t VALUES (1)"));
     await assert.rejects(h.tx((s) => { s.exec("INSERT INTO t VALUES (2)"); throw new Error("x"); }));
     assert.deepEqual(await f.db.execute("SELECT n FROM t"), [{ n: 1 }]);
-    assert.deepEqual(await h.tx((s) => s.exec("SELECT n FROM t")), [{ n: 1 }]);
+    assert.deepEqual((await h.tx((s) => s.exec("SELECT n FROM t"))).map((r) => ({ ...r })), [{ n: 1 }]);
   });
 
   it("rejects an async tx callback", async () => {
