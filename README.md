@@ -42,6 +42,8 @@ mechanism and each fault test (D1 to D17).
 | `packages/executor-model` | in-memory reference executor cell, simulated VM lifecycle and guest |
 | `packages/guest-helper` | prototype guest helper: launch journal, `O_EXCL` claim shim, reconciliation |
 | `packages/session-actor` | the session actor: upstream tables at schema 32, pending rows, the async loop, scripted model, clarify/todo/terminal |
+| `packages/prompt` | the system prompt builder and context compressor, ported from upstream (50% and 85% thresholds) |
+| `packages/golden` | the 20 golden-transcript scripts, runner, comparator, and a scripted model server for recording upstream |
 | `packages/providers` | provider formats (chat_completions, anthropic_messages, codex_responses, bedrock_converse), 429 fallback, key rotation, error text, a scripted model per mode |
 | `packages/profile-actor` | the profile actor: config, cross-session search index, `conversation_generations`, session list |
 | `packages/state-port` | export and import between the actors and an upstream-shaped `state.db` (schema 32) |

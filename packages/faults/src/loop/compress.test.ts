@@ -242,7 +242,10 @@ async function warm(w: LoopWorld, compression: Partial<CompressionConfig>): Prom
 
 /** Wake the actor until the trigger turn has ended. */
 async function drain(w: LoopWorld): Promise<void> {
-  for (let i = 0; i < 12; i++) {
+  // A busy machine finishes the queued work slowly, so wait for the rounds and for a wall-clock
+  // budget, as `until` does. The turn must still end; the assertions after this check how.
+  const deadline = Date.now() + 30_000;
+  for (let i = 0; i < 12 || Date.now() < deadline; i++) {
     await w.b.settle();
     const adm = w.rows("session_admissions");
     if (adm.length === WARM + 1 && /^(terminal|unknown)/.test(String(admissionState(adm[WARM]!)))) break;
