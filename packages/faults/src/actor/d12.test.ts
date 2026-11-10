@@ -16,7 +16,7 @@ async function commitThenCrash(b: ActorBackend, w: World): Promise<void> {
   b.crashAt({ actor: "s1", point: "sidecar:before", detail: "actor:profile.index" });
   await b.call("s1", "append", { role: "user", text: "remember the needle in the haystack" }).catch(() => {});
   await b.settle();
-  assert.equal(w.rows("s1", "messages").length, 1, "the session commit is durable");
+  assert.equal(w.rows("s1", "rt_messages").length, 1, "the session commit is durable");
   assert.equal(w.rows("s1", "outbox").length, 1, "the outbox row is in the same commit");
   assert.deepEqual(await search(b, "needle"), [], "the index has not heard of it");
 }

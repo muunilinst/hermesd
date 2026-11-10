@@ -37,7 +37,7 @@ eachNode("D6 two owners of one session key", (use) => {
       const { old } = await b.splitBrain("s1");
       await assert.rejects(old.call("append", { role: "user", text: "zombie" }), (e: Error) => e.name === "StaleEpochError");
       await assert.rejects(old.call("wake", {}), (e: Error) => e.name === "StaleEpochError");
-      assert.deepEqual(w.rows("s1", "messages"), []);
+      assert.deepEqual(w.rows("s1", "rt_messages"), []);
     }),
   );
 

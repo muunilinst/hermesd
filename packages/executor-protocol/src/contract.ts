@@ -66,6 +66,11 @@ export function isTerminal(status: OpStatusName): boolean {
 }
 
 export interface PrepareRequest {
+  /**
+   * The session that owns the operation. The fence and the minimum epoch are
+   * per session, so the executor must know it when it records the operation.
+   */
+  session: string;
   opId: OpId;
   intentId: string;
   /** The incarnation that the session actor read with `describe` and stored. */

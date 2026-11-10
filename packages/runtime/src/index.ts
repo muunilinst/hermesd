@@ -15,6 +15,7 @@ export type {
   ReceiveResult,
   RuntimeConfig,
   SessionDeps,
+  StepSpec,
   TurnContext,
   TurnDriver,
 } from "./types.ts";

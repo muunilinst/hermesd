@@ -35,7 +35,7 @@ async function prepareOp(world: FaultWorld, ex: Executor, session: string, inten
   const opId = await world.opId(session, intentId);
   const { incarnation } = await ex.describe(world.workspace);
   const inputHash = `hash-${intentId}`;
-  const res = await ex.prepare({ opId, intentId, incarnation, inputHash, cmd: world.command(spec) });
+  const res = await ex.prepare({ session, opId, intentId, incarnation, inputHash, cmd: world.command(spec) });
   assert.deepEqual(res, { kind: "prepared" });
   return { opId, intentId, incarnation, inputHash };
 }
@@ -174,6 +174,7 @@ async function assertCopyRefused(world: FaultWorld, ex: Executor, ran: Op, notSt
   assert.deepEqual(await delayed.deliver(), { kind: "expired" });
   assert.deepEqual(await ex.start(ran.opId, 1), { kind: "expired" });
   const again = await ex.prepare({
+    session: "s1",
     opId: notStarted.opId,
     intentId: notStarted.intentId,
     incarnation: notStarted.incarnation,

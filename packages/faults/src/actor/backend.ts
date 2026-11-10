@@ -56,6 +56,8 @@ export interface ActorBackend {
   /** Platform cron: call `name` on the actor every `everyMs`. */
   cron(key: string, name: string, everyMs: number): void;
   call(key: string, method: string, params?: unknown): Promise<unknown>;
+  /** Register a named sidecar, such as "executor" or "gateway". Actors reach it with `Host.sidecar(name)`. */
+  registerSidecar(name: string, handler: (method: string, params: unknown, signal?: AbortSignal) => Promise<unknown>): void;
   /** Wait until no work is in flight. */
   settle(): Promise<void>;
 

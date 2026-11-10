@@ -9,6 +9,7 @@ import {
   type ReceiveResult,
   type RuntimeConfig,
   type SessionDeps,
+  type StepSpec,
   type TurnContext,
 } from "./types.ts";
 import { num, str } from "./util.ts";
@@ -62,7 +63,9 @@ export const SESSION_DDL: string[] = [
     epoch INTEGER NOT NULL
   )`,
   OUTBOX_DDL,
-  `CREATE TABLE IF NOT EXISTS messages (
+  // The simple transcript of the test driver. A real session actor keeps the
+  // upstream `messages` table instead, so the two never share a name.
+  `CREATE TABLE IF NOT EXISTS rt_messages (
     seq INTEGER PRIMARY KEY AUTOINCREMENT,
     turn_id TEXT,
     role TEXT NOT NULL,
@@ -101,6 +104,8 @@ export class SessionActor implements ActorBehavior {
   readonly #outbox: Outbox;
   /** Turns that a driver is running in this activation. Lost on a crash. */
   readonly #active = new Set<string>();
+  /** Turns that got a poke while their driver ran. They run once more when it ends. */
+  readonly #repoke = new Set<string>();
   #seq = 0;
   #draining = false;
   #again = false;
@@ -160,6 +165,15 @@ export class SessionActor implements ActorBehavior {
       }
       case "tail":
         return { tail: await this.#tail() };
+      case "poke": {
+        // An event for an open turn (a tool result, an answer, an interrupt). Drive it now.
+        const p = (params ?? {}) as { count?: boolean };
+        await this.#poke(p.count === true);
+        return { ok: true };
+      }
+      case "kick":
+        this.#kick();
+        return { ok: true };
       default:
         throw new Error(`session: unknown method ${method}`);
     }
@@ -207,7 +221,7 @@ export class SessionActor implements ActorBehavior {
   // ------------------------------------------------------------ the transcript
 
   async #tail(): Promise<number> {
-    return this.#host.tx((sql) => num(sql.exec("SELECT COALESCE(MAX(seq), 0) AS t FROM messages")[0]!.t));
+    return this.#host.tx((sql) => num(sql.exec("SELECT COALESCE(MAX(seq), 0) AS t FROM rt_messages")[0]!.t));
   }
 
   /**
@@ -219,10 +233,10 @@ export class SessionActor implements ActorBehavior {
     const now = this.#deps.clock.now();
     const profile = this.#cfg.profileTarget;
     const res = await this.#host.tx((sql): AppendResult => {
-      const tail = num(sql.exec("SELECT COALESCE(MAX(seq), 0) AS t FROM messages")[0]!.t);
+      const tail = num(sql.exec("SELECT COALESCE(MAX(seq), 0) AS t FROM rt_messages")[0]!.t);
       if (p.expectedTail !== undefined && p.expectedTail !== tail) return { ok: false, tail };
       const ins = sql.exec(
-        "INSERT INTO messages (turn_id, role, text, created_at) VALUES (?, ?, ?, ?) RETURNING seq",
+        "INSERT INTO rt_messages (turn_id, role, text, created_at) VALUES (?, ?, ?, ?) RETURNING seq",
         p.turnId ?? null,
         p.role,
         p.text,
@@ -490,12 +504,30 @@ export class SessionActor implements ActorBehavior {
       await this.#host.tx((sql) => sql.exec("UPDATE turns SET wakes = wakes + 1 WHERE id = ?", turnId)).catch(() => {});
     } finally {
       this.#active.delete(turnId);
+      if (this.#repoke.delete(turnId)) {
+        this.#background(() => this.#resumeTurn(turnId, { count: false, poke: true }));
+      }
     }
   }
 
+  /**
+   * Drive every open turn now, without waiting for an obligation. An event
+   * (a tool result, a user answer, an interrupt) uses this. By default it does
+   * not count as a retry of a pending row.
+   */
+  async #poke(count: boolean): Promise<void> {
+    const rows = await this.#host.tx((sql) => sql.exec("SELECT id FROM turns WHERE status = 'open' ORDER BY id"));
+    for (const r of rows) await this.#resumeTurn(str(r.id), { count, poke: true });
+  }
+
   /** A wake found due obligations of this turn. */
-  async #resumeTurn(turnId: string): Promise<void> {
-    if (this.#active.has(turnId)) return; // a driver is running here; the handler's re-arm covers the next wake
+  async #resumeTurn(turnId: string, opts: { count: boolean; poke?: boolean } = { count: true }): Promise<void> {
+    if (this.#active.has(turnId)) {
+      // A driver is running here; the handler's re-arm covers the next wake.
+      // A poke is an event the running driver may have missed: run once more when it ends.
+      if (opts.poke) this.#repoke.add(turnId);
+      return;
+    }
     const info = await this.#host.tx((sql) => {
       const t = sql.exec("SELECT status, steps, wakes FROM turns WHERE id = ?", turnId)[0];
       if (!t || str(t.status) !== "open") {
@@ -503,7 +535,7 @@ export class SessionActor implements ActorBehavior {
         sql.exec("UPDATE wake_obligations SET state = 'done' WHERE turn_id = ? AND state = 'open'", turnId);
         return null;
       }
-      sql.exec("UPDATE pending_rows SET attempts = attempts + 1 WHERE turn_id = ? AND status = 'pending'", turnId);
+      if (opts.count) sql.exec("UPDATE pending_rows SET attempts = attempts + 1 WHERE turn_id = ? AND status = 'pending'", turnId);
       const pend = sql.exec("SELECT id, turn_id, kind, payload, attempts FROM pending_rows WHERE turn_id = ? AND status = 'pending' ORDER BY created_at, id", turnId);
       return { steps: num(t.steps), failures: num(t.wakes), pend };
     });
@@ -525,31 +557,90 @@ export class SessionActor implements ActorBehavior {
     }
   }
 
+  /** The rows of "end a turn". It runs inside a transaction. Returns false if the turn was not open. */
+  #closeTurnRows(sql: Sql, turnId: string, outcome: "done" | "failed" | "unknown", text: string, now: number): boolean {
+    const r = sql.exec(
+      "UPDATE turns SET status = ?, ended_at = ?, error = ? WHERE id = ? AND status = 'open' RETURNING admission_id",
+      outcome,
+      now,
+      outcome === "done" ? null : text,
+      turnId,
+    );
+    if (r.length === 0) return false;
+    sql.exec("UPDATE session_admissions SET status = ?, result = ?, updated_at = ? WHERE id = ?", outcome, text, now, num(r[0]!.admission_id));
+    sql.exec("UPDATE pending_rows SET status = 'done' WHERE turn_id = ? AND status = 'pending'", turnId);
+    sql.exec("UPDATE wake_obligations SET state = 'done' WHERE turn_id = ? AND state = 'open'", turnId);
+    enqueueOutbox(sql, now, this.#cfg.sweeperTarget, "close", { turn: turnId });
+    return true;
+  }
+
+  #afterClose(outcome: "done" | "failed" | "unknown"): void {
+    this.#deliverInBackground();
+    if (outcome !== "unknown") this.#kick();
+  }
+
   /** End a turn once. The admission, the pending rows, the obligations and the sweeper record all end with it. */
   async #closeTurn(turnId: string, outcome: "done" | "failed" | "unknown", text: string): Promise<boolean> {
     const now = this.#deps.clock.now();
-    const target = this.#cfg.sweeperTarget;
-    const closed = await this.#host.tx((sql) => {
-      const r = sql.exec(
-        "UPDATE turns SET status = ?, ended_at = ?, error = ? WHERE id = ? AND status = 'open' RETURNING admission_id",
-        outcome,
-        now,
-        outcome === "done" ? null : text,
-        turnId,
-      );
-      if (r.length === 0) return false;
-      sql.exec("UPDATE session_admissions SET status = ?, result = ?, updated_at = ? WHERE id = ?", outcome, text, now, num(r[0]!.admission_id));
-      sql.exec("UPDATE pending_rows SET status = 'done' WHERE turn_id = ? AND status = 'pending'", turnId);
-      sql.exec("UPDATE wake_obligations SET state = 'done' WHERE turn_id = ? AND state = 'open'", turnId);
-      enqueueOutbox(sql, now, target, "close", { turn: turnId });
-      return true;
-    });
+    const closed = await this.#host.tx((sql) => this.#closeTurnRows(sql, turnId, outcome, text, now));
     await this.#host.commit();
-    if (closed) {
-      this.#deliverInBackground();
-      if (outcome !== "unknown") this.#kick();
-    }
+    if (closed) this.#afterClose(outcome);
     return closed;
+  }
+
+  /** See `TurnContext.step`. */
+  async #step(turnId: string, spec: StepSpec): Promise<PendingRow[]> {
+    const now = this.#deps.clock.now();
+    const pends = spec.pend ?? [];
+    if (pends.length > 0 && spec.finish) throw new Error("a step cannot both record pending rows and end the turn");
+    const rows: PendingRow[] = pends.map((p) => ({
+      id: `${turnId}:${this.#host.epoch()}:p${++this.#seq}`,
+      turnId,
+      kind: p.kind,
+      payload: p.payload,
+      attempts: 0,
+    }));
+    const body = (sql: Sql): boolean => {
+      for (const s of spec.settle ?? []) {
+        sql.exec("UPDATE pending_rows SET status = 'done', result = ? WHERE id = ? AND status = 'pending'", JSON.stringify(s.result ?? null), s.id);
+        sql.exec("UPDATE wake_obligations SET state = 'done' WHERE kind = 'pending' AND ref = ?", s.id);
+      }
+      spec.write?.(sql, outboxWriter(sql, now));
+      for (const r of rows) {
+        sql.exec(
+          "INSERT INTO pending_rows (id, turn_id, kind, payload, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)",
+          r.id,
+          turnId,
+          r.kind,
+          JSON.stringify(r.payload ?? null),
+          now,
+        );
+      }
+      if ((spec.settle?.length ?? 0) > 0 || rows.length > 0) sql.exec("UPDATE turns SET steps = steps + 1, wakes = 0 WHERE id = ?", turnId);
+      return spec.finish ? this.#closeTurnRows(sql, turnId, spec.finish.status, spec.finish.text, now) : false;
+    };
+    if (rows.length === 0) {
+      const closed = await this.#host.tx(body);
+      await this.#host.commit();
+      if (closed && spec.finish) this.#afterClose(spec.finish.status);
+      return rows;
+    }
+    const horizonRow = await this.#host.tx((sql) => sql.exec("SELECT horizon FROM turns WHERE id = ?", turnId)[0]);
+    if (horizonRow && num(horizonRow.horizon) - now <= this.#cfg.horizonMs / 2) await this.#extend(turnId);
+    await this.#commitWithObligation({ kind: "pending", ref: rows[0]!.id, turnId }, (sql, add) => {
+      body(sql);
+      const first = add();
+      // One obligation for each pending row. They share the due time, so one arm covers them.
+      for (const r of rows.slice(1)) {
+        sql.exec(
+          "INSERT INTO wake_obligations (id, kind, ref, turn_id, due_at, state, epoch) SELECT ?, 'pending', ?, turn_id, due_at, 'open', epoch FROM wake_obligations WHERE id = ?",
+          `${first}:${r.id}`,
+          r.id,
+          first,
+        );
+      }
+    });
+    return rows;
   }
 
   #makeContext(turnId: string, admissionId: number, input: string): TurnContext {
@@ -594,6 +685,7 @@ export class SessionActor implements ActorBehavior {
       },
       appendMessage: (role, text, opts) =>
         this.#append({ role, text, turnId, ...(opts?.expectedTail !== undefined ? { expectedTail: opts.expectedTail } : {}) }),
+      step: (spec) => this.#step(turnId, spec),
       finish: async (status, text) => {
         await this.#closeTurn(turnId, status, text);
       },

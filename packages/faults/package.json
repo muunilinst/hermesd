@@ -12,6 +12,8 @@
     "@hermesd/guest-helper": "*",
     "@hermesd/host": "*",
     "@hermesd/host-node": "*",
-    "@hermesd/runtime": "*"
+    "@hermesd/profile-actor": "*",
+    "@hermesd/runtime": "*",
+    "@hermesd/session-actor": "*"
   }
 }
