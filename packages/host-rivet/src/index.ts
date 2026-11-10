@@ -38,6 +38,9 @@
 import { DatabaseSync } from "node:sqlite";
 import type { Host, OwnerEpoch, RpcClient, Sql, SqlRow, SqlValue } from "@hermesd/host";
 
+/** The shadow tables that FTS5 (and FTS4) make for each virtual table. */
+const SHADOW_SUFFIXES = ["config", "content", "data", "docsize", "idx", "segdir", "segments", "stat"] as const;
+
 /** The part of the `c.db` client that the adapter uses. */
 export interface DbLike {
   execute(query: string, ...args: unknown[]): Promise<Record<string, unknown>[]>;
@@ -156,20 +159,61 @@ export class RivetHost implements Host {
     return host;
   }
 
-  /** Copy every table and index of `c.db` into the mirror. */
+  /**
+   * Copy every table and index of `c.db` into the mirror.
+   *
+   * Two SQLite details matter here:
+   * - A virtual table (FTS5, FTS4) makes its own shadow tables when it is
+   *   created. So the load creates the virtual table and does not replay the
+   *   shadow table definitions. It copies only the stored text (the
+   *   `<name>_content` rows, or the external content table, which is an
+   *   ordinary table) and then rebuilds the index with the `rebuild` command.
+   *   A contentless table (`content=''`) has no text to rebuild from, so the
+   *   load refuses it with a clear error instead of an empty index.
+   * - `sqlite_sequence` holds the AUTOINCREMENT high-water marks. The load
+   *   copies them, so the mirror never gives out an id that `c.db` already
+   *   used. Otherwise the replay of an insert gets a different id in `c.db`.
+   */
   async #load(): Promise<void> {
     const objects = await this.#c.db.execute(
       "SELECT type, name, sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' AND substr(name, 1, 6) <> '_rivet' " +
         "ORDER BY CASE type WHEN 'table' THEN 0 ELSE 1 END, name",
     );
-    for (const o of objects) this.#mirror.exec(String(o["sql"]));
-    for (const o of objects.filter((x) => x["type"] === "table")) {
+    const isVirtual = (o: Record<string, unknown>): boolean => /^\s*CREATE\s+VIRTUAL\s+TABLE/i.test(String(o["sql"]));
+    const virtualNames = objects.filter((o) => o["type"] === "table" && isVirtual(o)).map((o) => String(o["name"]));
+    const isShadow = (name: string): boolean =>
+      virtualNames.some((v) => name !== v && SHADOW_SUFFIXES.some((sfx) => name === `${v}_${sfx}`));
+    for (const o of objects) {
+      if (o["type"] === "table" && isShadow(String(o["name"]))) continue;
+      this.#mirror.exec(String(o["sql"]));
+    }
+    for (const o of objects.filter((x) => x["type"] === "table" && !isVirtual(x))) {
       const name = String(o["name"]);
+      // Of the shadow tables, only the stored text is copied. The rebuild below makes the rest.
+      if (isShadow(name) && !virtualNames.some((v) => name === `${v}_content`)) continue;
       for (const row of await this.#c.db.execute(`SELECT * FROM "${name}"`)) {
         const cols = Object.keys(row);
         this.#mirror
           .prepare(`INSERT INTO "${name}" (${cols.map((x) => `"${x}"`).join(",")}) VALUES (${cols.map(() => "?").join(",")})`)
           .run(...(Object.values(row) as SqlValue[]));
+      }
+    }
+    for (const o of objects.filter((x) => x["type"] === "table" && isVirtual(x))) {
+      const name = String(o["name"]);
+      // Only the full-text modules have shadow tables to rebuild. Other modules keep no rows here.
+      if (!/USING\s+fts[345]\b/i.test(String(o["sql"]))) continue;
+      if (/content\s*=\s*''/i.test(String(o["sql"]))) {
+        throw new Error(`RivetHost: the contentless virtual table "${name}" cannot be rebuilt on load`);
+      }
+      this.#mirror.exec(`INSERT INTO "${name}" ("${name}") VALUES ('rebuild')`);
+    }
+    const hasSequence = await this.#c.db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'sqlite_sequence'");
+    if (hasSequence.length > 0) {
+      for (const row of await this.#c.db.execute("SELECT name, seq FROM sqlite_sequence")) {
+        const name = row["name"] as SqlValue;
+        const seq = row["seq"] as SqlValue;
+        const updated = this.#mirror.prepare("UPDATE sqlite_sequence SET seq = max(seq, ?) WHERE name = ?").run(seq, name);
+        if (Number(updated.changes) === 0) this.#mirror.prepare("INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)").run(name, seq);
       }
     }
   }

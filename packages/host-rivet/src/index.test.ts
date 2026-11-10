@@ -61,6 +61,37 @@ describe("RivetHost with a fake context", () => {
     assert.deepEqual((await h.tx((s) => s.exec("SELECT n FROM t"))).map((r) => ({ ...r })), [{ n: 1 }]);
   });
 
+  it("keeps AUTOINCREMENT high-water marks across a reload", async () => {
+    const f = fakeActor();
+    const h = await RivetHost.activate(f.c);
+    await h.tx((s) => s.exec("CREATE TABLE q (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT)"));
+    await h.tx((s) => s.exec("INSERT INTO q (v) VALUES ('a')"));
+    await h.tx((s) => s.exec("DELETE FROM q"));
+    const again = await RivetHost.activate(f.c);
+    const id = await again.tx((s) => {
+      s.exec("INSERT INTO q (v) VALUES ('b')");
+      return Number(s.exec("SELECT last_insert_rowid() AS id")[0]?.["id"]);
+    });
+    assert.equal(id, 2, "the mirror does not reuse id 1");
+    assert.deepEqual(await f.db.execute("SELECT id, v FROM q"), [{ id: 2, v: "b" }], "mirror and durable ids agree");
+    await again.tx((s) => s.exec("DELETE FROM q WHERE id = ?", id));
+    assert.deepEqual(await f.db.execute("SELECT id FROM q"), [], "deleting the returned id deletes the durable row");
+  });
+
+  it("reloads an FTS5 index without replaying its shadow tables", async () => {
+    const f = fakeActor();
+    const h = await RivetHost.activate(f.c);
+    await h.tx((s) => s.exec("CREATE VIRTUAL TABLE search_fts USING fts5(body)"));
+    await h.tx((s) => s.exec("INSERT INTO search_fts (body) VALUES ('hello durable world')"));
+    const again = await RivetHost.activate(f.c);
+    const hits = await again.tx((s) => s.exec("SELECT body FROM search_fts WHERE search_fts MATCH 'durable'"));
+    assert.deepEqual(hits.map((r) => ({ ...r })), [{ body: "hello durable world" }]);
+    await again.tx((s) => s.exec("INSERT INTO search_fts (body) VALUES ('second row')"));
+    const third = await RivetHost.activate(f.c);
+    const all = await third.tx((s) => s.exec("SELECT body FROM search_fts WHERE search_fts MATCH 'row OR durable' ORDER BY rowid"));
+    assert.deepEqual(all.map((r) => r["body"]), ["hello durable world", "second row"]);
+  });
+
   it("rejects an async tx callback", async () => {
     const h = await RivetHost.activate(fakeActor().c);
     await assert.rejects(h.tx((async () => 1) as never), TypeError);
