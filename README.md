@@ -42,6 +42,7 @@ mechanism and each fault test (D1 to D17).
 | `packages/guest-helper` | prototype guest helper: launch journal, `O_EXCL` claim shim, reconciliation |
 | `packages/session-actor` | the session actor: upstream tables at schema 32, pending rows, the async loop, scripted model, clarify/todo/terminal |
 | `packages/profile-actor` | the profile actor: config, cross-session search index, `conversation_generations`, session list |
+| `packages/state-port` | export and import between the actors and an upstream-shaped `state.db` (schema 32) |
 | `packages/plugin-host` | manifest loader, hook dispatch with upstream semantics, per-call-site python/shadow/ts flags |
 | `packages/faults` | the D1 to D17 catalogue (guide 7.3) and backend-agnostic fault tests |
 | `packages/contracts` | weekly-diff guards over the upstream contract surfaces (guide 7.1) |
