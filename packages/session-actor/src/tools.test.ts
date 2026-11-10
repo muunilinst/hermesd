@@ -13,7 +13,7 @@ describe("tool schemas are data", () => {
 
   it("emits the literal upstream schema for clarify and todo, unchanged", () => {
     const defs = loadToolDefs();
-    for (const name of ["clarify", "todo_list"] as const) {
+    for (const name of ["clarify", "todo_list", "session_search"] as const) {
       const upstream = surface.tools.find((t) => t.name === name)!.schema;
       assert.deepEqual(defs[name].schema, upstream, name);
       assert.equal(defs[name].provisional, false);
@@ -31,6 +31,12 @@ describe("tool schemas are data", () => {
     // The extractor lists terminal as non-literal: that is why it is provisional.
     assert.equal(surface.non_literal.some((n) => n.name === "terminal"), true);
     assert.equal(surface.tools.some((t) => t.name === "terminal"), false);
+  });
+
+  it("keeps session_search off by default: the default requests do not change", () => {
+    assert.equal((SUPPORTED_TOOLS as readonly string[]).includes("session_search"), false);
+    assert.equal(toolDefinitions().some((t) => t.function.name === "session_search"), false);
+    assert.equal(toolDefinitions([...SUPPORTED_TOOLS, "session_search"]).some((t) => t.function.name === "session_search"), true);
   });
 
   it("gives the model OpenAI function definitions for the supported tools only", () => {

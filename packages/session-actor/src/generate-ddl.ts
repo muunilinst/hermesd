@@ -26,8 +26,8 @@ export interface SchemaSurface {
 
 /** The tables this port keeps, and the actor that owns each (guide 2.4, table-decisions.json). */
 export const PRESERVED_TABLES = {
-  session: ["system_prompts", "sessions", "messages", "session_model_usage"],
-  profile: ["conversation_generations"],
+  session: ["system_prompts", "sessions", "messages", "session_model_usage", "worker_executions", "worker_receipts"],
+  profile: ["conversation_generations", "state_meta", "schema_version"],
 } as const;
 
 export function renderUpstreamDdl(surface: SchemaSurface = loadSurface<SchemaSurface>("state-schema")): string {

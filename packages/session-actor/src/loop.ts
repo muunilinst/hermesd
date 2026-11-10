@@ -617,6 +617,10 @@ export class LoopDriver implements TurnDriver {
           done(out.result);
           continue;
         }
+        if (name === "session_search") {
+          done(await this.#sessionSearch(ctx.host, args));
+          continue;
+        }
         if (name === "clarify") {
           const qs = parseClarify(args);
           if (typeof qs === "string") {
@@ -666,6 +670,22 @@ export class LoopDriver implements TurnDriver {
       // All calls were answered inline: look again.
     }
     throw new Error("planning did not settle");
+  }
+
+  /**
+   * The `session_search` tool. It asks the profile actor, which holds the
+   * search index of all sessions (guide 6.4). It only reads, so a replay of
+   * the planning step is safe. Only the discovery shape (`query`) is built.
+   * The result is the port's own JSON, not upstream's hydrated sessions.
+   */
+  async #sessionSearch(host: Host, args: unknown): Promise<string> {
+    const target = this.#cfg.profileTarget;
+    const a = (args ?? {}) as { query?: unknown; limit?: unknown };
+    if (!target) return JSON.stringify({ error: "session_search needs the profile actor" });
+    if (typeof a.query !== "string" || a.query.trim() === "") return JSON.stringify({ error: "session_search needs a query" });
+    const limit = typeof a.limit === "number" && a.limit > 0 ? Math.min(Math.floor(a.limit), 10) : 3;
+    const hits = (await host.sidecar(target).call("session_search", { query: a.query, limit })) as unknown[];
+    return JSON.stringify({ success: true, query: a.query, count: hits.length, results: hits });
   }
 
   async #fenceOnce(ctx: TurnContext): Promise<void> {

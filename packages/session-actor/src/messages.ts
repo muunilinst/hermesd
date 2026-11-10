@@ -100,7 +100,7 @@ export function insertMessage(sql: Sql, sessionId: string, m: NewMessage, nowMs:
 }
 
 function fromRow(r: SqlRow): NewMessage {
-  const m: NewMessage = { id: num(r.id), role: str(r.role) as NewMessage["role"], content: (r.content as string | null) ?? null, messageUid: str(r.message_uid) };
+  const m: NewMessage = { id: num(r.id), role: str(r.role) as NewMessage["role"], content: (r.content as string | null) ?? null, messageUid: typeof r.message_uid === "string" ? r.message_uid : `row-${num(r.id)}` };
   if (typeof r.tool_calls === "string") m.toolCalls = JSON.parse(r.tool_calls) as ToolCallWire[];
   if (typeof r.tool_call_uids === "string") m.toolCallUids = JSON.parse(r.tool_call_uids) as string[];
   if (typeof r.tool_call_id === "string") m.toolCallId = r.tool_call_id;
@@ -109,7 +109,10 @@ function fromRow(r: SqlRow): NewMessage {
   return m;
 }
 
-/** The lines that go to the model: the active rows of the session, in order. */
+/**
+ * The lines that go to the model: the active rows of the session, in order.
+ * A row from an imported state.db may have no `message_uid`; it gets `row-<id>`.
+ */
 export function loadActiveMessages(sql: Sql, sessionId: string): NewMessage[] {
   return sql
     .exec(

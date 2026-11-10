@@ -48,10 +48,20 @@ decisions made and every change to an existing contract.
 - Profile actor is fed only by the session outbox, with idempotency keys.
   Activation reconciles.
 
+- The runtime's `session_admissions` now has upstream's columns (runtime NOTES,
+  item 13). The golden record reads `status` and `outcome` from it.
+- `session_search` is an optional tool. It is not in `SUPPORTED_TOOLS`, so the
+  default requests do not change. Set `tools: [...SUPPORTED_TOOLS, "session_search"]`
+  to turn it on. It uses the upstream schema literal, but only the `query` shape
+  works. It asks the profile actor over the sidecar and returns the port's JSON
+  (`success`, `query`, `count`, `results` of session, seq, role, text), not
+  upstream's hydrated sessions. It only reads, so the planning step may repeat.
+- `worker_executions` and `worker_receipts` are created with upstream's DDL. No
+  code uses them yet; `packages/state-port` fills them on import.
+- A message row with no `message_uid` (an imported row) gets `row-<id>` when read.
+
 ## Open points
 
-- `session_admissions` (runtime) does not have the upstream columns. This is
-  flagged and not resolved here.
 - The compression hook only checks the 50% threshold. It does not summarise.
 - Results are shown only on the Node simulator, in both modes. Not shown on
   real hosts.

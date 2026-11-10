@@ -1,2 +1,2 @@
-export { ProfileActor } from "./profile.ts";
+export { ProfileActor, applyProfileSchema } from "./profile.ts";
 export type { ProfileOptions, SearchHit } from "./profile.ts";

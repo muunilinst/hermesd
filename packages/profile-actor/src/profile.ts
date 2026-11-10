@@ -36,6 +36,31 @@ export interface SearchHit {
   text: string;
 }
 
+/** Create the tables of the profile actor. Safe to run at every activation. State import also uses it. */
+export function applyProfileSchema(sql: Sql): void {
+  sql.exec(FENCE_DDL);
+  sql.exec("CREATE TABLE IF NOT EXISTS applied (id TEXT PRIMARY KEY)");
+  sql.exec("CREATE TABLE IF NOT EXISTS profile_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+  sql.exec(
+    `CREATE TABLE IF NOT EXISTS profile_config (
+      key TEXT PRIMARY KEY, value TEXT NOT NULL, schema_version INTEGER NOT NULL)`,
+  );
+  // The session actors that belong to this profile. Reconcile asks them.
+  sql.exec("CREATE TABLE IF NOT EXISTS session_actors (actor TEXT PRIMARY KEY, schema_version INTEGER NOT NULL)");
+  sql.exec(
+    `CREATE TABLE IF NOT EXISTS session_list (
+      session_id TEXT PRIMARY KEY, actor TEXT NOT NULL, parent_session_id TEXT, status TEXT NOT NULL,
+      title TEXT, message_count INTEGER NOT NULL DEFAULT 0, started_at REAL, last_activity_at REAL,
+      schema_version INTEGER NOT NULL)`,
+  );
+  sql.exec(
+    `CREATE TABLE IF NOT EXISTS search_docs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, session TEXT NOT NULL, seq INTEGER NOT NULL,
+      role TEXT NOT NULL, text TEXT NOT NULL, schema_version INTEGER NOT NULL, UNIQUE (session, seq))`,
+  );
+  for (const ddl of Object.values(PROFILE_UPSTREAM_DDL)) sql.exec(ddl);
+}
+
 export class ProfileActor implements ActorBehavior {
   readonly #host: Host;
   readonly #sessionTarget: (id: string) => string;
@@ -51,29 +76,7 @@ export class ProfileActor implements ActorBehavior {
   }
 
   async activate(): Promise<void> {
-    await this.#host.tx((sql) => {
-      sql.exec(FENCE_DDL);
-      sql.exec("CREATE TABLE IF NOT EXISTS applied (id TEXT PRIMARY KEY)");
-      sql.exec("CREATE TABLE IF NOT EXISTS profile_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
-      sql.exec(
-        `CREATE TABLE IF NOT EXISTS profile_config (
-          key TEXT PRIMARY KEY, value TEXT NOT NULL, schema_version INTEGER NOT NULL)`,
-      );
-      // The session actors that belong to this profile. Reconcile asks them.
-      sql.exec("CREATE TABLE IF NOT EXISTS session_actors (actor TEXT PRIMARY KEY, schema_version INTEGER NOT NULL)");
-      sql.exec(
-        `CREATE TABLE IF NOT EXISTS session_list (
-          session_id TEXT PRIMARY KEY, actor TEXT NOT NULL, parent_session_id TEXT, status TEXT NOT NULL,
-          title TEXT, message_count INTEGER NOT NULL DEFAULT 0, started_at REAL, last_activity_at REAL,
-          schema_version INTEGER NOT NULL)`,
-      );
-      sql.exec(
-        `CREATE TABLE IF NOT EXISTS search_docs (
-          id INTEGER PRIMARY KEY AUTOINCREMENT, session TEXT NOT NULL, seq INTEGER NOT NULL,
-          role TEXT NOT NULL, text TEXT NOT NULL, schema_version INTEGER NOT NULL, UNIQUE (session, seq))`,
-      );
-      for (const ddl of Object.values(PROFILE_UPSTREAM_DDL)) sql.exec(ddl);
-    });
+    await this.#host.tx((sql) => applyProfileSchema(sql));
     await this.#host.commit();
     this.#fts = await this.#detectFts();
     void this.reconcile().catch(() => {});

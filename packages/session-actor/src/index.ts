@@ -18,6 +18,7 @@ export { checkLineage, compactSession, finishCompaction, repairLineageRows, safe
 export type { CompactionDeps } from "./lineage.ts";
 export {
   currentSessionId,
+  setCurrentSessionId,
   ensureSession,
   insertMessage,
   insertPortRow,
@@ -33,7 +34,7 @@ export { GOLDEN_FORMAT, RequestRecorder, compareGolden, goldenAdmissions, golden
 export type { GoldenAdmission, GoldenMessage, GoldenRecord, RecordedRequest } from "./model/recorder.ts";
 export { chatRequest, estimateTokens, parseChatResponse } from "./model/openai.ts";
 export type { ChatMessage, ChatRequestBody, ParsedResponse, ToolCallWire, Usage } from "./model/openai.ts";
-export { SUPPORTED_TOOLS, isToolName, loadToolDefs, toolDefinitions } from "./tools/schemas.ts";
+export { OPTIONAL_TOOLS, SUPPORTED_TOOLS, isToolName, loadToolDefs, toolDefinitions } from "./tools/schemas.ts";
 export type { OpenAiTool, ToolDef, ToolName } from "./tools/schemas.ts";
 export { TERMINAL_SCHEMA } from "./tools/provisional-schemas.ts";
 export { applyTodo } from "./tools/todo.ts";

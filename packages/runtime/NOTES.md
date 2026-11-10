@@ -70,8 +70,22 @@ Change an item here when the guide gets clearer.
 
 ## Inbox and outbox (4.6, 6.4)
 
-13. **Terminal admission statuses.** `done` and `failed`. Plus `unknown`. A
-    later input waits while an admission is `started` or `unknown`.
+13. **`session_admissions` is upstream's table (2.4, 6.4).** Same name, columns,
+    statuses (`queued`, `started`, `unknown`, `terminal`) and unique keys
+    (`admission_id`; `principal_id, target_session_id, request_id`) as
+    `contracts/upstream/ledger.json`. A test compares them. Mapping: a finished
+    turn is `terminal` with outcome `completed`; a failed turn is `terminal` with
+    outcome `failed`; the user resolving an unknown input is `terminal` with
+    outcome `interrupted` (upstream's resolve; never requeued). `started` sets
+    `owner_epoch` (`Host.epoch()`) and a `generation` (the highest in the table
+    plus 1), because upstream has a CHECK for both. The input text is
+    `payload_json` (`{"input": ...}`), `payload_digest` is its SHA-256,
+    `lineage_json` is `{}`, `intent` is `queue`, `admission_id` is the three key
+    parts URL-encoded and joined with `:`. Two differences on purpose: no FOREIGN
+    KEY to `sessions(id)` (this package does not own `sessions`, and a message is
+    written before the session row), and the port's own data is in the side table
+    `rt_admission_port` (`seq`, `turn_id`, `result`, `received_epoch`, times).
+    A later input waits while an admission is `started` or `unknown`.
 14. **Registration.** A session registers with the sweeper in `activate()` and
     again, if needed, at the start of `receive`. If the sweeper is down,
     `receive` fails and nothing is acknowledged, so the sender retries.

@@ -11,9 +11,16 @@ import { TERMINAL_SCHEMA } from "./provisional-schemas.ts";
  * keeps that name.
  */
 
-export type ToolName = "clarify" | "todo_list" | "terminal";
+export type ToolName = "clarify" | "todo_list" | "terminal" | "session_search";
 
 export const SUPPORTED_TOOLS: readonly ToolName[] = ["terminal", "todo_list", "clarify"];
+
+/**
+ * Tools that exist but are off by default. `session_search` needs the profile
+ * actor. A config turns it on with `tools: [...SUPPORTED_TOOLS, "session_search"]`.
+ * It is not in `SUPPORTED_TOOLS`, so the requests of the golden record do not change.
+ */
+export const OPTIONAL_TOOLS: readonly ToolName[] = ["session_search"];
 
 export interface ToolDef {
   name: ToolName;
@@ -46,6 +53,7 @@ export function loadToolDefs(): Record<ToolName, ToolDef> {
   cache = {
     clarify: literal("clarify"),
     todo_list: literal("todo_list"),
+    session_search: literal("session_search"),
     terminal: { name: "terminal", schema: TERMINAL_SCHEMA.schema, provisional: true, source: TERMINAL_SCHEMA.source, interactive: false },
   };
   return cache;
@@ -58,5 +66,5 @@ export function toolDefinitions(names: readonly ToolName[] = SUPPORTED_TOOLS): O
 }
 
 export function isToolName(name: string): name is ToolName {
-  return name === "clarify" || name === "todo_list" || name === "terminal";
+  return name === "clarify" || name === "todo_list" || name === "terminal" || name === "session_search";
 }
