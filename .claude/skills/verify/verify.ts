@@ -11,6 +11,7 @@
  * its scratch files to .verify/tmp/. `clean` removes the scratch files only.
  */
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,6 +33,10 @@ interface Drive {
   linuxOnly?: boolean;
   /** Return an error text if the side effect is missing. `out` is stdout only: runtimes print warnings on stderr. */
   check?: (out: string, tmp: string) => string | undefined;
+  /** Paths (files or directories) whose content must be the same after the drive as before it. */
+  unchanged?: string[];
+  /** Run the command again until the check passes or this much time has gone, for a result that settles. */
+  retry?: { timeoutMs: number };
 }
 
 interface Subsystem {
@@ -53,12 +58,26 @@ const sameLines = (n: number) => (out: string) => {
   const same = out.split("\n").filter((l) => l.startsWith("same ")).length;
   return same === n && !out.includes("DIFFERS") ? undefined : `expected ${n} "same" lines and no DIFFERS, got ${same}`;
 };
-const cleanTree = (path: string) => () => {
-  const s = sh("git", ["status", "--porcelain", "--", path]).out.trim();
-  return s === "" ? undefined : `the drive changed committed files:\n${s}`;
-};
-const both = (...fs: Array<(out: string, tmp: string) => string | undefined>) => (out: string, tmp: string) =>
-  fs.map((f) => f(out, tmp)).find((e) => e !== undefined);
+/** The content of a file or a directory tree: each file's path and sha256, sorted. Missing is "absent". */
+function contentHash(path: string): string {
+  const abs = join(ROOT, path);
+  if (!existsSync(abs)) return "absent";
+  const parts: string[] = [];
+  const walk = (p: string): void => {
+    if (statSync(p).isDirectory()) for (const e of readdirSync(p).sort()) walk(join(p, e));
+    else parts.push(`${relative(abs, p)}\0${createHash("sha256").update(readFileSync(p)).digest("hex")}`);
+  };
+  walk(abs);
+  return createHash("sha256").update(parts.join("\n")).digest("hex");
+}
+
+/** The guest helper answers with one JSON line. */
+const answer = (out: string): Record<string, unknown> => JSON.parse(out.trim().split("\n").at(-1) ?? "");
+const sleep = (seconds: number): void => void spawnSync("sleep", [String(seconds)]);
+/** A command that counts its own runs: each run appends one line (as testkit.countingCommand). */
+const COUNTED = "echo run >> $TMP/ws-runs.txt";
+const runsOf = (tmp: string): number =>
+  existsSync(join(tmp, "ws-runs.txt")) ? readFileSync(join(tmp, "ws-runs.txt"), "utf8").split("\n").filter(Boolean).length : 0;
 
 const SUBSYSTEMS: Record<string, Subsystem> = {
   contracts: {
@@ -83,24 +102,30 @@ const SUBSYSTEMS: Record<string, Subsystem> = {
         args: [GUEST, "$TMP/ws", "handshake"],
         env: { HERMESD_UNIT_MANAGER: "process" },
         linuxOnly: true,
-        check: (out) => (out.includes("{") ? undefined : "no JSON answer from the helper"),
+        check: (out) => (typeof answer(out)["bootId"] === "string" ? undefined : `no boot ID in the handshake: ${out.trim()}`),
       },
       {
         name: "guest-launch",
-        args: [GUEST, "$TMP/ws", "launch", "op-verify-1", "1", "echo verify-ran > $TMP/ws-ran.txt"],
+        args: [GUEST, "$TMP/ws", "launch", "op-verify-1", "1", COUNTED],
         env: { HERMESD_UNIT_MANAGER: "process" },
         linuxOnly: true,
-        check: (out) => (out.includes("{") ? undefined : "no JSON answer from the helper"),
+        check: (out) => {
+          const a = answer(out);
+          return a["opId"] === "op-verify-1" && ["launched", "done"].includes(String(a["status"])) ? undefined : `the first launch answered ${out.trim()}`;
+        },
       },
       {
+        // A retry repeats the same request. The helper must answer from its journal and start nothing.
+        // "starting" is a right answer too: the retry came before the shim claimed, and the helper adopts it.
         name: "guest-launch-again",
-        args: [GUEST, "$TMP/ws", "launch", "op-verify-1", "1", "echo second-run >> $TMP/ws-ran.txt"],
+        args: [GUEST, "$TMP/ws", "launch", "op-verify-1", "1", COUNTED],
         env: { HERMESD_UNIT_MANAGER: "process" },
         linuxOnly: true,
-        check: (_out, tmp) => {
-          for (let i = 0; i < 50 && !existsSync(join(tmp, "ws-ran.txt")); i++) sh("sleep", ["0.1"]);
-          const ran = existsSync(join(tmp, "ws-ran.txt")) ? readFileSync(join(tmp, "ws-ran.txt"), "utf8") : "";
-          return ran === "verify-ran\n" ? undefined : `the command must run once; the counter file holds ${JSON.stringify(ran)}`;
+        check: (out) => {
+          const a = answer(out);
+          return a["opId"] === "op-verify-1" && ["starting", "launched", "running", "done"].includes(String(a["status"]))
+            ? undefined
+            : `the retried launch answered ${out.trim()}`;
         },
       },
       {
@@ -108,7 +133,15 @@ const SUBSYSTEMS: Record<string, Subsystem> = {
         args: [GUEST, "$TMP/ws", "status", "op-verify-1"],
         env: { HERMESD_UNIT_MANAGER: "process" },
         linuxOnly: true,
-        check: (out) => (/done|running/.test(out) ? undefined : `status is not done or running: ${out.trim()}`),
+        retry: { timeoutMs: 15000 },
+        check: (out, tmp) => {
+          const a = answer(out);
+          if (a["status"] !== "done" || a["exitCode"] !== 0) return `status is not done with exit code 0: ${out.trim()}`;
+          // Count only once the result has settled, so a second run that ends later is seen.
+          sleep(1);
+          const runs = runsOf(tmp);
+          return runs === 1 ? undefined : `the command must run once over both launches; it ran ${runs} times`;
+        },
       },
     ],
   },
@@ -134,7 +167,7 @@ const SUBSYSTEMS: Record<string, Subsystem> = {
     tests: ["packages/golden/src"],
     drives: [
       { name: "list", args: [GOLDEN, "list"], check: (out) => (out.trim().split("\n").length === 20 ? undefined : "expected 20 scripts") },
-      { name: "check-all", args: [GOLDEN, "check"], check: both(sameLines(20), cleanTree("packages/golden/transcripts")) },
+      { name: "check-all", args: [GOLDEN, "check"], check: sameLines(20), unchanged: ["packages/golden/transcripts"] },
       { name: "compare", args: [GOLDEN, "compare"] },
     ],
   },
@@ -206,8 +239,28 @@ function parseTests(rt: Runtime, out: string): TestCounts {
   return { pass: num(/^ℹ pass (\d+)$/m), fail: num(/^ℹ fail (\d+)$/m), skip: num(/^ℹ skipped (\d+)$/m), failures };
 }
 
-function gitState(): { sha: string; dirty: boolean } {
-  return { sha: sh("git", ["rev-parse", "--short", "HEAD"]).out.trim(), dirty: sh("git", ["status", "--porcelain"]).out.trim() !== "" };
+interface SourceState {
+  sha: string;
+  dirty: boolean;
+  /** sha256 of the uncommitted changes (tracked diff and untracked files), so a dirty tree can be named. */
+  diffSha?: string;
+}
+
+/**
+ * The checkout the run verified. In the Linux container the tree is a copy
+ * without .git, so the host passes its own state in VERIFY_SOURCE.
+ */
+function gitState(): SourceState {
+  if (process.env.VERIFY_SOURCE) return JSON.parse(process.env.VERIFY_SOURCE) as SourceState;
+  const sha = sh("git", ["rev-parse", "--short", "HEAD"]).out.trim();
+  const dirty = sh("git", ["status", "--porcelain"]).out.trim() !== "";
+  if (!dirty) return { sha, dirty };
+  const h = createHash("sha256").update(sh("git", ["diff", "HEAD", "--binary"]).stdout);
+  for (const f of sh("git", ["ls-files", "--others", "--exclude-standard"]).stdout.split("\n").filter(Boolean).sort()) {
+    h.update(`\0${f}\0`);
+    h.update(readFileSync(join(ROOT, f)));
+  }
+  return { sha, dirty, diffSha: h.digest("hex") };
 }
 
 function doctor(): number {
@@ -266,14 +319,25 @@ function runOne(name: string, rt: Runtime): boolean {
         continue;
       }
       const args = d.args.map((a) => a.replaceAll("$TMP", tmp));
-      const r = sh(rt, args, d.env ? { env: d.env } : {});
-      writeFileSync(join(dir, `drive-${d.name}.log`), `$ ${rt} ${args.join(" ")}\n${r.out}`);
+      const before = (d.unchanged ?? []).map(contentHash);
+      const deadline = Date.now() + (d.retry?.timeoutMs ?? 0);
+      let r: ReturnType<typeof sh>;
       let problem: string | undefined;
-      try {
-        problem = r.code !== 0 ? `exit ${r.code}` : d.check?.(r.stdout, tmp);
-      } catch (e) {
-        problem = `the check threw: ${e instanceof Error ? e.message : String(e)}`;
+      const log: string[] = [];
+      for (;;) {
+        r = sh(rt, args, d.env ? { env: d.env } : {});
+        log.push(`$ ${rt} ${args.join(" ")}\n${r.out}`);
+        try {
+          problem = r.code !== 0 ? `exit ${r.code}` : d.check?.(r.stdout, tmp);
+        } catch (e) {
+          problem = `the check threw: ${e instanceof Error ? e.message : String(e)}`;
+        }
+        if (!problem || Date.now() >= deadline) break;
+        sleep(0.2);
       }
+      writeFileSync(join(dir, `drive-${d.name}.log`), log.join("\n"));
+      const changed = (d.unchanged ?? []).filter((path, i) => contentHash(path) !== before[i]);
+      if (!problem && changed.length > 0) problem = `the drive changed ${changed.join(", ")}`;
       drives.push({ name: d.name, command: `${rt} ${d.args.join(" ")}`, exit: r.code, ...(problem ? { problem } : {}) });
       if (problem) ok = false;
     }
@@ -309,18 +373,21 @@ function runOne(name: string, rt: Runtime): boolean {
 function runInLinux(target: string): number {
   mkdirSync(EVIDENCE, { recursive: true });
   const script = [
-    // The bun image has no git; the golden drive checks the tree with it.
-    "apt-get update -qq >/dev/null && apt-get install -y -qq git >/dev/null 2>&1 || { echo 'could not install git'; exit 1; }",
     "mkdir /work && cd /src",
     // Every node_modules is left behind: the packages have their own, with native binaries for this host.
     "tar --exclude=node_modules --exclude=./.verify --exclude=./.git -cf - . | tar -xf - -C /work",
-    "cd /work && git init -q && git add -A && git -c user.name=verify -c user.email=verify@localhost commit -qm tree",
-    "bun install --frozen-lockfile >/dev/null 2>&1 || { echo 'bun install --frozen-lockfile failed'; exit 1; }",
+    "cd /work && bun install --frozen-lockfile >/dev/null 2>&1 || { echo 'bun install --frozen-lockfile failed'; exit 1; }",
     `bun ${SELF} run ${target}; code=$?`,
     "cp -r /work/.verify/evidence/. /evidence/",
     "exit $code",
   ].join("\n");
-  const r = spawnSync("docker", ["run", "--rm", "-v", `${ROOT}:/src:ro`, "-v", `${EVIDENCE}:/evidence`, LINUX_IMAGE, "bash", "-c", script], { stdio: "inherit" });
+  // The copy has no .git. Name the host's checkout, taken before the copy, in the evidence.
+  const source = JSON.stringify(gitState());
+  const r = spawnSync(
+    "docker",
+    ["run", "--rm", "-e", `VERIFY_SOURCE=${source}`, "-v", `${ROOT}:/src:ro`, "-v", `${EVIDENCE}:/evidence`, LINUX_IMAGE, "bash", "-c", script],
+    { stdio: "inherit" },
+  );
   return r.status ?? 1;
 }
 

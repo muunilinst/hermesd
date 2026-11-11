@@ -74,8 +74,9 @@ Which runtime:
 - **`--rt node`** is optional, a second opinion. Every subsystem passed on node too when the
   repository moved to bun, and node has caught SQLite differences that bun did not. It is not
   maintained as a target.
-- **`--linux`** copies the tree into an `oven/bun` container at the pinned version (installing
-  git there), runs `bun install --frozen-lockfile` and the same `run`, and copies the evidence
+- **`--linux`** copies the tree into an `oven/bun` container at the pinned version (without
+  `.git`; the evidence names the host's commit, dirty flag and a hash of the uncommitted changes,
+  taken before the copy), runs `bun install --frozen-lockfile` and the same `run`, and copies the evidence
   back. This is CI's platform. The guest helper needs Linux (`/proc`, a kernel boot ID). On macOS
   `run` skips those files and says so; `--linux` is how you run them. It needs Docker and the
   network.
@@ -88,16 +89,20 @@ prints no `Ran N tests across M files` line did not finish, whatever its exit co
 The proof standard: drive the command a person would type (`packages/golden/src/cli.ts`,
 `packages/state-port/src/cli.ts`, `packages/guest-helper/src/cli.ts`), not an internal
 function. Check the side effect, not the exit code alone: the helper already checks that
-`golden check` left `packages/golden/transcripts` unchanged, that the exported `state.db`
-exists, and that a command launched twice ran once (from a counter file the command writes).
-When you add a drive, add its check.
+`golden check` left `packages/golden/transcripts` as it found them (by content, before and
+after the drive, so a run after `record` passes), that the exported `state.db` exists, and that
+a command launched twice ran once. Validate every answer, a retry's too, not just the last one.
+Count side effects only after the result has settled, from records the command appends itself.
+When you add a drive, add its check: `unchanged` for paths it must not touch, `retry` for a
+result that takes time.
 
 ## Evidence
 
 Each run writes `.verify/evidence/<UTC stamp>-<subsystem>-<runtime>/`:
 
-- `summary.json`: result, runtime and version, platform, git commit and whether the tree was
-  dirty, test counts, failed test names, each drive with its exit code, and what was skipped.
+- `summary.json`: result, runtime and version, platform, the git commit, whether the tree was
+  dirty and (if so) `diffSha`, a hash of the uncommitted changes, test counts, failed test names,
+  each drive with its exit code, and what was skipped.
 - `tests.log`: the full test output, with the command on the first line.
 - `drive-<name>.log`: the output of each real command, with the command on the first line.
 

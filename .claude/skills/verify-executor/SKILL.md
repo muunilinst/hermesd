@@ -41,10 +41,13 @@ bun .claude/skills/verify/verify.ts run executor            # macOS: model and p
 bun .claude/skills/verify/verify.ts run executor --linux    # everything, in the pinned oven/bun container
 ```
 
-On Linux the run then drives the real CLI in a scratch workspace: `handshake`; `launch
-op-verify-1` with a command that writes a counter file; the same `launch` again with a command
-that would append to that file; `status`. The check reads the counter file: it must hold one
-line, so the command ran once and the second launch was answered from the journal. Proof:
+On Linux the run then drives the real CLI in a scratch workspace:
+- `handshake`: the answer must carry a boot ID.
+- `launch op-verify-1` with a command that appends one line to a counter file: it must answer `launched` or `done`.
+- The same `launch` again, the same command, as a real retry: it must answer `starting`, `launched`, `running` or `done` for the same op (`starting` when it lands before the shim claimed: the helper adopts the unit). `unknown`, `not_launched` or `failed` fails it.
+- `status`, repeated for up to 15 s until it says `done` with exit code 0. Then it waits 1 s for anything late and counts the lines: exactly one, so the command ran once over both launches.
+
+Proof:
 `PASS executor on bun: 127 pass, 0 fail ... 4/4 drives`, and the JSON answers in
 `drive-guest-*.log` (`launched`, then `done` with `exitCode: 0`).
 
