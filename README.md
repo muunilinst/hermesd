@@ -52,15 +52,19 @@ mechanism and each fault test (D1 to D17).
 | `packages/contracts` | weekly-diff guards over the upstream contract surfaces (guide 7.1) |
 | `contracts/` | static extractors, extracted upstream surfaces, and per-table port decisions |
 | `upstream/pin.json` | the upstream hermes-agent commit we test against |
+| `docs/adr` | the decisions of the porting guide, one record each |
+| `.claude/skills/verify*` | one verification skill per subsystem; `bun .claude/skills/verify/verify.ts list` |
 
 each package with design choices has a `NOTES.md` that records how we read
 the guide where it was ambiguous.
 
 ## develop
 
-needs node 22.18 or later (tests run the `.ts` files directly with `node --test`).
+needs bun, at the version in `.bun-version` (bun runs the `.ts` files directly; the tests use `node:test` and `node:sqlite`, which bun provides).
 
 ```sh
-npm install
-npm run check   # typecheck + tests
+bun install
+bun run check   # typecheck + tests
 ```
+
+`bun install` gives each package its own `node_modules` with only the packages it declares, so an import that is not in a package's `package.json` fails. To check a change the way a user would, see `.claude/skills/verify`.

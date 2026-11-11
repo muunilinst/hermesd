@@ -64,7 +64,7 @@ describe("preserved upstream tables", () => {
 
   it("match the generated file: no drift from contracts/upstream/state-schema.json", () => {
     const committed = readFileSync(new URL("./upstream-ddl.ts", import.meta.url), "utf8");
-    assert.equal(committed, renderUpstreamDdl(surface), "run: node packages/session-actor/src/generate-ddl.ts");
+    assert.equal(committed, renderUpstreamDdl(surface), "run: bun packages/session-actor/src/generate-ddl.ts");
   });
 
   it("enforce the foreign keys that upstream declares", () => {

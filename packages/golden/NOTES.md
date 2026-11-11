@@ -38,4 +38,4 @@ All fixes have a test: `hooks.test.ts` in plugin-host, `seam.test.ts` and the sc
 
 ## Worktrees
 
-Node resolves `@hermesd/*` through `node_modules/@hermesd`, which `npm install` fills with links to the workspace folders. A git worktree under `.claude/worktrees` finds the `node_modules` of the main checkout first, and its links point to the main checkout's packages. Edits in the worktree are then not used by the tests. Make `node_modules/@hermesd/<package>` links to the worktree's own `packages/<package>` (the folder is ignored by git) before you run `npm run check` in a worktree.
+`bun install` gives each workspace package its own `node_modules`, with links to the workspace folders it declares (`packages/<package>/node_modules/@hermesd/*`, relative links). A package can import only what its `package.json` lists. Run `bun install` in a new git worktree before `bun run check`, so its links point at the worktree's own packages and not the main checkout's.

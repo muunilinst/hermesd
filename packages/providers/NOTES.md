@@ -195,7 +195,7 @@ Differences:
 - No live test against a real provider. All tests use the scripted models.
 - Prompt-cache layout (`cache_control` placement for Anthropic) follows upstream's
   "system and last 3 messages" rule only where it was read; other placements are not ported.
-- `package-lock.json` is updated by `npm install --offline --package-lock-only`.
+- `bun.lock` is updated by `bun install`; CI installs with `bun install --frozen-lockfile`.
 
 ## Tests
 

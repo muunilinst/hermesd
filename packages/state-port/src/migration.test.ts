@@ -14,7 +14,7 @@ import { loadPlainActors } from "./plain.ts";
 import { readActors, type ActorSources } from "./read-actors.ts";
 import { readStateDb } from "./read-db.ts";
 import { buildSampleStateDb } from "./sample.ts";
-import { normaliseSql, upstreamDdl } from "./schema.ts";
+import { normaliseSql, openReadOnly, upstreamDdl } from "./schema.ts";
 import { writeStateDb } from "./write-db.ts";
 
 // The migration test of guide 6.4, as far as it can run here:
@@ -70,7 +70,7 @@ const THREE_TURNS: ModelStep[] = [
 
 /** The schema of a file without the FTS tables and their shadow tables. */
 function schemaOf(path: string): Array<{ type: string; name: string; sql: string }> {
-  const db = new DatabaseSync(path, { readOnly: true });
+  const db = openReadOnly(path);
   try {
     return (db.prepare("SELECT type, name, sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'messages_fts%' AND name NOT LIKE 'sqlite_%' ORDER BY type, name").all() as Array<{ type: string; name: string; sql: string }>).map((r) => ({ ...r }));
   } finally {
@@ -79,7 +79,7 @@ function schemaOf(path: string): Array<{ type: string; name: string; sql: string
 }
 
 function rows(path: string, sql: string): Array<Record<string, unknown>> {
-  const db = new DatabaseSync(path, { readOnly: true });
+  const db = openReadOnly(path);
   try {
     return db.prepare(sql).all().map((r) => ({ ...r }));
   } finally {

@@ -61,7 +61,7 @@ async function build(): Promise<Any> {
         // Drain whatever is queued (also after a restart: the rows are durable).
         const work = (signal: AbortSignal) => drain(host, signal);
         if (kept) void host.startTask("turn", work);
-        else void work(c.abortSignal);
+        else void work(c.abortSignal).catch(cutOff);
       },
       actions: {
         epoch: (c: Any) => RivetHost.of(c).epoch(),
@@ -74,7 +74,7 @@ async function build(): Promise<Any> {
           await host.tx((s) => s.exec("INSERT OR IGNORE INTO session_admissions (id, text, status) VALUES (?, ?, 'queued')", id, text));
           if (crash === "after") throw new Error("crash before the ack");
           if (kept) void host.startTask("turn", (signal) => drain(host, signal));
-          else void drain(host, c.abortSignal);
+          else void drain(host, c.abortSignal).catch(cutOff);
           return "ack";
         },
         admissions: (c: Any) => RivetHost.of(c).tx((s) => s.exec("SELECT id, status FROM session_admissions ORDER BY id")),
@@ -103,6 +103,16 @@ async function build(): Promise<Any> {
         timers: (c: Any) => RivetHost.of(c).tx((s) => s.exec("SELECT key FROM wake_timers")),
       },
     });
+
+  /**
+   * A turn outside keepAwake can be cut off by sleep: its next write finds the
+   * database closed. That is the outcome the control expects, so it is not an error.
+   * When the actor's abort signal fires first (it does on node, not on bun) the
+   * turn returns before that write.
+   */
+  const cutOff = (e: unknown): void => {
+    if (!(e instanceof Error && /Database is closed/.test(e.message))) throw e;
+  };
 
   /** The turn: take queued rows one by one. "slow" waits longer than sleepTimeout. */
   async function drain(host: RivetHost, signal: AbortSignal): Promise<void> {
@@ -137,10 +147,11 @@ describe("RivetHost on real rivetkit", () => {
     for (const f of finishers) await f();
     // Stop the engine, or its child process stays after the tests.
     await registry?.shutdown();
-    // The native runtime keeps the process alive after shutdown (found by test:
-    // with no exit the file hangs). The tests are done. Leave when the reporter
-    // has finished.
-    setTimeout(() => process.exit(anyFailed ? 1 : 0), 2000).unref();
+    // Under node --test the native runtime keeps this file's process alive after
+    // shutdown (found by test: with no exit the file hangs), so leave once the
+    // reporter has finished. bun runs every test file in one process: an exit
+    // here would end the whole run, with code 0, before the other files ran.
+    if (!process.versions.bun) setTimeout(() => process.exit(anyFailed ? 1 : 0), 2000).unref();
   });
 
   it("raises the epoch at every wake", { timeout: 30000 }, (t) => {

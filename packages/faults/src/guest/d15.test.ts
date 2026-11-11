@@ -6,7 +6,7 @@ import { GuestFixture } from "./fixture.ts";
 
 const { waitFor } = testkit;
 
-describe(`D15 crash after the command started, before the helper answered (backend ${GUEST_PROCESS_BACKEND})`, () => {
+describe(`D15 crash after the command started, before the helper answered (backend ${GUEST_PROCESS_BACKEND})`, { skip: testkit.needsLinux }, () => {
   for (const point of ["after_unit_start", "after_launched_write"] as const) {
     it(`${point}: reconciliation adopts the unit; the retry returns running, then the result; one run`, async (t) => {
       const fx = new GuestFixture();

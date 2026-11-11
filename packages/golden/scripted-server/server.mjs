@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // The scripted model server for upstream recording (guide 7.2).
 //
 // It reads one golden script, serves its model answers over HTTP, and logs every

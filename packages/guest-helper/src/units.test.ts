@@ -3,8 +3,9 @@ import { describe, it } from "node:test";
 import { unitBelongsTo } from "./paths.ts";
 import { parseProcStat, processMatches, readKernelBootId, readProcStat } from "./proc.ts";
 import { buildSystemdRunArgs, isSystemdPid1, parseListUnits, parseShow } from "./systemd.ts";
+import { needsLinux } from "./testkit.ts";
 
-describe("proc", () => {
+describe("proc", { skip: needsLinux }, () => {
   it("parses stat with spaces and parentheses in the command name", () => {
     const s = parseProcStat("42 (a (b) c) S 1 42 42 0 -1 4194560 100 0 0 0 1 1 0 0 20 0 1 0 987654 1000 100 18446744073709551615");
     assert.deepEqual(s, { state: "S", startTime: "987654" });

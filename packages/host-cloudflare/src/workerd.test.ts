@@ -4,7 +4,6 @@
  */
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { stripTypeScriptTypes } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
@@ -23,7 +22,11 @@ let skipReason: string | false = false;
 
 async function startMf(): Promise<Mf> {
   const { Miniflare } = await import("miniflare");
-  const adapter = stripTypeScriptTypes(readFileSync(join(here, "index.ts"), "utf8"));
+  // workerd runs JavaScript. The TypeScript compiler strips the types the same way on node and bun.
+  const ts = (await import("typescript")).default;
+  const adapter = ts.transpileModule(readFileSync(join(here, "index.ts"), "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023, verbatimModuleSyntax: true },
+  }).outputText;
   const worker = readFileSync(join(here, "..", "test-worker", "worker.js"), "utf8");
   const m = new Miniflare({
     modules: [

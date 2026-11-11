@@ -14,7 +14,7 @@ function fixture(t: { after(f: () => void): void }): GuestFixture {
   return fx;
 }
 
-describe(`D14 launch crashes (backend ${GUEST_PROCESS_BACKEND})`, () => {
+describe(`D14 launch crashes (backend ${GUEST_PROCESS_BACKEND})`, { skip: testkit.needsLinux }, () => {
   it("is not a demonstrating backend", () => {
     assert.equal((DEMONSTRATING_BACKENDS as ReadonlySet<string>).has(GUEST_PROCESS_BACKEND), false);
   });

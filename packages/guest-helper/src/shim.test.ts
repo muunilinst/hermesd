@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import { layout } from "./paths.ts";
 import { SHIM_PATH } from "./unit-manager.ts";
-import { countingCommand, makeTempDir, readCounter, shq, waitFor } from "./testkit.ts";
+import { countingCommand, makeTempDir, needsLinux, readCounter, shq, waitFor } from "./testkit.ts";
 
 function runShim(ws: string, op: string, unit: string, cmd: string, env: Record<string, string> = {}): Promise<number | null> {
   return new Promise((resolve) => {
@@ -17,7 +17,7 @@ function runShim(ws: string, op: string, unit: string, cmd: string, env: Record<
   });
 }
 
-describe("shim", () => {
+describe("shim", { skip: needsLinux }, () => {
   it("claims, runs the command, writes output and exit status", async () => {
     const ws = makeTempDir();
     const L = layout(ws);

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Print the user inputs of a golden script, one JSON object per line:
 //   {"send": "<the text>", "interrupt": "model_call"}     (interrupt only when the script has it)
 //

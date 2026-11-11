@@ -131,7 +131,7 @@ describe("port transcripts: played on node/durable-objects and node/rivet", () =
       SPECIFIC[name]?.(out, script);
 
       const file = join(PORT_DIR, `${name}.json`);
-      assert.ok(existsSync(file), `${file} is committed (run: node packages/golden/src/cli.ts record)`);
+      assert.ok(existsSync(file), `${file} is committed (run: bun packages/golden/src/cli.ts record)`);
       assert.equal(serialize(out.record), readFileSync(file, "utf8"), "regenerating gives the committed bytes");
       assert.equal(out.record.side, "port");
       assert.equal(out.record.script, name);

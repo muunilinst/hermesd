@@ -8,12 +8,12 @@ import { PORT_DIR, UPSTREAM_DIR, loadScript, scriptNames } from "./script.ts";
 /**
  * Commands (run from the repository root):
  *
- *   node packages/golden/src/cli.ts record [name...]         play scripts, write transcripts/port/<name>.json
- *   node packages/golden/src/cli.ts check [name...]          play scripts, fail if a committed port transcript differs
- *   node packages/golden/src/cli.ts compare [name...]        diff port and upstream transcripts
+ *   bun packages/golden/src/cli.ts record [name...]         play scripts, write transcripts/port/<name>.json
+ *   bun packages/golden/src/cli.ts check [name...]          play scripts, fail if a committed port transcript differs
+ *   bun packages/golden/src/cli.ts compare [name...]        diff port and upstream transcripts
  *        [--ignore path]...                                   extra field paths to ignore
  *        [--strict]                                           do not use the ignore list of the script
- *   node packages/golden/src/cli.ts list                     the script names
+ *   bun packages/golden/src/cli.ts list                     the script names
  */
 
 const [command = "list", ...rest] = process.argv.slice(2);

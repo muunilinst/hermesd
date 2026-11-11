@@ -33,7 +33,7 @@ Surfaces: `tool-schemas`, `hook-abi`, `manifests`, `state-schema`, `ledger`.
    ```
 
 3. Update `upstream/pin.json`: set `commit` to the full 40-character SHA, `commitDate`, and `stateSchemaVersion` to the `schema_version` in `contracts/upstream/state-schema.json`.
-4. Run `npm run check`. Read each failure; it names what to do:
+4. Run `bun run check`. Read each failure; it names what to do:
    - A new table fails "has a decision for every extracted table". Add it to `table-decisions.json` using guide section 2.4.
    - A removed table fails "no decision for a table that no longer exists". Remove its decision.
    - A new hook name fails the hook test. Review it, make sure the port dispatches it, then add it to `known-hooks.json`. A removed hook also fails; remove it from the list.

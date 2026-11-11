@@ -122,3 +122,10 @@ export function readJournal(workspace: string): Array<Record<string, unknown>> {
     .filter(Boolean)
     .map((l) => JSON.parse(l) as Record<string, unknown>);
 }
+
+/**
+ * The skip option of a test that needs Linux: the helper reads /proc and the
+ * kernel boot ID. On another system such a test is skipped with this reason,
+ * so a full run there still finishes and reports.
+ */
+export const needsLinux: string | false = process.platform === "linux" ? false : "needs Linux (/proc, the kernel boot ID)";

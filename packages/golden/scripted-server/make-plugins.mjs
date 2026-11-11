@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Write the Python plugins of a golden script, so upstream Hermes runs the same hooks as the port.
 //
 //   node make-plugins.mjs <script.json> <plugins-dir>

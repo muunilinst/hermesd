@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import type { SqlValue } from "@hermesd/host";
 import { emptySession, type Dropped, type Row, type SessionImage, type StateImage } from "./image.ts";
-import { SCHEMA_VERSION } from "./schema.ts";
+import { SCHEMA_VERSION, openReadOnly } from "./schema.ts";
 
 /**
  * Import: split one profile's upstream `state.db` into a profile image and
@@ -107,7 +107,7 @@ const marks = (n: number): string => Array.from({ length: n }, () => "?").join("
 
 export function readStateDb(path: string, options: ImportOptions = {}): { image: StateImage; report: ImportReport } {
   const ledger = options.ledger ?? "keep";
-  const db = new DatabaseSync(path, { readOnly: true });
+  const db = openReadOnly(path);
   try {
     if (!tableExists(db, "schema_version")) throw new Error(`${path}: no schema_version table, so this is not a Hermes state.db`);
     const schema = all(db, "SELECT version FROM schema_version");

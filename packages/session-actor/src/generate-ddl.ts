@@ -7,7 +7,7 @@ import { loadSurface } from "@hermesd/contracts";
  * `contracts/upstream/state-schema.json`. The statements are copied as they
  * are, so column names, types, defaults and keys stay byte-identical.
  *
- * Run it with `node packages/session-actor/src/generate-ddl.ts` after the
+ * Run it with `bun packages/session-actor/src/generate-ddl.ts` after the
  * extractor ran again (for example after an upstream pin bump). A test fails
  * when the committed `upstream-ddl.ts` is not what this function renders.
  */

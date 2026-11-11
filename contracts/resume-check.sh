@@ -12,8 +12,8 @@
 #
 # How to get an exported file:
 #   - from the sample file of the migration test, on the command line:
-#       node packages/state-port/src/cli.ts sample /tmp/sample.db
-#       node packages/state-port/src/cli.ts roundtrip /tmp/sample.db /tmp/exported.db
+#       bun packages/state-port/src/cli.ts sample /tmp/sample.db
+#       bun packages/state-port/src/cli.ts roundtrip /tmp/sample.db /tmp/exported.db
 #     then run this script with /tmp/exported.db and the session id s2b.
 #   - or roundtrip a COPY of a real state.db the same way.
 #

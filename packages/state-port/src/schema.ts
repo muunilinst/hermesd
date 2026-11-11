@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { loadSurface } from "@hermesd/contracts";
 
@@ -76,6 +77,33 @@ export function upstreamTableNames(): string[] {
 export const LEDGER_TABLES = ["runtime_epoch", "session_admissions", "worker_executions", "worker_receipts"] as const;
 
 /** Create an empty upstream-shaped database: WAL mode, the tables, the indexes. FTS and the version row are not written here. */
+/**
+ * Open a state.db for reading only.
+ *
+ * Upstream keeps state.db in WAL mode. A read-only connection to a WAL file
+ * needs the `-shm` file. Node's SQLite creates it; bun's cannot, so a WAL file
+ * copied without its `-shm` (a clean copy) fails with "unable to open database
+ * file". Then this opens the file read-write with `query_only` on, so SQLite
+ * can create the `-shm` and every write is still refused. Closing that
+ * connection checkpoints any WAL frames into the file, so give it a copy, as
+ * the CLI says.
+ */
+export function openReadOnly(path: string): DatabaseSync {
+  const db = new DatabaseSync(path, { readOnly: true });
+  try {
+    // Bun opens lazily, so the failure shows at the first statement, not in the constructor.
+    db.prepare("SELECT count(*) FROM sqlite_master").get();
+    return db;
+  } catch (e) {
+    db.close();
+    // A missing file is an error to report. A read-write open would create it.
+    if (!existsSync(path) || !(e instanceof Error && /unable to open database file/.test(e.message))) throw e;
+    const rw = new DatabaseSync(path);
+    rw.exec("PRAGMA query_only = ON");
+    return rw;
+  }
+}
+
 export function createUpstreamDb(path: string): DatabaseSync {
   const db = new DatabaseSync(path);
   db.exec("PRAGMA journal_mode = WAL");

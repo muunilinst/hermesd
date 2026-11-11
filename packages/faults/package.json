@@ -7,6 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@hermesd/contracts": "*",
     "@hermesd/executor-model": "*",
     "@hermesd/executor-protocol": "*",
     "@hermesd/guest-helper": "*",

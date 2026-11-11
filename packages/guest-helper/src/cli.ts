@@ -3,7 +3,7 @@
  * at a named step. A real helper is a long-lived server; this entry point has the
  * same logic and a process boundary, which is what the fault tests need.
  *
- * Usage: node cli.ts <workspace> <command> [args]
+ * Usage: bun cli.ts <workspace> <command> [args]
  *   launch <op_id> <incarnation> <cmd>
  *   status <op_id>
  *   reconcile

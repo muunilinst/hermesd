@@ -13,7 +13,7 @@ const { waitFor, runHelper } = testkit;
  * test, and the helper is killed at the point where the old owner's request
  * was in flight.
  */
-describe(`D16 helper side: dispatching resolved from the journal (backend ${GUEST_PROCESS_BACKEND})`, () => {
+describe(`D16 helper side: dispatching resolved from the journal (backend ${GUEST_PROCESS_BACKEND})`, { skip: testkit.needsLinux }, () => {
   it("not_found: the journal entry was never written; the cell launches; one run", async (t) => {
     const fx = new GuestFixture();
     t.after(() => fx.cleanup());

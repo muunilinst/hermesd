@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -10,7 +10,7 @@ import { epochFloor } from "./apply.ts";
 import { readActors } from "./read-actors.ts";
 import { readStateDb } from "./read-db.ts";
 import { buildSampleStateDb } from "./sample.ts";
-import { LEDGER_TABLES, createUpstreamDb, normaliseSql, upstreamDdl, upstreamTableNames } from "./schema.ts";
+import { LEDGER_TABLES, createUpstreamDb, normaliseSql, openReadOnly, upstreamDdl, upstreamTableNames } from "./schema.ts";
 import { writeStateDb } from "./write-db.ts";
 
 // Import and export without a platform: the rules of guide 6.4 and of
@@ -27,7 +27,7 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 const NOW = 1_700_100_000_000;
 const rows = (path: string, sql: string): Array<Record<string, unknown>> => {
-  const db = new DatabaseSync(path, { readOnly: true });
+  const db = openReadOnly(path);
   try {
     return db.prepare(sql).all().map((r) => ({ ...r }));
   } finally {
@@ -41,13 +41,33 @@ describe("upstream DDL", () => {
     assert.ok(!upstreamTableNames().includes("delivery_obligations"));
   });
 
+  it("reads a clean copy of a WAL state.db, one with no -shm file beside it", () => {
+    const source = join(dir, "live.db");
+    const db = createUpstreamDb(source);
+    db.prepare("INSERT INTO schema_version (version) VALUES (?)").run(32);
+    db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+    db.close();
+    // A person copies state.db alone: the file is still in WAL mode, and its -shm is not copied.
+    const path = join(dir, "clean.db");
+    copyFileSync(source, path);
+    assert.ok(!existsSync(`${path}-shm`));
+    const { report } = readStateDb(path);
+    assert.ok(report);
+    const after = openReadOnly(path);
+    try {
+      assert.throws(() => after.exec("CREATE TABLE y (x)"), /readonly/);
+    } finally {
+      after.close();
+    }
+  });
+
   it("makes a file whose table text is upstream's, byte for byte", () => {
     const path = join(dir, "fresh.db");
     createUpstreamDb(path).close();
     const reference = new DatabaseSync(":memory:");
     for (const t of upstreamDdl().tables) reference.exec(t.sql);
     const stored = (p: string): Array<{ name: string; sql: string }> => {
-      const db = new DatabaseSync(p, { readOnly: true });
+      const db = openReadOnly(p);
       try {
         return db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as Array<{ name: string; sql: string }>;
       } finally {

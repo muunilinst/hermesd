@@ -3,4 +3,6 @@ dist/
 coverage/
 *.log
 .DS_Store
-.claude/
+.claude/*
+!.claude/skills/
+.verify/

@@ -23,13 +23,13 @@ This package is the port side, plus the tools for the upstream side.
 Run them from the repository root.
 
 ```
-node packages/golden/src/cli.ts list                      # the 20 names
-node packages/golden/src/cli.ts record [name...]          # play, and write transcripts/port/<name>.json
-node packages/golden/src/cli.ts check [name...]           # play, and fail if a committed file differs
-node packages/golden/src/cli.ts compare [name...]         # diff port and upstream records (--ignore <path>, --strict)
+bun packages/golden/src/cli.ts list                      # the 20 names
+bun packages/golden/src/cli.ts record [name...]          # play, and write transcripts/port/<name>.json
+bun packages/golden/src/cli.ts check [name...]           # play, and fail if a committed file differs
+bun packages/golden/src/cli.ts compare [name...]         # diff port and upstream records (--ignore <path>, --strict)
 ```
 
-`npm run check` runs the tests of this package. They always play every script again and compare the result with the committed port transcript. If you change the loop on purpose, run `record` and read the diff of the transcripts before you commit it.
+`bun run check` runs the tests of this package. They always play every script again and compare the result with the committed port transcript. If you change the loop on purpose, run `record` and read the diff of the transcripts before you commit it.
 
 ## The record
 

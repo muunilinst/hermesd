@@ -6,7 +6,7 @@ import { buildSampleStateDb } from "./sample.ts";
 import { writeStateDb } from "./write-db.ts";
 
 /**
- * Two commands for a person at a terminal. Run with `node packages/state-port/src/cli.ts`.
+ * Two commands for a person at a terminal. Run with `bun packages/state-port/src/cli.ts`.
  *
  *   sample <out.db>
  *     Write the small sample state.db that the migration test uses.

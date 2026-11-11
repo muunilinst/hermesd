@@ -7,7 +7,7 @@ Status: this procedure was written from a static reading of upstream at the pin 
 ## What you need
 
 - A checkout of upstream Hermes at the pinned commit, installed as its README says. Use it only as a program that you run. Do not copy code from it into this repository.
-- Node 22.18 or newer, for the scripts in `scripted-server/`. They have no dependencies. `assemble.mjs` uses `node:sqlite`.
+- Bun (the version in `.bun-version`), for the scripts in `scripted-server/`. They have no dependencies, so Node 22.18 or newer also runs them. `assemble.mjs` uses `node:sqlite`.
 - This repository.
 
 ## The idea
@@ -43,7 +43,7 @@ node $G/assemble.mjs $S --log "$HERMES_HOME/requests.jsonl" --db "$HERMES_HOME/s
   --out packages/golden/transcripts/upstream/$NAME.json
 
 # 6. Compare.
-node packages/golden/src/cli.ts compare $NAME
+bun packages/golden/src/cli.ts compare $NAME
 ```
 
 Keep `HERMES_HOME` until you have read the diff. The comparison does not need it, but a difference may need a look at `state.db` and at the Hermes logs.
@@ -126,7 +126,7 @@ Commands in the scripts are plain: `echo hello`, `echo one`, `echo two`, `ls nop
 
 ## Reading a difference
 
-`node packages/golden/src/cli.ts compare <name>` prints one block for each difference:
+`bun packages/golden/src/cli.ts compare <name>` prints one block for each difference:
 
 ```
 request 1: requests[1].body.messages[2].content
@@ -154,4 +154,4 @@ Known differences to expect on the first recording:
 
 ## What to commit
 
-The files in `transcripts/upstream/`. Do not commit `HERMES_HOME`. Once an upstream file exists, `npm run check` compares it with the port transcript. A script with no upstream file shows as skipped, with the reason.
+The files in `transcripts/upstream/`. Do not commit `HERMES_HOME`. Once an upstream file exists, `bun run check` compares it with the port transcript. A script with no upstream file shows as skipped, with the reason.
