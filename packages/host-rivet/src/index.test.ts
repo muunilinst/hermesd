@@ -106,6 +106,46 @@ describe("RivetHost with a fake context", () => {
     assert.deepEqual(hits.map((r) => ({ ...r })), [{ rowid: 7, body: "external durable text" }]);
   });
 
+  it("reloads an FTS5 table whose CREATE text has a comment that looks like a content option", async () => {
+    const f = fakeActor();
+    const h = await RivetHost.activate(f.c);
+    await h.tx((s) => {
+      s.exec("CREATE VIRTUAL TABLE docs USING fts5(body /* content='notes' */)");
+      s.exec("INSERT INTO docs (body) VALUES ('commented durable text')");
+    });
+    const again = await RivetHost.activate(f.c);
+    const hits = await again.tx((s) => s.exec("SELECT body FROM docs WHERE docs MATCH 'durable'"));
+    assert.deepEqual(hits.map((r) => r["body"]), ["commented durable text"]);
+  });
+
+  it("keeps the FTS4 language id of each row across a reload", async () => {
+    const f = fakeActor();
+    const h = await RivetHost.activate(f.c);
+    await h.tx((s) => {
+      s.exec("CREATE VIRTUAL TABLE langs USING fts4(body, languageid='lid')");
+      s.exec("INSERT INTO langs (body, lid) VALUES ('bonjour durable', 4)");
+    });
+    const again = await RivetHost.activate(f.c);
+    const hits = await again.tx((s) => s.exec("SELECT body FROM langs WHERE langs MATCH 'durable' AND lid = 4"));
+    assert.deepEqual(hits.map((r) => r["body"]), ["bonjour durable"]);
+  });
+
+  it("reloads a contentless FTS5 index", async () => {
+    const f = fakeActor();
+    const h = await RivetHost.activate(f.c);
+    await h.tx((s) => {
+      s.exec("CREATE VIRTUAL TABLE bare USING fts5(body, content='')");
+      s.exec("INSERT INTO bare (rowid, body) VALUES (3, 'no stored text')");
+    });
+    const again = await RivetHost.activate(f.c);
+    const hits = await again.tx((s) => s.exec("SELECT rowid FROM bare WHERE bare MATCH 'stored'"));
+    assert.deepEqual(hits.map((r) => r["rowid"]), [3]);
+    await again.tx((s) => s.exec("INSERT INTO bare (rowid, body) VALUES (4, 'stored again')"));
+    const third = await RivetHost.activate(f.c);
+    const all = await third.tx((s) => s.exec("SELECT rowid FROM bare WHERE bare MATCH 'stored' ORDER BY rowid"));
+    assert.deepEqual(all.map((r) => r["rowid"]), [3, 4]);
+  });
+
   it("reloads rows whose foreign key points at a table that sorts later", async () => {
     const f = fakeActor();
     const h = await RivetHost.activate(f.c);

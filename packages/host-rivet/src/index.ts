@@ -164,15 +164,13 @@ export class RivetHost implements Host {
    *
    * Two SQLite details matter here:
    * - A virtual table (FTS5, FTS4) makes its own shadow tables when it is
-   *   created. So the load creates the virtual table and does not replay the
-   *   shadow table definitions, and it never writes to a shadow table:
-   *   SQLite refuses that in defensive mode, which newer runtimes turn on.
-   *   A table that stores its own text is read and written through the
-   *   virtual table itself, which builds the index. A table with external
-   *   content (`content='t'`) gets its text from `t`, an ordinary table, and
-   *   then the `rebuild` command. A contentless table (`content=''`) has no
-   *   text to read, so the load refuses it with a clear error instead of an
-   *   empty index.
+   *   created. So the load creates the virtual table, does not replay the
+   *   shadow table definitions, and then copies every shadow row exactly as
+   *   stored: the text, the index, and what `SELECT *` does not show (an
+   *   FTS4 `languageid`, an FTS5 locale). Nothing is parsed from the options
+   *   and nothing is rebuilt, so self-contained, external content and
+   *   contentless tables load the same way. SQLite refuses writes to shadow
+   *   tables in defensive mode, so the mirror turns it off for this copy only.
    * - `sqlite_sequence` holds the AUTOINCREMENT high-water marks. The load
    *   copies them, so the mirror never gives out an id that `c.db` already
    *   used. Otherwise the replay of an insert gets a different id in `c.db`.
@@ -205,18 +203,22 @@ export class RivetHost implements Host {
     }
     const broken = this.#mirror.prepare("PRAGMA foreign_key_check").all();
     if (broken.length > 0) throw new Error(`RivetHost: the stored rows break a foreign key in "${String(broken[0]!["table"])}"`);
-    for (const o of objects.filter((x) => x["type"] === "table" && isVirtual(x))) {
-      const name = String(o["name"]);
-      // Only the full-text modules have shadow tables to rebuild. Other modules keep no rows here.
-      if (!/USING\s+fts[345]\b/i.test(String(o["sql"]))) continue;
-      if (/content\s*=\s*''/i.test(String(o["sql"]))) {
-        throw new Error(`RivetHost: the contentless virtual table "${name}" cannot be rebuilt on load`);
+    const shadows = objects.filter((x) => x["type"] === "table" && isShadow(String(x["name"]))).map((x) => String(x["name"]));
+    if (shadows.length > 0) {
+      const mirror = this.#mirror as DatabaseSync & { enableDefensive?: (on: boolean) => void };
+      if (typeof mirror.enableDefensive !== "function") {
+        throw new Error("RivetHost: this runtime's node:sqlite has no enableDefensive, so FTS shadow tables cannot be copied");
       }
-      if (/\bcontent\s*=/i.test(String(o["sql"]))) {
-        this.#mirror.exec(`INSERT INTO "${name}" ("${name}") VALUES ('rebuild')`);
-        continue;
+      mirror.enableDefensive(false);
+      try {
+        for (const name of shadows) {
+          // Creating the virtual table already wrote rows here (FTS5 writes its version to _config).
+          this.#mirror.exec(`DELETE FROM "${name}"`);
+          for (const row of await this.#c.db.execute(`SELECT * FROM "${name}"`)) this.#insert(name, row);
+        }
+      } finally {
+        mirror.enableDefensive(true);
       }
-      for (const row of await this.#c.db.execute(`SELECT rowid, * FROM "${name}"`)) this.#insert(name, row);
     }
     const hasSequence = await this.#c.db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'sqlite_sequence'");
     if (hasSequence.length > 0) {
