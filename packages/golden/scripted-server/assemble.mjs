@@ -6,7 +6,9 @@
 //
 // It reads the db read-only with node:sqlite (bun, or Node 22.5 or newer). Use one fresh HERMES_HOME for each
 // scenario, so the db holds the rows of this scenario only. Plain Node, no dependencies.
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { arg, loadScript } from "./common.mjs";
 
@@ -28,10 +30,13 @@ const requests = readFileSync(logFile, "utf8")
     return { index, method: r.method, path: r.path, body: r.body };
   });
 
-// Read only. A WAL file without its -shm (Hermes has exited, or the file was copied) cannot be
-// opened read-only on bun; then open it read-write with query_only on, so writes are still refused.
-// Same rule as openReadOnly in packages/state-port/src/schema.ts; this file has no dependencies.
-const openReadOnly = (path) => {
+// Read only, and never change the db. A WAL file whose -shm cannot be made (bun on macOS with no
+// -wal, or a directory this process cannot write to) cannot be opened read-only. Then read a copy
+// of the file and its -wal in a temporary directory: opening the input read-write would checkpoint
+// its WAL into it on close. Same rule as readDbFile in packages/state-port/src/schema.ts; this file
+// has no dependencies.
+let scratch;
+const openForReading = (path) => {
   const ro = new DatabaseSync(path, { readOnly: true });
   try {
     ro.prepare("SELECT count(*) FROM sqlite_master").get();
@@ -39,12 +44,16 @@ const openReadOnly = (path) => {
   } catch (e) {
     ro.close();
     if (!existsSync(path) || !/unable to open database file/.test(String(e?.message))) throw e;
-    const rw = new DatabaseSync(path);
-    rw.exec("PRAGMA query_only = ON");
-    return rw;
   }
+  scratch = mkdtempSync(join(tmpdir(), "hermesd-assemble-"));
+  const copy = join(scratch, "state.db");
+  copyFileSync(path, copy);
+  if (existsSync(`${path}-wal`)) copyFileSync(`${path}-wal`, `${copy}-wal`);
+  const rw = new DatabaseSync(copy);
+  rw.exec("PRAGMA query_only = ON");
+  return rw;
 };
-const db = openReadOnly(dbFile);
+const db = openForReading(dbFile);
 const json = (v) => (typeof v === "string" ? JSON.parse(v) : null);
 const messages = db
   .prepare("SELECT role, content, tool_calls, tool_call_id, tool_name, finish_reason, active, compacted FROM messages ORDER BY id")
@@ -71,6 +80,7 @@ const admissions = db
     return { status: String(r.status), input, outcome: r.outcome ?? null };
   });
 db.close();
+if (scratch) rmSync(scratch, { recursive: true, force: true });
 
 const record = { format: "hermesd-golden/1", side: "upstream", script: script.name, requests, rows: { messages, admissions } };
 writeFileSync(out, `${JSON.stringify(record, null, 2)}\n`);

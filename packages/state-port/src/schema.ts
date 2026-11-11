@@ -1,4 +1,6 @@
-import { existsSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { loadSurface } from "@hermesd/contracts";
 
@@ -78,29 +80,50 @@ export const LEDGER_TABLES = ["runtime_epoch", "session_admissions", "worker_exe
 
 /** Create an empty upstream-shaped database: WAL mode, the tables, the indexes. FTS and the version row are not written here. */
 /**
- * Open a state.db for reading only.
+ * Read a state.db without changing it, and return what `fn` returns.
  *
  * Upstream keeps state.db in WAL mode. A read-only connection to a WAL file
- * needs the `-shm` file. Node's SQLite creates it; bun's cannot, so a WAL file
- * copied without its `-shm` (a clean copy) fails with "unable to open database
- * file". Then this opens the file read-write with `query_only` on, so SQLite
- * can create the `-shm` and every write is still refused. Closing that
- * connection checkpoints any WAL frames into the file, so give it a copy, as
- * the CLI says.
+ * needs to create the `-shm` file. When it cannot (bun on macOS without a
+ * `-wal`, or a directory this process cannot write to), this copies the file
+ * and its `-wal` into a new temporary directory, opens the copy read-write
+ * (so SQLite can recover the WAL) with `query_only` on, and removes the copy
+ * afterwards. The input is never opened read-write: closing such a
+ * connection would checkpoint the WAL into the file and remove the WAL.
  */
-export function openReadOnly(path: string): DatabaseSync {
-  const db = new DatabaseSync(path, { readOnly: true });
+export function readDbFile<T>(path: string, fn: (db: DatabaseSync) => T): T {
+  if (!existsSync(path)) throw new Error(`${path}: no such file`);
+  const ro = new DatabaseSync(path, { readOnly: true });
+  let opened = false;
   try {
     // Bun opens lazily, so the failure shows at the first statement, not in the constructor.
-    db.prepare("SELECT count(*) FROM sqlite_master").get();
-    return db;
+    ro.prepare("SELECT count(*) FROM sqlite_master").get();
+    opened = true;
   } catch (e) {
-    db.close();
-    // A missing file is an error to report. A read-write open would create it.
-    if (!existsSync(path) || !(e instanceof Error && /unable to open database file/.test(e.message))) throw e;
-    const rw = new DatabaseSync(path);
-    rw.exec("PRAGMA query_only = ON");
-    return rw;
+    if (!(e instanceof Error && /unable to open database file/.test(e.message))) throw e;
+  } finally {
+    if (!opened) ro.close();
+  }
+  if (opened) {
+    try {
+      return fn(ro);
+    } finally {
+      ro.close();
+    }
+  }
+  const scratch = mkdtempSync(join(tmpdir(), "hermesd-read-"));
+  try {
+    const copy = join(scratch, "state.db");
+    copyFileSync(path, copy);
+    if (existsSync(`${path}-wal`)) copyFileSync(`${path}-wal`, `${copy}-wal`);
+    const db = new DatabaseSync(copy);
+    try {
+      db.exec("PRAGMA query_only = ON");
+      return fn(db);
+    } finally {
+      db.close();
+    }
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
   }
 }
 

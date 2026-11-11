@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { copyFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -10,7 +11,7 @@ import { epochFloor } from "./apply.ts";
 import { readActors } from "./read-actors.ts";
 import { readStateDb } from "./read-db.ts";
 import { buildSampleStateDb } from "./sample.ts";
-import { LEDGER_TABLES, createUpstreamDb, normaliseSql, openReadOnly, upstreamDdl, upstreamTableNames } from "./schema.ts";
+import { LEDGER_TABLES, createUpstreamDb, normaliseSql, readDbFile, upstreamDdl, upstreamTableNames } from "./schema.ts";
 import { writeStateDb } from "./write-db.ts";
 
 // Import and export without a platform: the rules of guide 6.4 and of
@@ -27,18 +28,62 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 const NOW = 1_700_100_000_000;
 const rows = (path: string, sql: string): Array<Record<string, unknown>> => {
-  const db = openReadOnly(path);
-  try {
-    return db.prepare(sql).all().map((r) => ({ ...r }));
-  } finally {
-    db.close();
-  }
+  return readDbFile(path, (db) => db.prepare(sql).all().map((r) => ({ ...r })));
 };
 
 describe("upstream DDL", () => {
   it("has the 17 ordinary tables that upstream makes in its schema script", () => {
     assert.equal(upstreamTableNames().length, 17);
     assert.ok(!upstreamTableNames().includes("delivery_obligations"));
+  });
+
+  it("reads WAL frames that were never checkpointed, and leaves the file and its WAL as they were", () => {
+    const source = join(dir, "live.db");
+    const writer = createUpstreamDb(source);
+    writer.prepare("INSERT INTO schema_version (version) VALUES (?)").run(32);
+    writer.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+    writer.exec("PRAGMA wal_autocheckpoint = 0");
+    writer.prepare("INSERT INTO sessions (id, source, started_at) VALUES (?, ?, ?)").run("only-in-wal", "cli", 1);
+    // Copy the file and its WAL while the writer still holds them: the -shm is not copied.
+    const path = join(dir, "snapshot.db");
+    copyFileSync(source, path);
+    copyFileSync(`${source}-wal`, `${path}-wal`);
+    writer.close();
+    assert.ok(!existsSync(`${path}-shm`));
+    const sha = (p: string): string => createHash("sha256").update(readFileSync(p)).digest("hex");
+    const before = { db: sha(path), wal: sha(`${path}-wal`) };
+    const { image } = readStateDb(path);
+    assert.deepEqual(image.sessions.map((x) => x.actor), ["only-in-wal"]);
+    assert.ok(existsSync(`${path}-wal`), "the WAL is still there");
+    assert.deepEqual({ db: sha(path), wal: sha(`${path}-wal`) }, before, "the file and its WAL are byte for byte as they were");
+  });
+
+  it("reads a WAL snapshot from a directory it cannot write to, and leaves it as it was", (t) => {
+    if (process.getuid?.() === 0) return t.skip("root ignores directory permissions");
+    const source = join(dir, "live.db");
+    const writer = createUpstreamDb(source);
+    writer.prepare("INSERT INTO schema_version (version) VALUES (?)").run(32);
+    writer.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+    writer.exec("PRAGMA wal_autocheckpoint = 0");
+    writer.prepare("INSERT INTO sessions (id, source, started_at) VALUES (?, ?, ?)").run("only-in-wal", "cli", 1);
+    const locked = join(dir, "locked");
+    mkdirSync(locked);
+    const path = join(locked, "state.db");
+    copyFileSync(source, path);
+    copyFileSync(`${source}-wal`, `${path}-wal`);
+    writer.close();
+    const sha = (p: string): string => createHash("sha256").update(readFileSync(p)).digest("hex");
+    const before = { db: sha(path), wal: sha(`${path}-wal`) };
+    // No -shm, and none can be made: a read-only connection cannot open the file here.
+    chmodSync(locked, 0o555);
+    try {
+      const { image } = readStateDb(path);
+      assert.deepEqual(image.sessions.map((x) => x.actor), ["only-in-wal"]);
+    } finally {
+      chmodSync(locked, 0o755);
+    }
+    assert.deepEqual(readdirSync(locked).sort(), ["state.db", "state.db-wal"]);
+    assert.deepEqual({ db: sha(path), wal: sha(`${path}-wal`) }, before);
   });
 
   it("reads a clean copy of a WAL state.db, one with no -shm file beside it", () => {
@@ -53,12 +98,7 @@ describe("upstream DDL", () => {
     assert.ok(!existsSync(`${path}-shm`));
     const { report } = readStateDb(path);
     assert.ok(report);
-    const after = openReadOnly(path);
-    try {
-      assert.throws(() => after.exec("CREATE TABLE y (x)"), /readonly/);
-    } finally {
-      after.close();
-    }
+    readDbFile(path, (db) => assert.throws(() => db.exec("CREATE TABLE y (x)"), /readonly/));
   });
 
   it("makes a file whose table text is upstream's, byte for byte", () => {
@@ -67,12 +107,7 @@ describe("upstream DDL", () => {
     const reference = new DatabaseSync(":memory:");
     for (const t of upstreamDdl().tables) reference.exec(t.sql);
     const stored = (p: string): Array<{ name: string; sql: string }> => {
-      const db = openReadOnly(p);
-      try {
-        return db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as Array<{ name: string; sql: string }>;
-      } finally {
-        db.close();
-      }
+      return readDbFile(p, (db) => db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as Array<{ name: string; sql: string }>);
     };
     const want = reference.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all();
     assert.deepEqual(stored(path), want);

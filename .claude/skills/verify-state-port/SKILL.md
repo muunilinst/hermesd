@@ -39,7 +39,7 @@ directory. It checks that each output file exists and that the report has both p
 
 ## Gotchas
 
-- **Open a state.db with `openReadOnly`** (`schema.ts`), never `new DatabaseSync(path, { readOnly: true })`. Upstream's file is in WAL mode. Bun cannot open a WAL file read-only when its `-shm` is missing, which is the normal case for a copied `state.db`, and it fails at the first statement, not in the constructor. `openReadOnly` falls back to a read-write open with `query_only` on. The test "reads a clean copy of a WAL state.db" covers it.
+- **Read a state.db with `readDbFile(path, fn)`** (`schema.ts`), never `new DatabaseSync(path, { readOnly: true })` and never a read-write open of the input. Upstream's file is in WAL mode, and a read-only connection must be able to create the `-shm`. It cannot on bun on macOS when there is no `-wal`, or in a directory this process cannot write to, and bun reports the failure at the first statement, not in the constructor. Then `readDbFile` reads a copy of the file and its `-wal` in a temporary directory and removes it. Closing a read-write connection on the input would checkpoint its WAL into it. Tests: "reads WAL frames that were never checkpointed", "reads a WAL snapshot from a directory it cannot write to" (skipped as root). `scripted-server/assemble.mjs` has the same rule inline.
 - One test is skipped everywhere: the `hermes chat --resume` step. This environment may not execute upstream Hermes. Until a person runs `contracts/resume-check.sh`, "upstream can resume what the port wrote" is not shown.
 - Give `roundtrip` a copy of a real `state.db`, never the live file under `~/.hermes`.
 - On export an in-flight turn is written as `started`, so upstream reconciles it as `unknown`. That is the design, not data loss.
