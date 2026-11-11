@@ -25,6 +25,8 @@ export interface ChatMessage {
   reasoning_details?: unknown[];
   codex_reasoning_items?: unknown[];
   codex_message_items?: unknown[];
+  anthropic_content_blocks?: unknown[];
+  bedrock_content_blocks?: unknown[];
 }
 
 export interface ChatRequestBody {
@@ -101,7 +103,9 @@ export function parseChatResponse(json: unknown): ParsedResponse | string {
  * (`reasoning_content`, `reasoning_details`); the keys for other API modes are dropped.
  */
 export function chatBody(body: ChatRequestBody): string {
-  const messages = body.messages.map(({ reasoning: _r, codex_reasoning_items: _c, codex_message_items: _m, ...rest }) => rest);
+  const messages = body.messages.map(
+    ({ reasoning: _r, codex_reasoning_items: _c, codex_message_items: _m, anthropic_content_blocks: _a, bedrock_content_blocks: _b, ...rest }) => rest,
+  );
   return JSON.stringify({ ...body, messages });
 }
 

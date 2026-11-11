@@ -37,6 +37,13 @@ export interface NewMessage {
   reasoningDetails?: unknown[];
   codexReasoningItems?: unknown[];
   codexMessageItems?: unknown[];
+  /**
+   * The ordered content blocks of an Anthropic or Bedrock answer that interleaves
+   * signed thinking with tool calls. Upstream keeps them live only; the port rebuilds
+   * every request from rows, so it keeps them in the `data` of the answer's
+   * `pending_call` (key `replay`), not in a `messages` column.
+   */
+  orderedBlocks?: { anthropic_content_blocks?: unknown[]; bedrock_content_blocks?: unknown[] };
   /** Set when the row comes from the database. */
   id?: number;
 }
@@ -158,7 +165,11 @@ function fromRow(r: SqlRow): NewMessage {
  * A row from an imported state.db may have no `message_uid`; it gets `row-<id>`.
  */
 export function loadActiveMessages(sql: Sql, sessionId: string): NewMessage[] {
-  return sql
+  const replay = new Map<string, NonNullable<NewMessage["orderedBlocks"]>>();
+  for (const r of sql.exec("SELECT call_id, json_extract(data, '$.replay') AS replay FROM pending_call WHERE json_extract(data, '$.replay') IS NOT NULL")) {
+    replay.set(`${str(r.call_id)}:a`, JSON.parse(str(r.replay)) as NonNullable<NewMessage["orderedBlocks"]>);
+  }
+  const rows = sql
     .exec(
       `SELECT id, role, content, tool_call_id, tool_calls, tool_name, tool_call_uids, tool_call_uid, message_uid, _compressed_summary,
          reasoning, reasoning_content, reasoning_details, codex_reasoning_items, codex_message_items
@@ -166,6 +177,11 @@ export function loadActiveMessages(sql: Sql, sessionId: string): NewMessage[] {
       sessionId,
     )
     .map(fromRow);
+  for (const m of rows) {
+    const o = m.role === "assistant" ? replay.get(m.messageUid) : undefined;
+    if (o) m.orderedBlocks = o;
+  }
+  return rows;
 }
 
 /** One message in the OpenAI shape. */
@@ -180,6 +196,7 @@ export function toApiMessage(m: NewMessage): ChatMessage {
       ...(m.reasoningDetails ? { reasoning_details: m.reasoningDetails } : {}),
       ...(m.codexReasoningItems ? { codex_reasoning_items: m.codexReasoningItems } : {}),
       ...(m.codexMessageItems ? { codex_message_items: m.codexMessageItems } : {}),
+      ...m.orderedBlocks,
     };
   }
   if (m.role === "tool") return { role: "tool", tool_call_id: m.toolCallId ?? "", content: m.content ?? "" };
@@ -234,8 +251,8 @@ export function insertPortRow(
  * reasoning text. `reasoning_content` comes from the provider data, or from the
  * reasoning text when nothing else set it. The three JSON columns are copied as
  * they are, because their signatures and encrypted blobs must come back exactly.
- * `anthropic_content_blocks`, `bedrock_content_blocks` and `stop_details` have no
- * column upstream (live only), so they are not kept.
+ * `anthropic_content_blocks` and `bedrock_content_blocks` have no column upstream
+ * (live only): they go to `orderedBlocks` (see there). `stop_details` is not kept.
  */
 export function replayColumns(r: { reasoning?: string | null; providerData?: Record<string, unknown> | null }): Partial<NewMessage> {
   const pd = r.providerData ?? {};
@@ -250,5 +267,8 @@ export function replayColumns(r: { reasoning?: string | null; providerData?: Rec
   if (codexReasoning) out.codexReasoningItems = codexReasoning;
   const codexMessages = list(pd.codex_message_items);
   if (codexMessages) out.codexMessageItems = codexMessages;
+  const anthropic = list(pd.anthropic_content_blocks);
+  const bedrock = list(pd.bedrock_content_blocks);
+  if (anthropic || bedrock) out.orderedBlocks = { ...(anthropic ? { anthropic_content_blocks: anthropic } : {}), ...(bedrock ? { bedrock_content_blocks: bedrock } : {}) };
   return out;
 }

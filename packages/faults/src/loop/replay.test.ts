@@ -136,3 +136,21 @@ eachLoopWorld("reasoning on the default chat_completions path", (use) => {
     ),
   );
 });
+
+eachLoopWorld("interleaved thinking keeps its order on rebuild", (use) => {
+  const SECOND = { thinking: "Then report.", signature: "SECONDSIG==" };
+  for (const restart of [false, true]) {
+    it(
+      `anthropic_messages ${restart ? "after a restart" : "in memory"}: thinking, tool_use, thinking, text go back in that order`,
+      use(
+        () => opts("anthropic_messages", [{ thinking: [THINKING, SECOND], interleave: true, reply: "I will build it", toolCalls: [{ name: "terminal", arguments: { command: cmd }, id: "toolu_a" }] }, { reply: "it is built" }]),
+        async (w) => {
+          await twoRounds(w, restart);
+          const assistant = (secondBody(w).messages as Array<{ role: string; content: Array<{ type: string }> }>).find((m) => m.role === "assistant")!;
+          assert.deepEqual(assistant.content.map((b) => b.type), ["thinking", "tool_use", "thinking", "text"]);
+          w.assertConsistent();
+        },
+      ),
+    );
+  }
+});

@@ -562,6 +562,10 @@ export class LoopDriver implements TurnDriver {
         guard: (sql) => num(sql.exec("SELECT COUNT(*) AS n FROM pending_call WHERE call_id = ? AND status = 'pending'", row.callId)[0]!.n) === 1,
         after: (sql, now) => {
           sql.exec("UPDATE pending_call SET status = 'done', response_digest = ?, updated_at = ? WHERE call_id = ?", digest, now, row.callId);
+          // Interleaved blocks have no messages column: keep them with the call (see `NewMessage.orderedBlocks`).
+          if (assistant.orderedBlocks) {
+            sql.exec("UPDATE pending_call SET data = json_set(data, '$.replay', json(?)) WHERE call_id = ?", JSON.stringify(assistant.orderedBlocks), row.callId);
+          }
         },
       });
     } catch (e) {

@@ -46,6 +46,8 @@ export interface ScriptStep {
   chunks?: number;
   /** anthropic_messages: signed thinking blocks that come before the text and the tool calls. */
   thinking?: Array<{ thinking: string; signature: string }>;
+  /** anthropic_messages, plain answers: thinking[i] before toolCalls[i], and the text last. */
+  interleave?: boolean;
   /** codex_responses: reasoning items (with `encrypted_content`) that come before the message. */
   reasoningItems?: Dict[];
 }
@@ -65,6 +67,7 @@ export interface ScriptedModelOptions {
 
 interface Resolved {
   thinking: Array<{ thinking: string; signature: string }>;
+  interleave: boolean;
   reasoningItems: Dict[];
   text: string | null;
   calls: Array<{ id: string; name: string; args: string }>;
@@ -113,7 +116,7 @@ function jsonAnswer(mode: ApiMode, r: Resolved): Dict {
         type: "message",
         role: "assistant",
         model: r.model,
-        content: [...r.thinking.map((t) => ({ type: "thinking", thinking: t.thinking, signature: t.signature })), ...(r.text ? [{ type: "text", text: r.text }] : []), ...r.calls.map((c) => ({ type: "tool_use", id: c.id, name: c.name, input: JSON.parse(c.args || "{}") as unknown }))],
+        content: anthropicContent(r),
         stop_reason: r.calls.length > 0 ? "tool_use" : "end_turn",
         stop_sequence: null,
         usage: { input_tokens: r.usage.prompt, output_tokens: r.usage.completion },
@@ -139,6 +142,16 @@ function jsonAnswer(mode: ApiMode, r: Resolved): Dict {
         usage: { inputTokens: r.usage.prompt, outputTokens: r.usage.completion, totalTokens: r.usage.prompt + r.usage.completion },
       };
   }
+}
+
+function anthropicContent(r: Resolved): Dict[] {
+  const thinking = r.thinking.map((t) => ({ type: "thinking", thinking: t.thinking, signature: t.signature }));
+  const text = r.text ? [{ type: "text", text: r.text }] : [];
+  const calls = r.calls.map((c) => ({ type: "tool_use", id: c.id, name: c.name, input: JSON.parse(c.args || "{}") as unknown }));
+  if (!r.interleave) return [...thinking, ...text, ...calls];
+  const out: Dict[] = [];
+  for (let i = 0; i < Math.max(thinking.length, calls.length); i++) out.push(...thinking.slice(i, i + 1), ...calls.slice(i, i + 1));
+  return [...out, ...text];
 }
 
 function codexItems(r: Resolved): Dict[] {
@@ -334,6 +347,7 @@ export class ScriptedModel {
     }
     const resolved: Resolved = {
       thinking: step.thinking ?? [],
+      interleave: step.interleave ?? false,
       reasoningItems: step.reasoningItems ?? [],
       text: step.reply ?? null,
       calls: (step.toolCalls ?? []).map((c, i) => ({
