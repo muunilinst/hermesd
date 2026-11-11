@@ -187,17 +187,26 @@ export class RivetHost implements Host {
       if (o["type"] === "table" && isShadow(String(o["name"]))) continue;
       this.#mirror.exec(String(o["sql"]));
     }
-    for (const o of objects.filter((x) => x["type"] === "table" && !isVirtual(x))) {
-      const name = String(o["name"]);
-      // Of the shadow tables, only the stored text is copied. The rebuild below makes the rest.
-      if (isShadow(name) && !virtualNames.some((v) => name === `${v}_content`)) continue;
-      for (const row of await this.#c.db.execute(`SELECT * FROM "${name}"`)) {
-        const cols = Object.keys(row);
-        this.#mirror
-          .prepare(`INSERT INTO "${name}" (${cols.map((x) => `"${x}"`).join(",")}) VALUES (${cols.map(() => "?").join(",")})`)
-          .run(...(Object.values(row) as SqlValue[]));
+    // The tables are copied by name, so a row can arrive before the row its foreign key points at.
+    // The stored rows already met their keys: turn enforcement off for the copy and check once after.
+    this.#mirror.exec("PRAGMA foreign_keys = OFF");
+    try {
+      for (const o of objects.filter((x) => x["type"] === "table" && !isVirtual(x))) {
+        const name = String(o["name"]);
+        // Of the shadow tables, only the stored text is copied. The rebuild below makes the rest.
+        if (isShadow(name) && !virtualNames.some((v) => name === `${v}_content`)) continue;
+        for (const row of await this.#c.db.execute(`SELECT * FROM "${name}"`)) {
+          const cols = Object.keys(row);
+          this.#mirror
+            .prepare(`INSERT INTO "${name}" (${cols.map((x) => `"${x}"`).join(",")}) VALUES (${cols.map(() => "?").join(",")})`)
+            .run(...(Object.values(row) as SqlValue[]));
+        }
       }
+    } finally {
+      this.#mirror.exec("PRAGMA foreign_keys = ON");
     }
+    const broken = this.#mirror.prepare("PRAGMA foreign_key_check").all();
+    if (broken.length > 0) throw new Error(`RivetHost: the stored rows break a foreign key in "${String(broken[0]!["table"])}"`);
     for (const o of objects.filter((x) => x["type"] === "table" && isVirtual(x))) {
       const name = String(o["name"]);
       // Only the full-text modules have shadow tables to rebuild. Other modules keep no rows here.

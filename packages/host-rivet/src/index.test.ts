@@ -92,6 +92,20 @@ describe("RivetHost with a fake context", () => {
     assert.deepEqual(all.map((r) => r["body"]), ["hello durable world", "second row"]);
   });
 
+  it("reloads rows whose foreign key points at a table that sorts later", async () => {
+    const f = fakeActor();
+    const h = await RivetHost.activate(f.c);
+    await h.tx((s) => {
+      s.exec("CREATE TABLE sessions (id TEXT PRIMARY KEY)");
+      s.exec("CREATE TABLE messages (id INTEGER PRIMARY KEY, session_id TEXT NOT NULL REFERENCES sessions(id), body TEXT)");
+      s.exec("INSERT INTO sessions (id) VALUES ('s1')");
+      s.exec("INSERT INTO messages (session_id, body) VALUES ('s1', 'hi')");
+    });
+    const again = await RivetHost.activate(f.c);
+    assert.deepEqual(await again.tx((s) => s.exec("SELECT body FROM messages").map((r) => r["body"])), ["hi"]);
+    await assert.rejects(again.tx((s) => s.exec("INSERT INTO messages (session_id, body) VALUES ('nope', 'x')")), /FOREIGN KEY/);
+  });
+
   it("rejects an async tx callback", async () => {
     const h = await RivetHost.activate(fakeActor().c);
     await assert.rejects(h.tx((async () => 1) as never), TypeError);
