@@ -31,6 +31,8 @@ export interface ModelStep {
   /** Never answer. Only an abort ends the request. */
   drop?: boolean;
   usage?: { prompt_tokens: number; completion_tokens: number };
+  /** Reasoning fields on the answer message, such as `reasoning_content` or `reasoning_details`. */
+  reasoning?: Record<string, unknown>;
 }
 
 export class ScriptedModel {
@@ -119,7 +121,7 @@ export class ScriptedModel {
       choices: [
         {
           index: 0,
-          message: { role: "assistant", content: step.reply ?? null, ...(calls.length > 0 ? { tool_calls: calls } : {}) },
+          message: { role: "assistant", content: step.reply ?? null, ...(calls.length > 0 ? { tool_calls: calls } : {}), ...step.reasoning },
           finish_reason: calls.length > 0 ? "tool_calls" : "stop",
         },
       ],

@@ -107,3 +107,32 @@ eachLoopWorld("provider replay data survives the tool round", (use) => {
     ),
   );
 });
+
+eachLoopWorld("reasoning on the default chat_completions path", (use) => {
+  it(
+    "the row keeps reasoning_content and the next request sends it back",
+    use(
+      {
+        script: [
+          { reasoning: { reasoning_content: "Run the build first." }, toolCalls: [{ name: "terminal", arguments: { command: cmd }, id: "call_a" }] },
+          { reply: "it is built" },
+        ],
+        loop: scriptedTerminal,
+      },
+      async (w) => {
+        await w.send("build it");
+        await w.until(() => w.rows("pending_op").length > 0, "the pending terminal op");
+        w.rig.commands.release("h1");
+        await w.rig.settle();
+        await w.wakeAll();
+        await w.until(() => w.replies.length === 1, "the reply");
+        const row = w.rows("messages", "role = 'assistant'")[0]!;
+        assert.equal(row.reasoning, "Run the build first.");
+        const body = w.model.recorder.requests.at(-1)!.body as { messages: Array<Record<string, unknown>> };
+        const asst = body.messages.find((m) => m.role === "assistant")!;
+        assert.equal(asst.reasoning_content, "Run the build first.");
+        assert.equal("reasoning" in asst, false, "the internal key is not sent");
+      },
+    ),
+  );
+});

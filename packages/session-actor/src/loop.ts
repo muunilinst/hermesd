@@ -34,7 +34,7 @@ import {
   type NewMessage,
 } from "./messages.ts";
 import { DEFAULT_MIGRATIONS, readPortRow, readPortRows, type MigrationSet, type RowData } from "./migrate.ts";
-import { chatRequest, estimateTokens, parseChatResponse, type ChatRequestBody, type ParsedResponse, type ToolCallWire, type Usage } from "./model/openai.ts";
+import { chatBody, chatRequest, estimateTokens, parseChatResponse, type ChatRequestBody, type ParsedResponse, type ToolCallWire, type Usage } from "./model/openai.ts";
 import { answerResult, parseClarify, renderQuestions, type ClarifyQuestion } from "./tools/clarify.ts";
 import { SUPPORTED_TOOLS, toolDefinitions, type ToolName } from "./tools/schemas.ts";
 import { inputHash, parseTerminal, shellCommand, terminalResult, type BuildCommand } from "./tools/terminal.ts";
@@ -1016,7 +1016,7 @@ export class LoopDriver implements TurnDriver {
       callId: `${ctx.turnId}:k${snap.compressions + 1}`,
       // The summary call does not count as a model call of the turn.
       seq: snap.modelCalls,
-      request: this.#deps.modelClient ? this.#deps.modelClient.buildBody(body) : JSON.stringify(body),
+      request: this.#deps.modelClient ? this.#deps.modelClient.buildBody(body) : chatBody(body),
       data: {
         purpose: "compression",
         reason: hygiene ? "hygiene" : "threshold",
@@ -1036,7 +1036,7 @@ export class LoopDriver implements TurnDriver {
       messages: [{ role: "system", content: this.#cfg.systemPrompt }, ...all.map(toApiMessage)],
       tools: toolDefinitions(this.#cfg.tools),
     };
-    const request = fb ? fb.client.buildBody(body) : this.#deps.modelClient ? this.#deps.modelClient.buildBody(body) : JSON.stringify(body);
+    const request = fb ? fb.client.buildBody(body) : this.#deps.modelClient ? this.#deps.modelClient.buildBody(body) : chatBody(body);
     const tokens = this.#deps.modelClient ? Math.ceil(request.length / 4) : estimateTokens(body);
     const threshold = this.#cfg.compress ? Math.floor(this.#cfg.contextWindow * 0.5) : thresholdTokens(this.#cfg.contextWindow, compressionConfig(this.#cfg.compression));
     const seq = snap.modelCalls + 1;

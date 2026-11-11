@@ -80,12 +80,29 @@ export function parseChatResponse(json: unknown): ParsedResponse | string {
   const u = o.usage ?? {};
   const details = (u.prompt_tokens_details ?? {}) as { cached_tokens?: unknown };
   const n = (v: unknown): number => (typeof v === "number" ? v : 0);
+  // The reasoning fields, as the provider layer reads them (providers/src/chat.ts), so the row keeps them.
+  const providerData: Record<string, unknown> = {};
+  if (m.reasoning_content !== undefined && m.reasoning_content !== null) providerData.reasoning_content = m.reasoning_content;
+  if (Array.isArray(m.reasoning_details) && m.reasoning_details.length > 0) providerData.reasoning_details = m.reasoning_details;
+  const text = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
   return {
     content: typeof m.content === "string" ? m.content : null,
     toolCalls: calls,
     finishReason: typeof choice.finish_reason === "string" ? choice.finish_reason : null,
     usage: { promptTokens: n(u.prompt_tokens), completionTokens: n(u.completion_tokens), cachedTokens: n(details.cached_tokens) },
+    reasoning: text(m.reasoning) ?? text(m.reasoning_content),
+    providerData: Object.keys(providerData).length > 0 ? providerData : null,
   };
+}
+
+/**
+ * The bytes of a chat_completions request without a model client. An assistant
+ * message keeps the reasoning keys a chat_completions host reads back
+ * (`reasoning_content`, `reasoning_details`); the keys for other API modes are dropped.
+ */
+export function chatBody(body: ChatRequestBody): string {
+  const messages = body.messages.map(({ reasoning: _r, codex_reasoning_items: _c, codex_message_items: _m, ...rest }) => rest);
+  return JSON.stringify({ ...body, messages });
 }
 
 /** A rough size of a request in tokens: 4 characters for one token, as a safety estimate. */
