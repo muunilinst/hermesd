@@ -165,11 +165,14 @@ export class RivetHost implements Host {
    * Two SQLite details matter here:
    * - A virtual table (FTS5, FTS4) makes its own shadow tables when it is
    *   created. So the load creates the virtual table and does not replay the
-   *   shadow table definitions. It copies only the stored text (the
-   *   `<name>_content` rows, or the external content table, which is an
-   *   ordinary table) and then rebuilds the index with the `rebuild` command.
-   *   A contentless table (`content=''`) has no text to rebuild from, so the
-   *   load refuses it with a clear error instead of an empty index.
+   *   shadow table definitions, and it never writes to a shadow table:
+   *   SQLite refuses that in defensive mode, which newer runtimes turn on.
+   *   A table that stores its own text is read and written through the
+   *   virtual table itself, which builds the index. A table with external
+   *   content (`content='t'`) gets its text from `t`, an ordinary table, and
+   *   then the `rebuild` command. A contentless table (`content=''`) has no
+   *   text to read, so the load refuses it with a clear error instead of an
+   *   empty index.
    * - `sqlite_sequence` holds the AUTOINCREMENT high-water marks. The load
    *   copies them, so the mirror never gives out an id that `c.db` already
    *   used. Otherwise the replay of an insert gets a different id in `c.db`.
@@ -193,14 +196,9 @@ export class RivetHost implements Host {
     try {
       for (const o of objects.filter((x) => x["type"] === "table" && !isVirtual(x))) {
         const name = String(o["name"]);
-        // Of the shadow tables, only the stored text is copied. The rebuild below makes the rest.
-        if (isShadow(name) && !virtualNames.some((v) => name === `${v}_content`)) continue;
-        for (const row of await this.#c.db.execute(`SELECT * FROM "${name}"`)) {
-          const cols = Object.keys(row);
-          this.#mirror
-            .prepare(`INSERT INTO "${name}" (${cols.map((x) => `"${x}"`).join(",")}) VALUES (${cols.map(() => "?").join(",")})`)
-            .run(...(Object.values(row) as SqlValue[]));
-        }
+        // The virtual table owns its shadow tables. The loop below fills them through it.
+        if (isShadow(name)) continue;
+        for (const row of await this.#c.db.execute(`SELECT * FROM "${name}"`)) this.#insert(name, row);
       }
     } finally {
       this.#mirror.exec("PRAGMA foreign_keys = ON");
@@ -214,7 +212,11 @@ export class RivetHost implements Host {
       if (/content\s*=\s*''/i.test(String(o["sql"]))) {
         throw new Error(`RivetHost: the contentless virtual table "${name}" cannot be rebuilt on load`);
       }
-      this.#mirror.exec(`INSERT INTO "${name}" ("${name}") VALUES ('rebuild')`);
+      if (/\bcontent\s*=/i.test(String(o["sql"]))) {
+        this.#mirror.exec(`INSERT INTO "${name}" ("${name}") VALUES ('rebuild')`);
+        continue;
+      }
+      for (const row of await this.#c.db.execute(`SELECT rowid, * FROM "${name}"`)) this.#insert(name, row);
     }
     const hasSequence = await this.#c.db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'sqlite_sequence'");
     if (hasSequence.length > 0) {
@@ -225,6 +227,13 @@ export class RivetHost implements Host {
         if (Number(updated.changes) === 0) this.#mirror.prepare("INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)").run(name, seq);
       }
     }
+  }
+
+  #insert(table: string, row: Record<string, unknown>): void {
+    const cols = Object.keys(row);
+    this.#mirror
+      .prepare(`INSERT INTO "${table}" (${cols.map((x) => `"${x}"`).join(",")}) VALUES (${cols.map(() => "?").join(",")})`)
+      .run(...(Object.values(row) as SqlValue[]));
   }
 
   id(): string {

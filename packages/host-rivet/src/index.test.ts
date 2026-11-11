@@ -92,6 +92,20 @@ describe("RivetHost with a fake context", () => {
     assert.deepEqual(all.map((r) => r["body"]), ["hello durable world", "second row"]);
   });
 
+  it("reloads an FTS5 index whose text is in an external content table", async () => {
+    const f = fakeActor();
+    const h = await RivetHost.activate(f.c);
+    await h.tx((s) => {
+      s.exec("CREATE TABLE notes (id INTEGER PRIMARY KEY, body TEXT)");
+      s.exec("CREATE VIRTUAL TABLE notes_fts USING fts5(body, content='notes', content_rowid='id')");
+      s.exec("INSERT INTO notes (id, body) VALUES (7, 'external durable text')");
+      s.exec("INSERT INTO notes_fts (rowid, body) VALUES (7, 'external durable text')");
+    });
+    const again = await RivetHost.activate(f.c);
+    const hits = await again.tx((s) => s.exec("SELECT rowid, body FROM notes_fts WHERE notes_fts MATCH 'durable'"));
+    assert.deepEqual(hits.map((r) => ({ ...r })), [{ rowid: 7, body: "external durable text" }]);
+  });
+
   it("reloads rows whose foreign key points at a table that sorts later", async () => {
     const f = fakeActor();
     const h = await RivetHost.activate(f.c);
