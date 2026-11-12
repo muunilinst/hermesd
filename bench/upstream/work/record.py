@@ -7,12 +7,17 @@ Follows packages/golden/UPSTREAM.md: fresh HERMES_HOME, plugins, config, scripte
 server on 8089, inputs through `hermes chat -q` (first) and `hermes chat -c -q` (rest),
 then assemble.mjs into transcripts/upstream/<name>.json.
 """
-import json, os, shutil, signal, subprocess, sys, time, urllib.request
+import json, os, shutil, signal, socket, subprocess, sys, time, urllib.request
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 G = os.path.join(ROOT, "packages/golden/scripted-server")
 BUN = os.path.expanduser("~/.bun/bin/bun")
 HERMES = os.path.expanduser("~/hvenv/bin/hermes")
+PORT = 8089
+LOCAL = f"http://127.0.0.1:{PORT}"
+# context window written for scripts that do not set one: large enough to skip Hermes' context probe and
+# above its 64K floor; compaction scripts override it through --extra-config.
+BEDROCK_CONTEXT = 200000
 DEFAULT_MODEL = {
     "chat_completions": "gpt-4o",
     "anthropic_messages": "claude-sonnet-4-5",
@@ -40,14 +45,66 @@ def config_for(script):
     elif mode in ("anthropic_messages", "codex_responses"):
         base = "http://127.0.0.1:8089" if mode == "anthropic_messages" else "http://127.0.0.1:8089/v1"
         cfg["providers"] = {"scripted": {"base_url": base, "api_mode": mode, "model": model, "api_key": "x"}}
-        cfg["model"] = {"default": model, "provider": "scripted"}
+        # UPSTREAM.md "What changed after the first run" 5: named providers need api_key and streaming:false
+        # (codex_responses streams anyway).
+        cfg["model"] = {"default": model, "provider": "scripted", "api_key": "x", "streaming": False}
     elif mode == "bedrock_converse":
-        cfg["model"] = {"default": model, "provider": "bedrock", "api_mode": "bedrock_converse", "streaming": False}
+        # UPSTREAM.md 6: context_length skips the context probe; the endpoint and token are environment (see env_for)
+        cfg["model"] = {"default": model, "provider": "bedrock", "api_mode": "bedrock_converse", "streaming": False,
+                        "context_length": BEDROCK_CONTEXT}
     if script.get("fallback"):
         fb = script["fallback"]
         cfg["fallback_providers"] = [{"provider": "custom", "model": fb["model"],
                                       "base_url": "http://127.0.0.1:8089/v1", "api_key": "x"}]
     return cfg
+
+
+def env_for(home, script, extra_env=None):
+    """Environment for Hermes. Bedrock is pinned to the scripted server (UPSTREAM.md 6): endpoint override and
+    bearer token. Ambient AWS credentials/profile are removed so nothing can sign a request for real Bedrock."""
+    env = dict(os.environ, HERMES_HOME=home)
+    if script.get("mode", "chat_completions") == "bedrock_converse":
+        for k in list(env):
+            if k.startswith("AWS_") or k in ("BEDROCK_API_KEY",):
+                del env[k]
+        env["AWS_ENDPOINT_URL_BEDROCK_RUNTIME"] = LOCAL
+        env["AWS_BEARER_TOKEN_BEDROCK"] = "x"
+        env["AWS_REGION"] = env["AWS_DEFAULT_REGION"] = "us-east-1"
+    env.update(extra_env or {})
+    return env
+
+
+def check_settings(script, cfg, env):
+    """Refuse to launch Hermes unless the documented settings are in force. Raises SystemExit."""
+    mode = script.get("mode", "chat_completions")
+    problems = []
+    if mode == "bedrock_converse":
+        if env.get("AWS_ENDPOINT_URL_BEDROCK_RUNTIME") != LOCAL:
+            problems.append(f"AWS_ENDPOINT_URL_BEDROCK_RUNTIME must be {LOCAL} (got {env.get('AWS_ENDPOINT_URL_BEDROCK_RUNTIME')!r}); refusing to risk the real Bedrock endpoint")
+        if not env.get("AWS_BEARER_TOKEN_BEDROCK"):
+            problems.append("AWS_BEARER_TOKEN_BEDROCK is not set")
+        for k in ("AWS_ENDPOINT_URL", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SESSION_TOKEN"):
+            if env.get(k): problems.append(f"{k} is set; it could redirect or sign requests")
+        if not isinstance(cfg.get("model", {}).get("context_length"), int):
+            problems.append("model.context_length is not set")
+    if mode in ("anthropic_messages", "codex_responses", "bedrock_converse") and cfg["model"].get("streaming") is not False:
+        problems.append("model.streaming must be false for named providers")
+    if mode in ("anthropic_messages", "codex_responses"):
+        if not all(str(p.get("base_url", "")).startswith(LOCAL) for p in cfg["providers"].values()):
+            problems.append("provider base_url is not the scripted server")
+    if problems:
+        raise SystemExit("record.py: refusing to start:\n  - " + "\n  - ".join(problems))
+
+
+def port_busy():
+    s = socket.socket(); s.settimeout(1)
+    try: return s.connect_ex(("127.0.0.1", PORT)) == 0
+    finally: s.close()
+
+
+def stop_home_gateway(env):
+    """stop the gateway `hermes chat` auto-started for THIS HERMES_HOME only (never pkill by name)"""
+    subprocess.run([HERMES, "gateway", "stop"], env=env, capture_output=True, timeout=60)
 
 
 def main():
@@ -62,24 +119,29 @@ def main():
     home = os.path.expanduser(f"~/hh/{name}")
     shutil.rmtree(home, ignore_errors=True)
     os.makedirs(home)
-    env = dict(os.environ, HERMES_HOME=home)
-    if "--env" in args:
-        env.update(json.loads(args[args.index("--env") + 1]))
     cfg = config_for(script)
+    env = env_for(home, script, json.loads(args[args.index("--env") + 1]) if "--env" in args else None)
     if script.get("hooks"):
         out = subprocess.run([BUN, f"{G}/make-plugins.mjs", spath, f"{home}/plugins"], capture_output=True, text=True, check=True).stdout
         plugins = script["hooks"]["plugins"]
         cfg["plugins"] = {"enabled": [p["name"] for p in plugins],
                           "hook_callback_timeout": script["hooks"].get("timeoutMs", 30000) / 1000}
     deep_merge(cfg, extra)
+    check_settings(script, cfg, env)
+    if port_busy():
+        raise SystemExit(f"record.py: port {PORT} is already in use; refusing to start (not killing whoever holds it)")
     with open(f"{home}/config.yaml", "w") as f:
         json.dump(cfg, f, indent=2)  # JSON is valid YAML
     log = f"{home}/requests.jsonl"
-    srv = subprocess.Popen([BUN, f"{G}/server.mjs", spath, "--port", "8089", "--log", log],
+    srv = subprocess.Popen([BUN, f"{G}/server.mjs", spath, "--port", str(PORT), "--log", log],
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    srv.stdout.readline()
+    first = srv.stdout.readline()
+    if '"listening"' not in first:
+        srv.kill()
+        raise SystemExit("record.py: scripted server did not start: " + first)
     inputs = [json.loads(l) for l in subprocess.run([BUN, f"{G}/inputs.mjs", spath], capture_output=True, text=True, check=True).stdout.splitlines()]
     transcript = []
+    failed = []
     try:
         for i, inp in enumerate(inputs):
             cmd = [HERMES, "chat"] + (["-c"] if i else []) + ["-q", inp["send"]] + (["--yolo"] if yolo else [])
@@ -89,13 +151,16 @@ def main():
                 # wait for the trigger, then SIGINT (stands in for Ctrl-C)
                 n0 = sum(1 for _ in open(log)) if os.path.exists(log) else 0
                 deadline = time.time() + 120
+                seen = False
                 while time.time() < deadline and p.poll() is None:
                     n = sum(1 for _ in open(log)) if os.path.exists(log) else 0
                     if inp["interrupt"] == "model_call" and n > n0:
-                        break
+                        seen = True; break
                     if inp["interrupt"] == "tool_running" and subprocess.run(["pgrep", "-f", "sleep 60"], capture_output=True).returncode == 0:
-                        break
+                        seen = True; break
                     time.sleep(0.2)
+                if not seen:
+                    failed.append(f"input {i}: interrupt trigger {inp['interrupt']!r} never observed")
                 time.sleep(0.5)
                 p.send_signal(signal.SIGINT)
                 transcript.append({"input": i, "event": "SIGINT sent", "at": round(time.time() - t0, 2)})
@@ -114,10 +179,11 @@ def main():
             transcript.append({"input": i, "cmd": cmd[1:], "rc": p.returncode, "secs": round(time.time() - t0, 2), "out": out[-3000:]})
     finally:
         srv.terminate()
-        subprocess.run(["pkill", "-f", f"HERMES_HOME={home}"], capture_output=True)
-        # stop the gateway hermes chat spawned for this home
-        subprocess.run([HERMES, "gateway", "stop"], env=env, capture_output=True, timeout=60)
-        subprocess.run(["pkill", "-f", "gateway run"], capture_output=True)
+        # stop the gateway hermes chat spawned for this home (and only that one)
+        try: stop_home_gateway(env)
+        except Exception as e: print("warning: gateway stop failed:", e, file=sys.stderr)
+        try: srv.wait(timeout=10)
+        except subprocess.TimeoutExpired: srv.kill()
         time.sleep(1)
     json.dump(transcript, open(f"{home}/driver.json", "w"), indent=2)
     shutil.copy(f"{home}/driver.json", os.path.join(ROOT, "bench/upstream/work", name + ".driver.json"))
@@ -126,6 +192,11 @@ def main():
     print(r.stdout + r.stderr)
     for t in transcript:
         print(json.dumps({k: v for k, v in t.items() if k != "out"}), "\n", t.get("out", "")[-800:])
+    if r.returncode != 0 or not os.path.exists(out):
+        failed.append(f"assemble.mjs exited {r.returncode}")
+    if failed:
+        raise SystemExit(f"record.py {name}: FAILED: " + "; ".join(failed))
+    print(f"wrote {out}")
 
 
 if __name__ == "__main__":

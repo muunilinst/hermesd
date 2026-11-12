@@ -1,5 +1,9 @@
 # Upstream Hermes baseline
 
+> **Note: the driver scripts were fixed after the run, statically.** After PR review the scripts in `work/` (`bench.py`, `record.py`, `persist_fail.py`, `batch.sh`, `bench-all.sh`) were changed without being re-run (upstream Hermes was not available where the fixes were made). No measured number in this file or in `baseline.json` was changed. The fixes: the kill -9 experiments now kill only after the intended trigger is observed and mark the sample invalid otherwise; the clean pass validates each reply (scripted text, no error envelope, expected request count) before timing it; WAL deltas are taken only within one WAL generation (header salts); the recorder pins Bedrock to the local scripted server and applies the documented provider settings; scripts stop on a failed step; the two persistence-failure variants are kept under separate names; port clean-up no longer kills by port or process name.
+>
+> Numbers that need a re-run on the Mac before they are trusted: the **kill -9 samples** (the old driver killed after a 60 s wait even if the trigger never occurred), the **clean-pass latency** (`clean_wall_s`, median and p95; the old pass did not check replies, and the checked-in `turns-tool.run1-steps-exhausted.json` shows what an unvalidated sample looked like), and the **WAL deltas** (`wal_frames`, `wal_commit_frames`; the old code subtracted counts across WAL resets). The recorded transcripts were produced by the old `record.py`; the Bedrock and named-provider ones should be re-recorded to confirm they match.
+
 The raw numbers are in `baseline.json`, and each run's output is in `work/results/*.json`. The drivers are `work/bench.py` and `work/bench-all.sh`, run inside the VM from the worktree root.
 
 ## Where it ran

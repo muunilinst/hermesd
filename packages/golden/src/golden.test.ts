@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import type { GoldenRecord } from "@hermesd/session-actor";
+import { GOLDEN_FORMAT, type GoldenRecord } from "@hermesd/session-actor";
 import { compareTranscripts, formatDiffs } from "./compare.ts";
 import { runScript, serialize, type RunOutput } from "./runner.ts";
 import { PORT_DIR, UPSTREAM_DIR, loadScript, scriptNames, type Script } from "./script.ts";
@@ -148,19 +148,33 @@ describe("port transcripts: played on node/durable-objects and node/rivet", () =
 });
 
 describe("port against upstream", () => {
-  const untriaged = new Set<string>(
-    (JSON.parse(readFileSync(join(UPSTREAM_DIR, "untriaged.json"), "utf8")) as { scripts: string[] }).scripts,
-  );
+  const untriagedList = (JSON.parse(readFileSync(join(UPSTREAM_DIR, "untriaged.json"), "utf8")) as { scripts: string[] }).scripts;
+  const untriaged = new Set<string>(untriagedList);
+
+  it("untriaged.json lists real scripts, once each", () => {
+    assert.equal(untriaged.size, untriagedList.length, "no duplicate names");
+    for (const n of untriagedList) assert.ok(names.includes(n), `untriaged.json names ${n}, which is not a script`);
+  });
+
   for (const name of names) {
     const upstreamFile = join(UPSTREAM_DIR, `${name}.json`);
     if (!existsSync(upstreamFile)) {
+      // An untriaged script is claimed to have a recorded upstream transcript: a missing file is a failure.
+      if (untriaged.has(name)) {
+        it(`${name}: listed in untriaged.json, so its upstream transcript must exist`, () => {
+          assert.fail(`transcripts/upstream/${name}.json is missing but ${name} is listed in untriaged.json`);
+        });
+        continue;
+      }
       it(`${name}: no upstream transcript`, { skip: `no upstream transcript at transcripts/upstream/${name}.json; record it with packages/golden/UPSTREAM.md` }, () => {});
       continue;
     }
     const diff = () => {
       const port = JSON.parse(readFileSync(join(PORT_DIR, `${name}.json`), "utf8")) as GoldenRecord;
       const upstream = JSON.parse(readFileSync(upstreamFile, "utf8")) as GoldenRecord;
+      assert.equal(upstream.script, name, "the file is the transcript of this script");
       assert.equal(upstream.side, "upstream");
+      assert.equal(upstream.format, GOLDEN_FORMAT, "the file has the current golden format");
       return compareTranscripts(port, upstream, { ignore: loadScript(name).upstream.ignore ?? [] });
     };
     if (untriaged.has(name)) {

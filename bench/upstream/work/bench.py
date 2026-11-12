@@ -6,14 +6,39 @@ Runs inside the OrbStack VM from the worktree root:
 phases: cold, turns, idle, kill-model, kill-tool
 Every phase prints and appends JSON results to bench/upstream/work/results/<phase>.json.
 """
-import json, os, shutil, signal, sqlite3, statistics, subprocess, sys, time, urllib.error, urllib.request
+import atexit, json, os, shutil, signal, sqlite3, statistics, subprocess, sys, time, urllib.error, urllib.request
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from benchlib import pct, wal_snapshot, wal_delta, require_ports_free, proc_cmdline, validate_reply
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 WORK = os.path.join(ROOT, "bench/upstream/work")
 G = os.path.join(ROOT, "packages/golden/scripted-server")
 BUN = os.path.expanduser("~/.bun/bin/bun")
 HERMES = os.path.expanduser("~/hvenv/bin/hermes")
-MODEL_PORT, API_PORT, KEY = 8090, 8642, "bench-key-0123456789abcdef"
+MODEL_PORT, API_PORT, KEY = int(os.environ.get("BENCH_MODEL_PORT", 8090)), int(os.environ.get("BENCH_API_PORT", 8642)), "bench-key-0123456789abcdef"
+# Everything this run starts is registered here and stopped at exit; nothing else is ever killed.
+_LIVE = []
+_TRACKED_PIDS = {}  # pid -> cmdline at the time we saw it, for processes of ours that outlive their parent
+
+
+def _cleanup():
+    for o in reversed(_LIVE):
+        try: o.stop()
+        except Exception: pass
+    kill_tracked()
+
+
+def kill_tracked():
+    """SIGKILL leftover processes this run started (checked against the cmdline we recorded, against pid reuse)"""
+    for pid, cmd in list(_TRACKED_PIDS.items()):
+        if cmd is not None and proc_cmdline(pid) == cmd:
+            try: os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError: pass
+        _TRACKED_PIDS.pop(pid, None)
+
+
+atexit.register(_cleanup)
 os.makedirs(f"{WORK}/results", exist_ok=True)
 os.makedirs(f"{WORK}/scripts", exist_ok=True)
 
@@ -39,20 +64,28 @@ def fresh_home(tag):
     return home
 
 
-def free_ports():
-    subprocess.run(["fuser", "-k", "-n", "tcp", str(MODEL_PORT), str(API_PORT)], capture_output=True)
-    time.sleep(0.5)
+def check_ports_free():
+    """fail instead of killing whoever holds the ports (a stopped previous Model/Gateway of ours may need a moment)"""
+    for _ in range(20):
+        try:
+            return require_ports_free(MODEL_PORT, API_PORT)
+        except RuntimeError as e:
+            err = e
+            time.sleep(0.5)
+    raise err
 
 
 class Model:
     def __init__(self, script, log):
-        free_ports()
+        check_ports_free()
         self.p = subprocess.Popen([BUN, f"{G}/server.mjs", script, "--port", str(MODEL_PORT), "--log", log],
                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         line = self.p.stdout.readline()
         if '"listening"' not in line:
+            self.p.kill(); self.p.wait()
             raise RuntimeError("model server did not start: " + line)
         self.log = log
+        _LIVE.append(self)
 
     def count(self):
         return sum(1 for _ in open(self.log))
@@ -61,7 +94,11 @@ class Model:
         urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{MODEL_PORT}/__release/{name}", method="POST"), timeout=5).read()
 
     def stop(self):
-        self.p.terminate(); self.p.wait()
+        if self in _LIVE: _LIVE.remove(self)
+        if self.p.poll() is None:
+            self.p.terminate()
+            try: self.p.wait(timeout=10)
+            except subprocess.TimeoutExpired: self.p.kill(); self.p.wait()
 
 
 class Gateway:
@@ -74,6 +111,7 @@ class Gateway:
         self.t0 = time.time()
         self.p = subprocess.Popen([HERMES, "gateway", "run"], env=self.env, stdout=self.out, stderr=subprocess.STDOUT,
                                   cwd=self.home, start_new_session=True)
+        _LIVE.append(self)
         return self
 
     def wait_health(self, timeout=180):
@@ -122,12 +160,18 @@ class Gateway:
         os.kill(self.p.pid, signal.SIGKILL); self.p.wait()
 
     def stop(self):
+        """stop only this gateway: its process group (it was started with start_new_session) and its descendants"""
+        if self in _LIVE: _LIVE.remove(self)
+        kids = [p for p in self.pids() if p != self.p.pid] if self.p.poll() is None else []
         try:
             os.killpg(self.p.pid, signal.SIGTERM); self.p.wait(timeout=60)
         except Exception:
-            try: os.killpg(self.p.pid, signal.SIGKILL)
-            except Exception: pass
-        subprocess.run(["pkill", "-f", "gateway run"], capture_output=True)
+            pass
+        try: os.killpg(self.p.pid, signal.SIGKILL)  # whatever of the group is left
+        except Exception: pass
+        for k in kids:
+            try: os.kill(k, signal.SIGKILL)
+            except ProcessLookupError: pass
         time.sleep(1)
 
 
@@ -165,11 +209,6 @@ def save(phase, obj):
     print(json.dumps(obj)[:3000])
 
 
-def pct(xs, q):
-    xs = sorted(xs); k = (len(xs) - 1) * q; f = int(k)
-    return xs[f] + (xs[min(f + 1, len(xs) - 1)] - xs[f]) * (k - f)
-
-
 # ---------------------------------------------------------------- phases
 
 def phase_cold(n=5):
@@ -182,7 +221,9 @@ def phase_cold(n=5):
         health = g.wait_health()
         # first request accepted: first chat completion that returns 200
         first = None
+        t_first = time.time()
         while first is None:
+            if time.time() - t_first > 120: raise RuntimeError("cold: no 200 reply within 120 s")
             try:
                 dt, sid, data = chat(f"cold {i}")
                 first = time.time() - g.t0
@@ -215,23 +256,6 @@ def wal_stats(path):
     return s
 
 
-def wal_commit_frames(walpath):
-    """number of commit frames in the current WAL generation (valid salts only)"""
-    import struct
-    try: b = open(walpath, "rb").read()
-    except FileNotFoundError: return 0, 0
-    if len(b) < 32: return 0, 0
-    psz = struct.unpack(">I", b[8:12])[0]; s1, s2 = b[16:20], b[20:24]
-    frames = commits = 0; off = 32
-    while off + 24 + psz <= len(b):
-        h = b[off:off + 24]
-        if h[8:12] != s1 or h[12:16] != s2: break
-        frames += 1
-        if struct.unpack(">I", h[4:8])[0] != 0: commits += 1
-        off += 24 + psz
-    return frames, commits
-
-
 def phase_turns(kind, n=20):
     if kind == "plain":
         steps = [{"reply": f"Hello {i}!"} for i in range(2 * n + 5)]
@@ -241,31 +265,45 @@ def phase_turns(kind, n=20):
             steps += [{"reply": "I will run it.", "toolCalls": [{"id": f"call_{i}", "name": "terminal", "arguments": {"command": "echo hello"}}]},
                       {"reply": "It printed hello."}]
     script = write_script(f"turns-{kind}", steps)
+    per_turn = 1 if kind == "plain" else 2  # model requests per chat turn
+
+    def expected(idx):
+        """the scripted reply for the idx-th chat turn of this run (0 = warm-up)"""
+        return f"Hello {idx}!" if kind == "plain" else "It printed hello."
+
     home = fresh_home(f"turns-{kind}")
     m = Model(script, f"{home}/requests.jsonl")
     g = Gateway(home).start(); g.wait_health()
     db = f"{home}/state.db"
     # warm-up turn (session creation), not counted
-    _, sid, _ = chat("warm up")
+    _, sid, data = chat("warm up")
+    validate_reply(data, expected(0))
+    if m.count() != per_turn: raise RuntimeError(f"warm-up made {m.count()} model requests, wanted {per_turn}")
     rss_start, per_start = g.rss_kib()
     turns = []
     for i in range(n):
         before = counts(db)
-        f0, c0 = wal_commit_frames(db + "-wal")
+        w0 = wal_snapshot(db + "-wal")
         tr = f"{home}/strace-{i}.log"
         st = strace_start(g.p.pid, tr); time.sleep(0.7)
         dt, sid2, data = chat(f"turn {i}", session_id=sid)
+        validate_reply(data, expected(1 + i))
         time.sleep(0.3); subprocess.run(["sudo", "kill", "-INT", str(st.pid)]); st.wait()
         after = counts(db)
-        f1, c1 = wal_commit_frames(db + "-wal")
+        w1 = wal_snapshot(db + "-wal")
         delta = {k: after.get(k, 0) - before.get(k, 0) for k in set(before) | set(after) if after.get(k, 0) != before.get(k, 0)}
         turns.append({"turn": i, "wall_s": round(dt, 4), "reply": data["choices"][0]["message"]["content"],
-                      "row_count_delta": delta, "wal_frames": f1 - f0 if f1 >= f0 else None,
-                      "wal_commit_frames": c1 - c0 if c1 >= c0 else None, "syscalls": wal_stats(tr)})
+                      "row_count_delta": delta, **wal_delta(w0, w1), "syscalls": wal_stats(tr)})
     # timings without strace attached (strace slows syscalls): a second pass
+    # Every sample is validated (exact scripted reply, no error envelope, the expected number of model
+    # requests) BEFORE its latency is recorded; any failure aborts the run instead of becoming a data point.
     clean = []
     for i in range(n):
-        dt, _, data = chat(f"clean turn {i}", session_id=sid)
+        reqs0 = m.count()
+        dt, _, data = chat(f"clean turn {i}", session_id=sid, timeout=60)
+        validate_reply(data, expected(1 + n + i))
+        if m.count() - reqs0 != per_turn:
+            raise RuntimeError(f"clean turn {i}: {m.count() - reqs0} model requests, wanted {per_turn}")
         clean.append(round(dt, 4))
     rss_20, per_20 = g.rss_kib()
     jm = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
@@ -349,12 +387,31 @@ def phase_kill(kind, run):
     th = threading.Thread(target=send); th.start()
     t0 = time.time()
     # wait for the moment: model request held / sleep running
+    # The kill is only meaningful once the intended trigger has been observed: for "model" the second model
+    # request (the held one) has reached the server, for "tool" the command wrote its start marker. If the
+    # 60 s wait expires, or the client already finished/failed, the sample is invalid and nothing is killed.
+    triggered = False
     while time.time() - t0 < 60:
-        if kind == "model" and m.count() >= 2: break
-        if kind == "tool" and os.path.exists(marker): break
+        if kind == "model" and m.count() >= 2: triggered = True; break
+        if kind == "tool" and os.path.exists(marker) and "start" in open(marker).read(): triggered = True; break
+        if not th.is_alive(): break
         time.sleep(0.1)
-    time.sleep(1.0)
+    if triggered:
+        time.sleep(1.0)
+        triggered = th.is_alive() and (kind != "model" or m.count() >= 2)
+    if not triggered:
+        ev.append({"t": round(time.time() - t0, 2), "event": "TRIGGER NOT OBSERVED: sample invalid, gateway not killed",
+                   "model_requests": m.count(), "client": dict(holder)})
+        result.update({"valid": False, "invalid_reason": "trigger not observed within 60 s (or client ended first)"})
+        save(f"kill-{kind}", result)
+        try: m.release("h")
+        except Exception: pass
+        g.stop(); m.stop(); th.join(timeout=30)
+        raise RuntimeError(f"kill {kind} {run}: trigger not observed; sample recorded as invalid")
+    result["valid"] = True
     pids_before = g.pids()
+    for p_ in pids_before:  # remember our own tree so leftovers can be reaped at the end (and only those)
+        if p_ != g.p.pid: _TRACKED_PIDS[p_] = proc_cmdline(p_)
     ev.append({"t": round(time.time() - t0, 2), "event": "kill -9 gateway", "model_requests": m.count()})
     g.kill9()
     th.join(timeout=30)
@@ -383,12 +440,14 @@ def phase_kill(kind, run):
                    "model_requests_last_user": [[x["content"] for x in r["body"]["messages"] if x["role"] == "user"][-1:] for r in reqs],
                    "marker": open(marker).read() if os.path.exists(marker) else None})
     save(f"kill-{kind}", result)
-    g2.stop(); m.stop()
+    g2.stop(); m.stop(); kill_tracked()
 
 
 if __name__ == "__main__":
-    ph = sys.argv[1]
+    ph = sys.argv[1] if len(sys.argv) > 1 else ""
     if ph == "cold": phase_cold()
-    elif ph == "turns": phase_turns(sys.argv[2])
+    elif ph == "turns" and len(sys.argv) > 2 and sys.argv[2] in ("plain", "tool"): phase_turns(sys.argv[2])
     elif ph == "idle": phase_idle()
-    elif ph == "kill": phase_kill(sys.argv[2], int(sys.argv[3]))
+    elif ph == "kill" and len(sys.argv) > 3 and sys.argv[2] in ("model", "tool"): phase_kill(sys.argv[2], int(sys.argv[3]))
+    else:
+        sys.exit("usage: bench.py cold | turns plain|tool | idle | kill model|tool <run>")

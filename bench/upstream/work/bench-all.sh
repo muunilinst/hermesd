@@ -1,5 +1,6 @@
 #!/bin/bash
-# Part B, run inside the VM from the worktree root.
+# Part B, run inside the VM from the worktree root. Stops at the first failed phase.
+set -euo pipefail
 cd "$(dirname "$0")/../../.."
 B="python3 bench/upstream/work/bench.py"
 set -x
