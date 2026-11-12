@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import { eachLoopWorld } from "./test-util.ts";
+import { scriptedTerminal, term } from "./world.ts";
 
 // /stop commits after the model answer was read but before the loop saved it. The stop
 // said "stopped", so the answer must not go out: the turn ends with "Stopped." instead.
@@ -55,6 +56,29 @@ eachLoopWorld("a stop between reading and saving the answer", (use, cfg) => {
       await w.until(() => w.replies.length === 1, "a reply");
       assert.equal((stopped as { stopped?: boolean }).stopped, true);
       assert.deepEqual(w.replies.map((r) => r.text), ["Stopped."]);
+      w.assertConsistent();
+    }),
+  );
+
+  if (cfg.mode !== "durable-objects") it(
+    "no unknown-outcome prompt after the stop succeeded",
+    use({ script: [{ toolCalls: [term({ hold: "h1" })] }, { reply: "after" }], loop: scriptedTerminal }, async (w) => {
+      await w.send("go");
+      await w.until(() => w.link.sent.some((m) => m.method === "start"), "start was sent");
+      await w.b.settle();
+      // The VM restarts: the command has no exit status. The stop commits after the status read
+      // that finds it unknown, and before the loop writes the question to the user.
+      await w.rig.cell.stopVm();
+      await w.rig.cell.startVm();
+      let stopped: unknown;
+      w.b.onPoint({ actor: "s1", point: "sidecar:after", detail: "executor.status" }, async () => {
+        stopped = await w.stop();
+      });
+      await w.b.call("s1", "op_event", {});
+      await w.until(() => w.replies.length === 1, "a reply");
+      assert.equal((stopped as { stopped?: boolean }).stopped, true);
+      assert.deepEqual(w.replies.map((r) => r.text), ["Stopped."]);
+      assert.notEqual(w.rows("session_admissions")[0]!.status, "unknown", "later inputs are not blocked");
       w.assertConsistent();
     }),
   );

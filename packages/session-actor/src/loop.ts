@@ -1106,11 +1106,16 @@ export class LoopDriver implements TurnDriver {
     if (outcomes.length === 0) return "wait";
     const unknown = outcomes.find((o) => o.out.status === "unknown");
     if (unknown) {
-      await this.#abandon(ctx, snap, {
-        finish: { status: "unknown", text: `the outcome of the command for tool call ${unknown.op.uid} is unknown` },
-        recorded: outcomes,
-        ask: true,
-      });
+      try {
+        await this.#abandon(ctx, snap, {
+          finish: { status: "unknown", text: `the outcome of the command for tool call ${unknown.op.uid} is unknown` },
+          recorded: outcomes,
+          ask: true,
+        });
+      } catch (e) {
+        if (e instanceof StepRaced) return "again"; // a stop committed first: the next drive ends the turn with "Stopped."
+        throw e;
+      }
       return "wait";
     }
     // Results are recorded in the order of the tool calls, as upstream does: only the finished prefix.
@@ -1260,6 +1265,11 @@ export class LoopDriver implements TurnDriver {
       settle,
       write: (sql, outbox) => {
         if (!turnIsOpen(sql, ctx.turnId)) throw new StepRaced();
+        if (o.ask) {
+          // Only a stop ends a turn that the user stopped: no prompt to resolve an unknown outcome.
+          const turn = sql.exec("SELECT interrupted FROM loop_turn WHERE turn_id = ?", ctx.turnId)[0];
+          if (turn && num(turn.interrupted) === 1) throw new StepRaced();
+        }
         const sid = currentSessionId(sql, snap.sessionId);
         ensureSession(sql, { id: sid, source: "teenytiny", model: this.#cfg.model, systemPrompt: this.#cfg.systemPrompt, systemPromptHash: promptHash }, now);
         for (const m of messages) insertMessage(sql, sid, m, now);
