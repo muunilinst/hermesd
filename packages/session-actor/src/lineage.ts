@@ -198,7 +198,11 @@ export function writeWindowChild(
   for (const a of assembled) {
     let m: NewMessage;
     if (a.source) {
-      m = { ...a.source, content: a.content, ...(a.summary ? { compressedSummary: true } : {}) };
+      if (a.summary) {
+        // The summary is merged into this row: Codex message items and ordered blocks hold the old text.
+        const { codexMessageItems: _m, orderedBlocks: _o, ...rest } = a.source;
+        m = { ...rest, content: a.content, compressedSummary: true };
+      } else m = { ...a.source, content: a.content };
     } else {
       m = { role: a.role as NewMessage["role"], content: a.content, messageUid: `${childId}:summary`, compressedSummary: true };
     }

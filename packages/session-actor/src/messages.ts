@@ -178,7 +178,9 @@ export function loadActiveMessages(sql: Sql, sessionId: string): NewMessage[] {
     )
     .map(fromRow);
   for (const m of rows) {
-    // A row that compaction rewrote (the summary merged into it) has new text: the stored blocks would replay the old text.
+    // A row that compaction rewrote (the summary merged into it) has new text: the stored blocks
+    // and Codex message items would replay the old text.
+    if (m.compressedSummary) delete m.codexMessageItems;
     const o = m.role === "assistant" && !m.compressedSummary ? replay.get(m.messageUid) : undefined;
     if (o) m.orderedBlocks = o;
   }

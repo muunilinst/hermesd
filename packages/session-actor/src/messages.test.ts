@@ -23,6 +23,7 @@ function seed(compressedSummary: boolean): ReturnType<typeof loadActiveMessages>
       role: "assistant",
       content: compressedSummary ? "[summary] earlier work\n\noriginal text" : "original text",
       messageUid: "t1:c1:a",
+      codexMessageItems: [{ type: "message", role: "assistant", content: [{ type: "output_text", text: "original text" }] }],
       ...(compressedSummary ? { compressedSummary: true } : {}),
     },
     0,
@@ -45,6 +46,7 @@ describe("ordered replay blocks", () => {
   it("are left off a row that compaction rewrote, so its new text is sent", () => {
     const m = toApiMessage(seed(true)[0]!);
     assert.equal(m.anthropic_content_blocks, undefined);
+    assert.equal(m.codex_message_items, undefined, "Codex replays its items in place of the content");
     assert.match(String(m.content), /\[summary\] earlier work/);
   });
 });
