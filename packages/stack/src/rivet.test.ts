@@ -25,7 +25,7 @@ describe("stack scenarios on rivetkit 3.0.7", { timeout: 120_000 }, () => {
     guarded(t, async () => {
       const s = await createRivetStack({ script: [{ reply: "x" }] });
       try {
-        const epoch = async () => Number(((await s.rows("s1", "SELECT v FROM host_meta WHERE k = 'owner_epoch'"))[0] as { v: number }).v);
+        const epoch = () => s.epochOf("s1");
         const e1 = await epoch();
         await s.evict("s1");
         assert.ok((await epoch()) > e1, "the epoch rose");
@@ -52,11 +52,17 @@ describe("stack scenarios on rivetkit 3.0.7", { timeout: 120_000 }, () => {
         throw new Error(`the helper did not arm a timer: ${err.slice(-500)}`);
       }
 
-      const turns = 12;
-      const s = await createRivetStack({ script: benchScript(turns, 1) });
+      const s = await createRivetStack({ script: benchScript(3, 1) });
       try {
-        // Long enough for the old timer (retry 1 s) to fire in the new engine several times.
-        for (let i = 0; i < turns; i++) {
+        // Observe the stale wake: the engine wakes the old actors under this registry and the guard destroys them.
+        // Wait for it while this stack is active, then run turns. Without the guard the ghost has raised its own
+        // epoch and fenced the live session by now.
+        const end = Date.now() + 60_000;
+        while (s.ghostsDestroyed() === 0) {
+          if (Date.now() > end) throw new Error("the engine never woke the actor left armed by the earlier process");
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        for (let i = 0; i < 3; i++) {
           await s.send(`turn ${i}`);
           assert.equal((await s.waitReplies(i + 1, 20_000))[i]!.text, `done ${i}`);
         }

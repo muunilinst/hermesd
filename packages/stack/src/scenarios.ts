@@ -107,10 +107,20 @@ export const SCENARIOS: Scenario[] = [
         await s.send("hello");
         await waitFor(async () => (await s.modelArrivals()).length >= 1, "the model call");
         await s.evict("s1");
+        // A request wakes the actor on the real hosts (on Node the wake timer does, below): the new activation
+        // sends the model request again while the first is still held.
+        await s.epochOf("s1");
         await s.release("g1");
         assert.equal(await oneReply(s), "after the crash");
-        const ids = new Set((await s.modelArrivals()).map((a) => a.callId));
-        assert.equal(ids.size, 1, "every attempt of the call carries one call id");
+        // The wake must have sent the request again, under the id of the first one.
+        await waitFor(async () => {
+          await s.advance(500);
+          return (await s.modelArrivals()).length >= 2;
+        }, "a second model request");
+        const arrivals = await s.modelArrivals();
+        const ids = arrivals.map((a) => a.callId);
+        assert.ok(ids[0], "the first request carries a call id");
+        assert.ok(ids.every((id) => id === ids[0]), `every attempt carries the same call id: ${JSON.stringify(ids)}`);
         await settledTurns(s);
       });
     },
@@ -132,10 +142,14 @@ export const SCENARIOS: Scenario[] = [
     name: "a crash after the pending row commits and before the request leaves: the wake alone brings the turn back",
     fault: "D9 (b)",
     async run(make) {
-      await withStack(make, { script: [{ reply: "woken" }] }, async (s) => {
+      // No automatic sweeper tick or sweep, and a horizon far beyond the test: only the session's own
+      // wake timer, armed before the crash, can bring the turn back.
+      await withStack(make, { script: [{ reply: "woken" }], autoSweep: false, horizonMs: 3_600_000 }, async (s) => {
         await s.crashAt({ actor: "s1", point: "fetch:before" });
         await s.send("hello");
         assert.equal(await oneReply(s), "woken");
+        assert.equal(await s.crashesFired(), 1, "the injected crash fired");
+        assert.equal((await s.modelArrivals()).length, 1, "the request left once, after the wake");
         await settledTurns(s);
       });
     },
@@ -146,11 +160,13 @@ export const SCENARIOS: Scenario[] = [
     async run(make) {
       await withStack(make, { script: [{ toolCalls: [terminalCall({ stdout: "ok\n", hold: "c1" })] }, { reply: "finished" }] }, async (s) => {
         await s.send("run it");
-        await waitFor(async () => (await s.rows("s1", "SELECT 1 FROM pending_op")).length > 0, "the operation row");
+        // The operation row is written before the executor gets `start`. Wait for the executor to have
+        // recorded the one execution (the command is held), so the eviction falls after the command began.
+        await waitFor(async () => (await s.executorRuns()) === 1, "the executor to run the held command");
         await s.evict("s1");
         await s.release("c1");
         assert.equal(await oneReply(s), "finished");
-        assert.equal(await s.executorRuns(), 1, "the command ran once");
+        assert.equal(await s.executorRuns(), 1, "the command ran once: recovery did not start it again");
         await settledTurns(s);
       });
     },
@@ -163,12 +179,44 @@ export const SCENARIOS: Scenario[] = [
         await s.crashAt({ actor: "s1", point: "sidecar:before", detail: "actor:profile.index" });
         await s.send("tell me about zebras");
         assert.equal(await oneReply(s), "the zebra answer");
-        const found = async () => ((await s.call("profile", "session_search", { query: "zebra" })) as unknown[]).length > 0;
+        const userRows = await s.rows("s1", "SELECT id, content FROM messages WHERE role = 'user' AND content LIKE '%zebras%'");
+        assert.equal(userRows.length, 1, "one user message about zebras");
+        const seq = Number(userRows[0]!["id"]);
+        const found = async () => {
+          const hits = (await s.call("profile", "session_search", { query: "zebras" })) as Array<{ session: string; seq: number; role: string; text: string }>;
+          return hits.some((h) => h.role === "user" && h.seq === seq && h.text.includes("zebras"));
+        };
         // The outbox is delivered again by the session's own wake; the sweeper tick is the backstop.
-        await waitFor(found, "the profile index", 15_000).catch(async () => {
+        await waitFor(found, "the user message in the profile index", 15_000).catch(async () => {
           await s.cron("tick");
-          await waitFor(found, "the profile index after a sweeper tick");
+          await waitFor(found, "the user message in the profile index after a sweeper tick");
         });
+        assert.equal(await s.crashesFired(), 1, "the injected crash fired");
+      });
+    },
+  },
+  {
+    name: "rows accepts one read-only statement and refuses anything else, without changing the actor",
+    async run(make) {
+      await withStack(make, { script: [{ reply: "hi" }] }, async (s) => {
+        await s.send("hello");
+        assert.equal(await oneReply(s), "hi");
+        const count = async () => Number((await s.rows("s1", "SELECT COUNT(*) AS n FROM turns"))[0]!["n"]);
+        const before = await count();
+        assert.ok(before > 0);
+        assert.equal(Number((await s.rows("s1", "SELECT 1 AS n;"))[0]!["n"]), 1, "one trailing semicolon is fine");
+        assert.equal(Number((await s.rows("s1", "WITH t AS (SELECT 2 AS n) SELECT n FROM t"))[0]!["n"]), 2);
+        for (const bad of [
+          "SELECT 1; DELETE FROM turns",
+          "SELECT 1;; DELETE FROM turns",
+          "DELETE FROM turns",
+          "WITH t AS (SELECT 1) DELETE FROM turns",
+          "UPDATE turns SET status = 'x'",
+          "SELECT 1; SELECT 2",
+        ]) {
+          await assert.rejects(s.rows("s1", bad), /./, `refused: ${bad}`);
+        }
+        assert.equal(await count(), before, "no statement changed the rows");
       });
     },
   },
