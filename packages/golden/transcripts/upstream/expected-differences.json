@@ -24,7 +24,7 @@
         "rows.messages[4].role",
         "rows.messages[5]"
       ],
-      "digest": "107cf0da9aebd011cff246daa0f3506c42adca78ed8e132a4a259ae15c84a62e"
+      "digest": "727c22848374b37e749099cfa471eadcfc3f0631962ea8f8698a8f663aa266a4"
     },
     "clarify-sequential": {
       "diffCount": 15,
@@ -45,7 +45,7 @@
         "rows.messages[2].content",
         "rows.messages[3].content"
       ],
-      "digest": "9392794d2b651b18dff95f8b5c01cc63de4b1701b78bbc9d5e7128186819c30a"
+      "digest": "3a6b20cb66f44e344e5303dd98ca18b646879caa9ed26043a8e9209d47640b4b"
     },
     "dropped-stream-mid-token": {
       "diffCount": 2,
@@ -53,7 +53,7 @@
         "requests[0].body.reasoning_effort",
         "requests[1].body.reasoning_effort"
       ],
-      "digest": "38ddc7ceac191cd25991cf3753092fdc188f25478f18cc8ad1271bfe3ffc484b"
+      "digest": "9a308b30fe47c41efebb132db207b8a41616a0323b1e47b856f9bbab12785ac3"
     },
     "format-anthropic-messages": {
       "diffCount": 8,
@@ -67,7 +67,7 @@
         "rows.messages[1].tool_calls[0].response_item_id",
         "rows.messages[2].content"
       ],
-      "digest": "ad6c6abafa6a23a69e7d7eebd269cf41a74372858e4dcfb8dfecd69977344baa"
+      "digest": "74800b20b50ec9ec2eb084cf5de7b3de4466fa773148a061325f0d9d276a252b"
     },
     "format-bedrock-converse": {
       "diffCount": 7,
@@ -80,7 +80,7 @@
         "rows.messages[1].tool_calls[0].response_item_id",
         "rows.messages[2].content"
       ],
-      "digest": "33004255db8c60b783f3ce7361a6a0ac72db847796af601a6e22d4b8df8914ef"
+      "digest": "93d8d5566162fe674ba429f5aab72f20baa7e2bd7c75beed0b96b8b63130e990"
     },
     "format-chat-completions": {
       "diffCount": 6,
@@ -92,7 +92,7 @@
         "rows.messages[1].tool_calls[0].response_item_id",
         "rows.messages[2].content"
       ],
-      "digest": "251459403370bf0d22256834ef2ec4268446d2512f54b0048312ad17086a4e9e"
+      "digest": "2a892dff2113448b958d3c89688935c03b462293cda5e7c726e3f9389b8eb95f"
     },
     "format-codex-responses": {
       "diffCount": 6,
@@ -104,7 +104,7 @@
         "rows.messages[1].tool_calls[0].response_item_id",
         "rows.messages[2].content"
       ],
-      "digest": "bf34cd9906e45767ae214604451e00fdc3d6415cdcf39d3b26710af1e8d39d7e"
+      "digest": "53af2ed41d152c9527a2945da04c688ee7a139d2efacff681c3504af8b84b2e8"
     },
     "hook-blocks-tool": {
       "diffCount": 4,
@@ -114,7 +114,7 @@
         "rows.messages[1].tool_calls[0].call_id",
         "rows.messages[1].tool_calls[0].response_item_id"
       ],
-      "digest": "cf85b9a2c88fcafb6a039bb88c18d7f1ba012cb069daa3f8a93312be9f9103cb"
+      "digest": "e4ad4fa0408e4f44c272d867289df92cf33eb4a1697508f7e5525fe341820c3a"
     },
     "hook-crashes": {
       "diffCount": 4,
@@ -124,7 +124,7 @@
         "rows.messages[1].tool_calls[0].call_id",
         "rows.messages[1].tool_calls[0].response_item_id"
       ],
-      "digest": "cf85b9a2c88fcafb6a039bb88c18d7f1ba012cb069daa3f8a93312be9f9103cb"
+      "digest": "e4ad4fa0408e4f44c272d867289df92cf33eb4a1697508f7e5525fe341820c3a"
     },
     "hook-time-budget": {
       "diffCount": 4,
@@ -134,7 +134,7 @@
         "rows.messages[1].tool_calls[0].call_id",
         "rows.messages[1].tool_calls[0].response_item_id"
       ],
-      "digest": "cf85b9a2c88fcafb6a039bb88c18d7f1ba012cb069daa3f8a93312be9f9103cb"
+      "digest": "e4ad4fa0408e4f44c272d867289df92cf33eb4a1697508f7e5525fe341820c3a"
     },
     "interrupt-mid-call": {
       "diffCount": 13,
@@ -153,7 +153,7 @@
         "rows.messages[2].role",
         "rows.messages[3]"
       ],
-      "digest": "cdd5685a59920bf57aa53ca5caf3b543ecf6a4c5188a7148da5f3972138ea7b0"
+      "digest": "2fd03dd0640bf6282d3cca9ed4b64174a680aae24bac0c0da6dc0ad63da86405"
     },
     "one-tool-call": {
       "diffCount": 6,
@@ -165,7 +165,7 @@
         "rows.messages[1].tool_calls[0].response_item_id",
         "rows.messages[2].content"
       ],
-      "digest": "251459403370bf0d22256834ef2ec4268446d2512f54b0048312ad17086a4e9e"
+      "digest": "2a892dff2113448b958d3c89688935c03b462293cda5e7c726e3f9389b8eb95f"
     },
     "parallel-tools": {
       "diffCount": 12,
@@ -183,7 +183,7 @@
         "rows.messages[2].content",
         "rows.messages[3].content"
       ],
-      "digest": "1f297075783a089b9d2a2314d44022a5de527a13eb2ed18c61b80a1f01fa8c09"
+      "digest": "d633815dd163f41753c1677ac00b618523bcf74f89124688b86dcdd79eed8e1c"
     },
     "persistence-failure-before-tool": {
       "diffCount": 9,
@@ -198,14 +198,14 @@
         "rows.messages[2]",
         "rows.messages[3]"
       ],
-      "digest": "65f9b01e0f57bdc08ee28ace946dc2d13b6ebbed4b591d78cb24ff98eb002756"
+      "digest": "bdcf0752cd9b64b36c114dacfc7efc04f25921c824f6c36fedea6730a9305311"
     },
     "plain-reply": {
       "diffCount": 1,
       "fields": [
         "requests[0].body.reasoning_effort"
       ],
-      "digest": "a23a9ed7c88794d5d50d950c14e2eebdb1e6a914ac5a175f92f8fde2c38cdc63"
+      "digest": "9f377067fcd01e5a0f3641858b5117ed354db2a1b051a2f471e781b4d76d0805"
     },
     "provider-fallback-429": {
       "diffCount": 2,
@@ -213,7 +213,7 @@
         "requests[0].body.reasoning_effort",
         "requests[1].body.reasoning_effort"
       ],
-      "digest": "38ddc7ceac191cd25991cf3753092fdc188f25478f18cc8ad1271bfe3ffc484b"
+      "digest": "9a308b30fe47c41efebb132db207b8a41616a0323b1e47b856f9bbab12785ac3"
     },
     "three-plugins-hook-order": {
       "diffCount": 6,
@@ -225,7 +225,7 @@
         "rows.messages[1].tool_calls[0].response_item_id",
         "rows.messages[2].content"
       ],
-      "digest": "46867f7cbfc6d4dcc4737ef5a5cbb5e9af54676e18632814b391edf91b941b2c"
+      "digest": "aca5bdef7617ce7a4bff1620378820beec1ff579d4ee30b13e1ebb8737e2f67f"
     },
     "tool-error-text": {
       "diffCount": 22,
@@ -253,7 +253,7 @@
         "rows.messages[3].tool_name",
         "rows.messages[4].content"
       ],
-      "digest": "d43f39332d8ccc0f92c59891cb52fa486ca9e1324fc4506880c1789f94093356"
+      "digest": "9417de8abc9b66f85762e5b682d3ff82104a8ea97cacf6fb017a5cff5a4b81ca"
     }
   }
 }

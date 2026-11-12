@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import { GOLDEN_FORMAT, type GoldenRecord } from "@hermesd/session-actor";
 import { baselineProblems, checkAgainstBaseline, checkRecords, loadBaseline, summarize, type Baseline } from "./baseline.ts";
-import { formatDiffs } from "./compare.ts";
+import { compareTranscripts, formatDiffs } from "./compare.ts";
 import { runScript, serialize, type RunOutput } from "./runner.ts";
 import { PORT_DIR, UPSTREAM_DIR, loadScript, scriptNames, type Script } from "./script.ts";
 
@@ -210,5 +210,28 @@ describe("the expected-differences policy", () => {
     const d = [{ where: "request 0", field: "requests[0].x", port: 1, upstream: 2 }];
     assert.equal(summarize(d).digest, summarize(structuredClone(d)).digest);
     assert.notEqual(summarize(d).digest, summarize([{ ...d[0]!, upstream: 3 }]).digest);
+  });
+
+  it("the digest ignores key order and record order", () => {
+    const a = { where: "messages row 1", field: "rows.messages[1]", port: { tool_call_id: "c1", content: "x", n: { b: 1, a: 2 } }, upstream: { content: "y", tool_call_id: "c1" } };
+    const reordered = { where: a.where, field: a.field, port: { n: { a: 2, b: 1 }, content: "x", tool_call_id: "c1" }, upstream: { tool_call_id: "c1", content: "y" } };
+    const other = { where: "request 0", field: "requests[0].x", port: 1, upstream: 2 };
+    assert.equal(summarize([a, other]).digest, summarize([other, reordered]).digest);
+    assert.notEqual(summarize([a]).digest, summarize([{ ...a, upstream: { content: "z", tool_call_id: "c1" } }]).digest);
+  });
+
+  it("the digest of tool-error-text is unchanged when the keys of the rows are reordered", () => {
+    const n = "tool-error-text";
+    const port = JSON.parse(readFileSync(join(PORT_DIR, `${n}.json`), "utf8")) as GoldenRecord;
+    const up = JSON.parse(readFileSync(join(UPSTREAM_DIR, `${n}.json`), "utf8")) as GoldenRecord;
+    const flip = (o: unknown): unknown =>
+      Array.isArray(o) ? o.map(flip) : typeof o === "object" && o !== null
+        ? Object.fromEntries(Object.entries(o).reverse().map(([k, v]) => [k, flip(v)])) : o;
+    const ig = loadScript(n).upstream.ignore ?? [];
+    const d1 = compareTranscripts(port, up, { ignore: ig });
+    const d2 = compareTranscripts(flip(port) as GoldenRecord, flip(up) as GoldenRecord, { ignore: ig });
+    assert.ok(d1.length > 0);
+    assert.equal(summarize(d2).digest, summarize(d1).digest);
+    assert.equal(summarize(d1).digest, loadBaseline().scripts[n]?.digest);
   });
 });

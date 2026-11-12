@@ -25,7 +25,7 @@ export interface BaselineEntry {
   diffCount: number;
   /** Sorted, unique field paths of the differences (`where` for a count difference). */
   fields: string[];
-  /** sha256 of the difference list as JSON. */
+  /** sha256 of the canonical difference list (keys sorted recursively, records sorted). */
   digest: string;
 }
 
@@ -40,9 +40,20 @@ export function loadBaseline(): Baseline {
   return JSON.parse(readFileSync(BASELINE_FILE, "utf8")) as Baseline;
 }
 
+/** The value with object keys sorted at every depth, so that the order of keys in a transcript does not matter. */
+export function canonical(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(canonical);
+  if (typeof v === "object" && v !== null) {
+    return Object.fromEntries(Object.keys(v).sort().map((k) => [k, canonical((v as Record<string, unknown>)[k])]));
+  }
+  return v;
+}
+
 export function summarize(diffs: Diff[]): BaselineEntry {
   const fields = [...new Set(diffs.map((d) => d.field || d.where))].sort();
-  const digest = createHash("sha256").update(JSON.stringify(diffs.map((d) => [d.where, d.field, d.port, d.upstream]))).digest("hex");
+  // Canonical form: keys sorted recursively and the records sorted, so the digest does not depend on traversal order.
+  const records = diffs.map((d) => JSON.stringify(canonical([d.where, d.field, d.port, d.upstream]))).sort();
+  const digest = createHash("sha256").update(JSON.stringify(records)).digest("hex");
   return { diffCount: diffs.length, fields, digest };
 }
 
