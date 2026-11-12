@@ -2,6 +2,7 @@
 export type FaultPoint =
   | "arm:before" // before the timer is set
   | "arm:after" // the timer is durable, the caller has not seen the result
+  | "disarm:before" // before a timer is removed
   | "tx:before" // before the transaction runs
   | "tx:before-commit" // the function ran, the rows are not committed yet (a crash rolls them back)
   | "tx:after" // in the write buffer, not yet durable on Durable Objects

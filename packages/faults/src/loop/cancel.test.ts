@@ -192,6 +192,7 @@ eachLoopWorld("cancellation at each point of a turn", (use) => {
         // The next activation (any call) adopts it: the sweep cancels and accepts the result.
         await w.b.call("s1", "tail");
         await w.until(() => w.rows("pending_op")[0]!.acked === 1, "the late result is accepted");
+        await w.until(() => w.replies.at(-1)?.text === "Stopped.", "the stop reply");
         assert.equal(sentBy(w, "cancel").length >= 1, true);
         assertStopped(w);
       },

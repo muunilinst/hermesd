@@ -14,6 +14,7 @@ import type { Host, SqlRow, SqlValue } from "@hermesd/host";
 export type FaultPoint =
   | "arm:before"
   | "arm:after"
+  | "disarm:before"
   | "tx:before"
   | "tx:before-commit"
   | "tx:after"

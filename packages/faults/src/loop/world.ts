@@ -57,6 +57,8 @@ export interface LoopWorldOptions {
   code?: { migrations: MigrationSet };
   /** Use the LIKE fallback in the profile actor. */
   forceLike?: boolean;
+  /** The gateway refuses this many deliveries first. */
+  gatewayFailures?: number;
 }
 
 export interface LoopWorld {
@@ -113,6 +115,7 @@ export async function createLoopWorld(node: NodeBackendOptions, opts: LoopWorldO
     if (method !== "deliver") throw new Error(`gateway: unknown method ${method}`);
     const p = params as { text: string; kind: string; turn: string; idempotencyKey: string };
     world.deliveries += 1;
+    if (world.deliveries <= (opts.gatewayFailures ?? 0)) throw new Error("gateway: unavailable");
     if (!seen.has(p.idempotencyKey)) {
       seen.add(p.idempotencyKey);
       replies.push({ text: p.text, kind: p.kind, turn: p.turn, key: p.idempotencyKey });

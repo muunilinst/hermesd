@@ -680,7 +680,15 @@ export class NodePlatform {
 
       async disarm(key: string): Promise<void> {
         if (!act.alive) return forever<void>();
-        platform.#disarm(rec, key);
+        act.inflight++;
+        try {
+          await platform.#point(rec, act, "disarm:before");
+          if (!act.alive) return forever<void>();
+          platform.#disarm(rec, key);
+        } finally {
+          act.inflight--;
+          platform.#scheduleRelease(act);
+        }
       },
 
       async fetch(req: Request, signal?: AbortSignal): Promise<Response> {

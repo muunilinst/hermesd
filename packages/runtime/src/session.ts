@@ -95,6 +95,12 @@ export const SESSION_DDL: string[] = [
     job TEXT NOT NULL,
     ran_at INTEGER NOT NULL
   )`,
+  // The host timers still to remove: an obligation's key lands here in the transaction that closes
+  // it, and leaves only once the host has disarmed it. A crash in between is redone on activation.
+  `CREATE TABLE IF NOT EXISTS rt_disarm (key TEXT PRIMARY KEY)`,
+  `CREATE TRIGGER IF NOT EXISTS rt_obligation_closed AFTER UPDATE OF state ON wake_obligations
+     WHEN OLD.state = 'open' AND NEW.state = 'done'
+     BEGIN INSERT OR IGNORE INTO rt_disarm (key) VALUES (NEW.id); END`,
 ];
 
 interface Armed {
@@ -145,6 +151,7 @@ export class SessionActor implements ActorBehavior {
     await this.#host.commit();
     // Reconcile on activation: register, send old outbox rows, start the next admission.
     this.#background(async () => {
+      await this.#reconcileTimers(); // a crash may have come between a close and its disarm
       await this.#ensureRegistered();
       await this.#deliver();
       this.#kick();
@@ -319,7 +326,65 @@ export class SessionActor implements ActorBehavior {
       }),
     );
     await this.#host.commit();
+    if (armAt.key !== id) {
+      // The timer was borrowed. A close of its obligation between our read and our commit may
+      // disarm it, and its reconcile may have looked for the earliest open one before ours existed.
+      const gone = await this.#host.tx((sql) => sql.exec("SELECT 1 AS x FROM wake_obligations WHERE id = ? AND state = 'open'", armAt.key).length === 0);
+      if (gone) await this.#armEarliest().catch(() => {}); // committed: a failure is left to the sweep
+    }
     return value;
+  }
+
+  /** Arm the earliest open obligation with its own key. */
+  async #armEarliest(): Promise<void> {
+    const next = await this.#host.tx((sql) => sql.exec("SELECT id, due_at FROM wake_obligations WHERE state = 'open' ORDER BY due_at, id LIMIT 1")[0]);
+    if (next) await this.#host.arm(new Date(num(next.due_at)), str(next.id));
+  }
+
+  /**
+   * Remove the host timers of closed obligations (listed in `rt_disarm`), so a finished session stops
+   * waking. An open obligation may have borrowed one of those timers, so the earliest open one is
+   * armed first, and unsent outbox rows get their own obligation first. It runs after each commit
+   * that may close obligations, and on activation. It never throws: the work is in rows, so a
+   * failure is redone by the next run.
+   */
+  async #reconcileTimers(): Promise<void> {
+    if (!this.#host.disarm) return;
+    try {
+      await this.#ensureOutboxWake();
+      const keys = await this.#host.tx((sql) => sql.exec("SELECT key FROM rt_disarm ORDER BY key").map((r) => str(r.key)));
+      if (keys.length === 0) return;
+      await this.#armEarliest();
+      for (const k of keys) await this.#host.disarm(k);
+      await this.#host.tx((sql) => {
+        for (const k of keys) sql.exec("DELETE FROM rt_disarm WHERE key = ?", k);
+      });
+      await this.#host.commit();
+    } catch {
+      // Left in rt_disarm for the next run.
+    }
+  }
+
+  /** Unsent outbox rows keep an "outbox" obligation of their own, due a retry from now. */
+  async #ensureOutboxWake(): Promise<void> {
+    const need = await this.#host.tx(
+      (sql) =>
+        sql.exec("SELECT 1 AS x FROM outbox LIMIT 1").length > 0 &&
+        sql.exec("SELECT 1 AS x FROM wake_obligations WHERE kind = 'outbox' AND state = 'open' LIMIT 1").length === 0,
+    );
+    if (need) await this.#commitWithObligation({ kind: "outbox", ref: "", turnId: null }, (_sql, add) => add());
+  }
+
+  /** Send the outbox. Once it is empty, close the "outbox" obligations; until then they keep a retry. */
+  async #deliver(): Promise<void> {
+    await this.#outbox.deliver();
+    await this.#host.tx((sql) => {
+      if (sql.exec("SELECT 1 AS x FROM outbox LIMIT 1").length === 0) {
+        sql.exec("UPDATE wake_obligations SET state = 'done' WHERE kind = 'outbox' AND state = 'open'");
+      }
+    });
+    await this.#host.commit();
+    await this.#reconcileTimers();
   }
 
   /**
@@ -383,6 +448,7 @@ export class SessionActor implements ActorBehavior {
       else if (o.turn_id !== null && o.turn_id !== undefined) turns.add(str(o.turn_id));
     }
     for (const t of turns) await this.#resumeTurn(t);
+    await this.#reconcileTimers();
     this.#kick();
     this.#deliverInBackground();
   }
@@ -392,55 +458,14 @@ export class SessionActor implements ActorBehavior {
     const fn = this.#deps.jobs?.[job];
     if (!fn) return; // no code for it in this build: keep the obligation open
     const now = this.#deps.clock.now();
-    const ran = await this.#host.tx((sql) => {
+    await this.#host.tx((sql) => {
       const claimed = sql.exec("UPDATE wake_obligations SET state = 'done' WHERE id = ? AND state = 'open' RETURNING id", obligationId);
-      if (claimed.length === 0) return false; // a second firing finds it done: a no-op
+      if (claimed.length === 0) return; // a second firing finds it done: a no-op
       fn(sql, outboxWriter(sql, now), { obligationId });
       sql.exec("INSERT INTO job_runs (obligation_id, job, ran_at) VALUES (?, ?, ?)", obligationId, job, now);
-      return true;
     });
     await this.#host.commit();
-    if (ran) await this.#disarmClosed([obligationId]);
-  }
-
-  /**
-   * After a commit that closed obligations: remove their host timers, so a finished session stops
-   * waking. A later obligation may have relied on one of those timers (an arm reuses the earliest),
-   * so the earliest open obligation is armed first: no open obligation is ever left without a timer.
-   * Unsent outbox rows get an "outbox" obligation instead: a crash before they are sent needs a wake.
-   */
-  async #disarmClosed(ids: string[]): Promise<void> {
-    if (ids.length === 0 || !this.#host.disarm) return;
-    const { next, unsent } = await this.#host.tx((sql) => ({
-      next: sql.exec("SELECT id, due_at FROM wake_obligations WHERE state = 'open' ORDER BY due_at, id LIMIT 1")[0],
-      unsent: sql.exec("SELECT 1 AS x FROM outbox LIMIT 1").length > 0,
-    }));
-    if (next) await this.#host.arm(new Date(num(next.due_at)), str(next.id));
-    else if (unsent) {
-      const id = this.#newObligationId();
-      const at = this.#deps.clock.now() + this.#cfg.minDelayMs;
-      await this.#host.arm(new Date(at), id);
-      const epoch = this.#host.epoch();
-      await this.#host.tx((sql) => {
-        sql.exec("INSERT INTO wake_obligations (id, kind, ref, turn_id, due_at, state, epoch) VALUES (?, 'outbox', '', NULL, ?, 'open', ?)", id, at, epoch);
-      });
-      await this.#host.commit();
-      this.#deliverInBackground(); // a pass that ended before the obligation existed would leave it open
-    }
-    for (const id of ids) await this.#host.disarm(id);
-  }
-
-  /** Send the outbox. Once it is empty, close the "outbox" obligations that waited for it. */
-  async #deliver(): Promise<void> {
-    await this.#outbox.deliver();
-    const closed = await this.#host.tx((sql) =>
-      sql.exec("SELECT 1 AS x FROM outbox LIMIT 1").length > 0
-        ? []
-        : sql.exec("UPDATE wake_obligations SET state = 'done' WHERE kind = 'outbox' AND state = 'open' RETURNING id").map((r) => str(r.id)),
-    );
-    if (closed.length === 0) return;
-    await this.#host.commit();
-    await this.#disarmClosed(closed);
+    await this.#reconcileTimers();
   }
 
   // ------------------------------------------------------------ the sweeper
@@ -600,14 +625,15 @@ export class SessionActor implements ActorBehavior {
       const t = sql.exec("SELECT status, steps, wakes FROM turns WHERE id = ?", turnId)[0];
       if (!t || str(t.status) !== "open") {
         // A stale obligation of a turn that ended: close it.
-        return { closed: sql.exec("UPDATE wake_obligations SET state = 'done' WHERE turn_id = ? AND state = 'open' RETURNING id", turnId).map((r) => str(r.id)) };
+        sql.exec("UPDATE wake_obligations SET state = 'done' WHERE turn_id = ? AND state = 'open'", turnId);
+        return null;
       }
       if (opts.count) sql.exec("UPDATE pending_rows SET attempts = attempts + 1 WHERE turn_id = ? AND status = 'pending'", turnId);
       const pend = sql.exec("SELECT id, turn_id, kind, payload, attempts FROM pending_rows WHERE turn_id = ? AND status = 'pending' ORDER BY created_at, id", turnId);
       return { steps: num(t.steps), failures: num(t.wakes), pend };
     });
     await this.#host.commit(); // the retry is counted before the driver acts
-    if ("closed" in info) return this.#disarmClosed(info.closed);
+    if (!info) return this.#reconcileTimers();
     if (info.failures >= this.#cfg.maxFailuresWithoutProgress) {
       await this.#closeTurn(turnId, "failed", `the turn failed ${info.failures} times without progress`);
       return;
@@ -625,7 +651,7 @@ export class SessionActor implements ActorBehavior {
   }
 
   /** The rows of "end a turn". It runs inside a transaction. Returns false if the turn was not open. */
-  #closeTurnRows(sql: Sql, turnId: string, outcome: "done" | "failed" | "unknown", text: string, now: number, closed: string[]): boolean {
+  #closeTurnRows(sql: Sql, turnId: string, outcome: "done" | "failed" | "unknown", text: string, now: number): boolean {
     const r = sql.exec(
       "UPDATE turns SET status = ?, ended_at = ?, error = ? WHERE id = ? AND status = 'open' RETURNING admission_id",
       outcome,
@@ -640,7 +666,7 @@ export class SessionActor implements ActorBehavior {
     else sql.exec("UPDATE session_admissions SET status = 'terminal', outcome = ? WHERE seq = ?", outcome === "done" ? "completed" : "failed", seq);
     sql.exec("UPDATE rt_admission_port SET result = ?, updated_at = ? WHERE seq = ?", text, now, seq);
     sql.exec("UPDATE pending_rows SET status = 'done' WHERE turn_id = ? AND status = 'pending'", turnId);
-    for (const o of sql.exec("UPDATE wake_obligations SET state = 'done' WHERE turn_id = ? AND state = 'open' RETURNING id", turnId)) closed.push(str(o.id));
+    sql.exec("UPDATE wake_obligations SET state = 'done' WHERE turn_id = ? AND state = 'open'", turnId);
     enqueueOutbox(sql, now, this.#cfg.sweeperTarget, "close", { turn: turnId });
     return true;
   }
@@ -653,10 +679,9 @@ export class SessionActor implements ActorBehavior {
   /** End a turn once. The admission, the pending rows, the obligations and the sweeper record all end with it. */
   async #closeTurn(turnId: string, outcome: "done" | "failed" | "unknown", text: string): Promise<boolean> {
     const now = this.#deps.clock.now();
-    const ids: string[] = [];
-    const closed = await this.#host.tx((sql) => this.#closeTurnRows(sql, turnId, outcome, text, now, ids));
+    const closed = await this.#host.tx((sql) => this.#closeTurnRows(sql, turnId, outcome, text, now));
     await this.#host.commit();
-    await this.#disarmClosed(ids);
+    await this.#reconcileTimers();
     if (closed) this.#afterClose(outcome);
     return closed;
   }
@@ -673,12 +698,10 @@ export class SessionActor implements ActorBehavior {
       payload: p.payload,
       attempts: 0,
     }));
-    const closedIds: string[] = [];
     const body = (sql: Sql): boolean => {
-      closedIds.length = 0; // a retried transaction starts again
       for (const s of spec.settle ?? []) {
         sql.exec("UPDATE pending_rows SET status = 'done', result = ? WHERE id = ? AND status = 'pending'", JSON.stringify(s.result ?? null), s.id);
-        for (const o of sql.exec("UPDATE wake_obligations SET state = 'done' WHERE kind = 'pending' AND ref = ? AND state = 'open' RETURNING id", s.id)) closedIds.push(str(o.id));
+        sql.exec("UPDATE wake_obligations SET state = 'done' WHERE kind = 'pending' AND ref = ?", s.id);
       }
       spec.write?.(sql, outboxWriter(sql, now));
       for (const r of rows) {
@@ -692,12 +715,12 @@ export class SessionActor implements ActorBehavior {
         );
       }
       if ((spec.settle?.length ?? 0) > 0 || rows.length > 0) sql.exec("UPDATE turns SET steps = steps + 1, wakes = 0 WHERE id = ?", turnId);
-      return spec.finish ? this.#closeTurnRows(sql, turnId, spec.finish.status, spec.finish.text, now, closedIds) : false;
+      return spec.finish ? this.#closeTurnRows(sql, turnId, spec.finish.status, spec.finish.text, now) : false;
     };
     if (rows.length === 0) {
       const closed = await this.#host.tx(body);
       await this.#host.commit();
-      await this.#disarmClosed(closedIds);
+      await this.#reconcileTimers();
       if (closed && spec.finish) this.#afterClose(spec.finish.status);
       return rows;
     }
@@ -716,7 +739,7 @@ export class SessionActor implements ActorBehavior {
         );
       }
     });
-    await this.#disarmClosed(closedIds);
+    await this.#reconcileTimers();
     return rows;
   }
 
@@ -746,14 +769,13 @@ export class SessionActor implements ActorBehavior {
         return { id, turnId, kind, payload, attempts: 0 };
       },
       settle: async (pendingId, result) => {
-        const ids = await this.#host.tx((sql) => {
+        await this.#host.tx((sql) => {
           sql.exec("UPDATE pending_rows SET status = 'done', result = ? WHERE id = ? AND status = 'pending'", JSON.stringify(result ?? null), pendingId);
-          const closed = sql.exec("UPDATE wake_obligations SET state = 'done' WHERE kind = 'pending' AND ref = ? AND state = 'open' RETURNING id", pendingId);
+          sql.exec("UPDATE wake_obligations SET state = 'done' WHERE kind = 'pending' AND ref = ?", pendingId);
           sql.exec("UPDATE turns SET steps = steps + 1, wakes = 0 WHERE id = ?", turnId);
-          return closed.map((r) => str(r.id));
         });
         await this.#host.commit();
-        await this.#disarmClosed(ids);
+        await this.#reconcileTimers();
       },
       write: async (fn) => {
         const now = this.#deps.clock.now();
