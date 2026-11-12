@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-12T16:00:41.555Z",
+  "at": "2026-11-12T18:19:31.296Z",
   "usage": {
     "turnsPerMonth": 900,
     "storageGb": 0.05
@@ -19,28 +19,28 @@
       "modelCallsPerTurn": 1,
       "modelDelayMs": 0,
       "perTurn": {
-        "events": 6.7,
-        "tx": 52.35,
-        "statements": 161.45,
-        "rowsChanged": 61.4,
-        "commits": 23,
-        "arms": 5.55,
+        "events": 6.6,
+        "tx": 50.8,
+        "statements": 159.3,
+        "rowsChanged": 61.05,
+        "commits": 22.4,
+        "arms": 5.45,
         "sidecarCalls": 6,
         "adapterRows": 0,
         "timerCalls": 0,
-        "busyMs": 5.54,
-        "busyExclModelMs": 5.44
+        "busyMs": 4.24,
+        "busyExclModelMs": 4.16
       },
       "session": {
         "activations": 0,
         "firstEvents": [],
-        "events": 1.7,
-        "tx": 47.35,
-        "statements": 137.45,
-        "rowsChanged": 46.4,
-        "commits": 18,
-        "arms": 5.55,
-        "disarms": 2.05,
+        "events": 1.6,
+        "tx": 45.8,
+        "statements": 135.3,
+        "rowsChanged": 46.05,
+        "commits": 17.4,
+        "arms": 5.45,
+        "disarms": 2,
         "fetches": 1,
         "sidecars": {
           "actor:sweeper.open": 1,
@@ -51,35 +51,35 @@
         },
         "adapterRows": 0,
         "timerCalls": 0,
-        "busyMs": 4.59,
-        "busyExclModelMs": 4.48
+        "busyMs": 3.56,
+        "busyExclModelMs": 3.47
       },
       "turnMs": {
-        "median": 5,
-        "p95": 7.05,
+        "median": 3,
+        "p95": 6,
         "n": 20
       },
       "overheadMs": {
-        "median": 5,
-        "p95": 7.05,
+        "median": 3,
+        "p95": 6,
         "n": 20
       },
       "warmToModelMs": {
-        "median": 2.5,
-        "p95": 4.1,
+        "median": 2,
+        "p95": 4,
         "n": 20
       },
       "coldToModelMs": {
-        "median": 3,
-        "p95": 6.4,
+        "median": 2,
+        "p95": 5.4,
         "n": 5
       },
       "costUsdPerUserMonth": {
-        "requests": 0.000904,
-        "duration": 0.000008,
-        "rowsWritten": 0.060255,
+        "requests": 0.000891,
+        "duration": 0.000006,
+        "rowsWritten": 0.05985,
         "storage": 0.01,
-        "total": 0.071167,
+        "total": 0.070747,
         "partial": true,
         "missing": [
           "index entries: SQLite total_changes() counts table rows, Durable Objects also bill the rows written to indexes",
@@ -104,8 +104,8 @@
         "sidecarCalls": 6,
         "adapterRows": 6,
         "timerCalls": 6,
-        "busyMs": 26.3,
-        "busyExclModelMs": 25.75
+        "busyMs": 22.1,
+        "busyExclModelMs": 21.55
       },
       "session": {
         "activations": 0,
@@ -127,35 +127,35 @@
         },
         "adapterRows": 6,
         "timerCalls": 6,
-        "busyMs": 21.85,
-        "busyExclModelMs": 21.3
+        "busyMs": 18.85,
+        "busyExclModelMs": 18.3
       },
       "turnMs": {
-        "median": 17,
-        "p95": 26.05,
+        "median": 15,
+        "p95": 19.05,
         "n": 20
       },
       "overheadMs": {
-        "median": 17,
-        "p95": 26.05,
+        "median": 15,
+        "p95": 19.05,
         "n": 20
       },
       "warmToModelMs": {
-        "median": 9.5,
-        "p95": 14.15,
+        "median": 9,
+        "p95": 11,
         "n": 20
       },
       "coldToModelMs": {
-        "median": 15,
-        "p95": 22.6,
+        "median": 13,
+        "p95": 16.8,
         "n": 5
       },
       "costUsdPerUserMonth": {
         "requests": 0.00081,
-        "duration": 0.000038,
+        "duration": 0.000032,
         "rowsWritten": 0.0639,
         "storage": 0.01,
-        "total": 0.074748,
+        "total": 0.074742,
         "partial": true,
         "missing": [
           "index entries: SQLite total_changes() counts table rows, Durable Objects also bill the rows written to indexes",
