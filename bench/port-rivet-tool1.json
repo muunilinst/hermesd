@@ -1,0 +1,87 @@
+{
+  "at": "2026-11-12T12:11:42.092Z",
+  "usage": {
+    "turnsPerMonth": 900,
+    "storageGb": 0.05
+  },
+  "prices": {
+    "doRequestUsd": 1.5e-7,
+    "doGbSecondUsd": 0.0000125,
+    "doMemoryGb": 0.128,
+    "doRowWrittenUsd": 0.000001,
+    "doStorageGbMonthUsd": 0.2,
+    "vmMonthUsd": 8.09
+  },
+  "results": [
+    {
+      "host": "rivet",
+      "turns": 20,
+      "modelCallsPerTurn": 2,
+      "modelDelayMs": 0,
+      "perTurn": {
+        "events": 7,
+        "tx": 60.95,
+        "statements": 230.8,
+        "rowsChanged": 91.15,
+        "commits": 24.25,
+        "arms": 6.25,
+        "sidecarCalls": 13.05,
+        "busyMs": 159.09,
+        "busyExclModelMs": 158.73
+      },
+      "session": {
+        "activations": 0,
+        "events": 1,
+        "tx": 54.95,
+        "statements": 201,
+        "rowsChanged": 71.25,
+        "commits": 18.25,
+        "arms": 6.25,
+        "disarms": 2,
+        "fetches": 2,
+        "sidecars": {
+          "actor:sweeper.close": 1,
+          "actor:sweeper.open": 1,
+          "executor.fence": 0.05,
+          "executor.describe": 1,
+          "executor.status": 2,
+          "executor.prepare": 1,
+          "executor.start": 1,
+          "executor.ack": 1,
+          "actor:profile.index": 3,
+          "gateway.deliver": 1,
+          "actor:profile.session_upsert": 1
+        },
+        "busyMs": 138.25,
+        "busyExclModelMs": 137.89
+      },
+      "turnMs": {
+        "median": 206,
+        "p95": 243,
+        "n": 20
+      },
+      "overheadMs": {
+        "median": 206,
+        "p95": 243,
+        "n": 20
+      },
+      "warmToModelMs": {
+        "median": 83,
+        "p95": 102,
+        "n": 20
+      },
+      "coldToModelMs": {
+        "median": 92,
+        "p95": 115,
+        "n": 5
+      },
+      "costUsdPerUserMonth": {
+        "requests": 0.000945,
+        "duration": 0.000229,
+        "rowsWritten": 0.08766,
+        "storage": 0.01,
+        "total": 0.098834
+      }
+    }
+  ]
+}

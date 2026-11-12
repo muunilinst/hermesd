@@ -25,12 +25,12 @@ Medians, with p95 in brackets. 20 turns each. "Tool turn" means one terminal cal
 | | Upstream, always-on VM | Port on workerd (local) | Port on rivetkit (local) |
 | --- | --- | --- | --- |
 | Plain turn, send to reply | 96 ms (154) | 26 ms (36) | 158 ms (165) |
-| Tool turn, send to reply | 156 ms (215) | 31 ms (55) | see below |
+| Tool turn, send to reply | 156 ms (215) | 31 ms (55) | 206 ms (243) |
 | Start before the first turn | 2.9 s to /health, 3.8 s to the first reply | cold wake: 18 ms send-to-model (10 ms warm) | cold wake: 113 ms (81 ms warm) |
 | Memory | 246 MiB after start, 287 to 302 MiB after 40 turns, 255 MiB idle, held all month | billed at 128 MB per object, only while a turn or its I/O is open | not measured |
 | Idle CPU | 1.72% of one core | none: nothing is in memory between turns | none |
 | Durable commits per plain turn | 14 to 15 WAL commits | 18 commits, 59 rows changed, 4 alarm sets | 18 commits, 59 rows |
-| Durable commits per tool turn | 19 to 20 WAL commits | 24 commits, 91 rows, 6 alarm sets | see below |
+| Durable commits per tool turn | 19 to 20 WAL commits | 24 commits, 91 rows, 6 alarm sets | 24 commits, 91 rows |
 | kill -9 while the model call is open (3 runs) | the reply never arrives; no new model request; admission stays `unknown`; a retry gets 409 | the wake re-sends the call under the same call id; one reply (D1, passes on node, workerd, rivetkit) | same |
 | kill -9 while a command runs (3 runs) | the command's process group dies with the gateway; no result row; admission `unknown`; a retry gets 409 | the command runs once and the turn finishes (D2 actor side) | same |
 
@@ -64,7 +64,7 @@ sides and is left out.
    workspace VM. Rows written decide the port's bill; fewer commits per turn is the lever.
 2. **Faster.** On workerd, a turn adds about 26 to 31 ms against upstream's 96 to 156 ms,
    and a sleeping session wakes in under 20 ms against about 3 s for a cold Hermes. rivetkit
-   on its local engine adds about 160 ms a turn; the time goes to actor-to-actor calls through
+   on its local engine adds about 160 to 200 ms a turn; the time goes to actor-to-actor calls through
    the engine and is worth a look before Rivet is called "as fast".
 3. **More reliable.** Upstream loses the turn at a kill -9 in both cases, with no retry. The
    port finishes it in both cases, on all three hosts. This is the gap the port exists to
@@ -74,5 +74,4 @@ sides and is left out.
 
 - Memory per idle session on TeenyTiny (density), and a deployed Worker.
 - The workspace VM: Start time and cost (step 2).
-- Rivet tool turns: the all-tool-turn bench stalled at the 7th turn on rivetkit; under investigation.
 - compaction-50 and compaction-85 upstream transcripts: Hermes refuses a context window under 64K.
