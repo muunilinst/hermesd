@@ -148,6 +148,8 @@ export interface Stack {
   resetMeters(): Promise<void>;
   /** Every request the model received, in order. */
   modelArrivals(): Promise<ModelArrival[]>;
+  /** Model requests that were aborted before the model answered (a cancelled held request). */
+  modelAborts(): Promise<number>;
   /** Commands the executor started. */
   executorRuns(): Promise<number>;
   close(): Promise<void>;

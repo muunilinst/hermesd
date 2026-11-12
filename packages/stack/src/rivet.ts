@@ -41,7 +41,60 @@ type Any = any;
 export class RivetUnavailable extends Error {}
 
 /** The rivet stack, with what only it can show: ghost actors of an earlier process that the engine woke and the guard destroyed. */
-export type RivetStack = Stack & { ghostsDestroyed(): number };
+export type RivetStack = Stack & {
+  ghostsDestroyed(): number;
+  /** Where this stack's engine keeps its data. */
+  readonly storagePath: string;
+  /** Deliver a timer action to the actor for a key with no wake timer row (a stale or early timer). */
+  emptyAlarm(actor: ActorName): Promise<void>;
+  /** Activations of the stack's actors that are running now (each holds a host mirror); zero once they stopped. */
+  liveActivations(): number;
+};
+
+/**
+ * Sets (or with `undefined`, removes) an environment variable where the rivetkit native core reads it. Under
+ * Node `process.env` is the C environment. Under Bun it is not: an assignment to `process.env` reaches child
+ * processes but not `getenv` in a native addon, so the core would never see RIVETKIT_STORAGE_PATH. Bun gets
+ * libc `setenv`/`unsetenv` as well.
+ */
+async function setNativeEnv(key: string, value: string | undefined): Promise<void> {
+  if (value === undefined) delete process.env[key];
+  else process.env[key] = value;
+  if (!(globalThis as { Bun?: unknown }).Bun) return;
+  const ffi = (await import("bun:ffi" as string)) as Any;
+  const libc = ffi.dlopen(process.platform === "darwin" ? "libSystem.B.dylib" : "libc.so.6", {
+    setenv: { args: [ffi.FFIType.cstring, ffi.FFIType.cstring, ffi.FFIType.i32], returns: ffi.FFIType.i32 },
+    unsetenv: { args: [ffi.FFIType.cstring], returns: ffi.FFIType.i32 },
+  });
+  const c = (x: string): Buffer => Buffer.from(`${x}\0`);
+  if (value === undefined) libc.symbols.unsetenv(c(key));
+  else libc.symbols.setenv(c(key), c(value), 1);
+  libc.close();
+}
+
+/**
+ * rivetkit 3.0.7 has no per-registry storage setting: the native engine takes its data directory from
+ * RIVETKIT_STORAGE_PATH in the environment of the process that starts it (the serve config has only
+ * `enginePort`), and reads it once, at spawn. So the variable is set only while the engine starts, and put
+ * back as soon as the start returns; nothing is restored later, so a path that a closed stack deleted is
+ * never written back.
+ *
+ * Only one stack can be open per process: every registry of the process talks to the one local engine
+ * (fixed port), which hands an actor to any registry that registered its name, so two stacks would serve
+ * each other's actors (the ghost guard in rivet-actors.ts would destroy them). `createRivetStack` refuses
+ * to start while another stack is open, with an error that says so, instead of picking the wrong store or
+ * the wrong registry. Two processes may run stacks at once, each with its own store.
+ */
+let openStack = false;
+async function withStoragePath<T>(path: string, start: () => Promise<T>): Promise<T> {
+  const prior = process.env["RIVETKIT_STORAGE_PATH"];
+  try {
+    await setNativeEnv("RIVETKIT_STORAGE_PATH", path);
+    return await start();
+  } finally {
+    await setNativeEnv("RIVETKIT_STORAGE_PATH", prior);
+  }
+}
 
 export interface RivetStackOptions extends StackOptions {
   /**
@@ -53,19 +106,29 @@ export interface RivetStackOptions extends StackOptions {
 }
 
 export async function createRivetStack(options: RivetStackOptions): Promise<RivetStack> {
+  if (openStack) {
+    throw new Error("createRivetStack: another rivet stack is open in this process. They share one local engine and cannot overlap; close the first (or use a separate process).");
+  }
+  openStack = true;
+  try {
+    return await startRivetStack(options);
+  } catch (e) {
+    openStack = false;
+    throw e;
+  }
+}
+
+async function startRivetStack(options: RivetStackOptions): Promise<RivetStack> {
   const { storagePath, ...opts } = options;
   const { actor, setup } = (await import("rivetkit")) as Any;
   const { db } = (await import("rivetkit/db")) as Any;
   const { setupTest } = (await import("rivetkit/test")) as Any;
 
-  // rivetkit's engine reads RIVETKIT_STORAGE_PATH when the registry starts; unset, it uses ~/.rivetkit.
+  // The engine takes its data directory from RIVETKIT_STORAGE_PATH when it starts (see `withStoragePath`); unset, ~/.rivetkit.
   const ownedStore = storagePath === undefined ? mkdtempSync(join(tmpdir(), "hermesd-rivet-")) : undefined;
   const store = storagePath ?? ownedStore!;
-  const priorStore = process.env["RIVETKIT_STORAGE_PATH"];
-  process.env["RIVETKIT_STORAGE_PATH"] = store;
   const releaseStore = (): void => {
-    if (priorStore === undefined) delete process.env["RIVETKIT_STORAGE_PATH"];
-    else process.env["RIVETKIT_STORAGE_PATH"] = priorStore;
+    openStack = false;
     if (ownedStore) rmSync(ownedStore, { recursive: true, force: true });
   };
 
@@ -84,6 +147,7 @@ export async function createRivetStack(options: RivetStackOptions): Promise<Rive
     ghosts: { destroyed: 0 },
     crashes: { fired: 0 },
     sleeps: { s1: 0, sweeper: 0, profile: 0 },
+    activations: new Map(),
     client: () => client,
     // The store is private to the stack (see `storagePath`), and keys are new per stack as well, so a
     // shared store still never hands a stack the rows of an earlier one;
@@ -121,7 +185,7 @@ export async function createRivetStack(options: RivetStackOptions): Promise<Rive
     if (errors.length > 1) throw new AggregateError(errors, "rivet stack teardown failed");
   };
   try {
-    ({ client } = await setupTest({ onTestFinished: (f: () => Promise<void>) => finishers.push(f) }, registry));
+    ({ client } = await withStoragePath<Any>(store, () => setupTest({ onTestFinished: (f: () => Promise<void>) => finishers.push(f) }, registry)));
   } catch (e) {
     await teardown().catch(() => {});
     throw new RivetUnavailable(`rivetkit could not start here: ${(e as Error).message.slice(0, 200)}`);
@@ -148,6 +212,9 @@ export async function createRivetStack(options: RivetStackOptions): Promise<Rive
 
   return {
     host: "rivet",
+    storagePath: store,
+    emptyAlarm: async (a) => void (await handle(a).hostWake("no-such-timer")),
+    liveActivations: () => world.activations.size,
     async send(input, request = `req-${Math.random().toString(36).slice(2)}`) {
       await handle("s1").call("receive", { principal: "user-1", session: "s1", request, input });
     },
@@ -188,6 +255,7 @@ export async function createRivetStack(options: RivetStackOptions): Promise<Rive
       for (const m of world.meters.values()) m.reset();
     },
     modelArrivals: async () => [...model.arrivals],
+    modelAborts: async () => model.model.aborted,
     executorRuns: async () => exec.runs(),
     async close() {
       if (closed) return;

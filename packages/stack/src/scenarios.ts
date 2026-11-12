@@ -228,6 +228,9 @@ export const SCENARIOS: Scenario[] = [
         assert.ok(before > 0);
         assert.equal(Number((await s.rows("s1", "SELECT 1 AS n;"))[0]!["n"]), 1, "one trailing semicolon is fine");
         assert.equal(Number((await s.rows("s1", "WITH t AS (SELECT 2 AS n) SELECT n FROM t"))[0]!["n"]), 2);
+        assert.equal((await s.rows("s1", "SELECT replace('banana', 'a', 'o') AS r"))[0]!["r"], "bonono", "replace() is a function, not a write");
+        assert.equal(Number((await s.rows("s1", "SELECT count(*) AS n FROM turns WHERE replace(status, 'x', 'y') <> ''"))[0]!["n"]), before);
+        assert.equal(Number((await s.rows("s1", "WITH insert_log AS (SELECT 3 AS n) SELECT n FROM insert_log"))[0]!["n"]), 3);
         for (const bad of [
           "SELECT 1; DELETE FROM turns",
           "SELECT 1;; DELETE FROM turns",
@@ -235,10 +238,33 @@ export const SCENARIOS: Scenario[] = [
           "WITH t AS (SELECT 1) DELETE FROM turns",
           "UPDATE turns SET status = 'x'",
           "SELECT 1; SELECT 2",
+          "WITH t AS (SELECT 1) UPDATE turns SET status = 'x'",
+          "WITH t AS (SELECT 1) REPLACE INTO turns (id) VALUES ('x')",
+          "WITH t AS (SELECT 1) INSERT INTO turns (id) SELECT * FROM t",
+          "REPLACE INTO turns (id) VALUES ('x')",
+          "SELECT 1 -- ;\n; DELETE FROM turns",
         ]) {
           await assert.rejects(s.rows("s1", bad), /./, `refused: ${bad}`);
         }
         assert.equal(await count(), before, "no statement changed the rows");
+      });
+    },
+  },
+  {
+    name: "a stop cancels the held model request at the model, on every host",
+    async run(make) {
+      await withStack(make, { script: [{ hold: "g1", reply: "too late" }, { reply: "second" }] }, async (s) => {
+        await s.send("hello");
+        await waitFor(async () => (await s.modelArrivals()).length === 1, "the request at the model");
+        assert.equal(await s.modelAborts(), 0, "nothing was cancelled yet");
+        const r = (await s.call("s1", "stop")) as { stopped: boolean };
+        assert.equal(r.stopped, true);
+        await waitFor(async () => (await s.modelAborts()) === 1, "the model saw the request cancelled");
+        const replies = await s.waitReplies(1);
+        assert.equal(replies.length, 1, "the stop reply, not the held answer");
+        await s.release("g1");
+        await s.send("again");
+        assert.equal((await s.waitReplies(2))[1]!.text, "second");
       });
     },
   },

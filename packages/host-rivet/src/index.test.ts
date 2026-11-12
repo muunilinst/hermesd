@@ -226,6 +226,19 @@ describe("RivetHost with a fake context", () => {
     await assert.rejects(old.tx((s) => s.exec("CREATE TABLE z (n)")), FencedError);
   });
 
+  it("close unregisters and closes the host, but only if it is the registered one", async () => {
+    const f = fakeActor();
+    const old = await RivetHost.activate(f.c);
+    const next = await RivetHost.activate(f.c);
+    old.close(); // the stopped activation: the replacement stays registered
+    assert.equal(RivetHost.of(f.c), next);
+    await assert.rejects(old.tx((s) => s.exec("SELECT 1")));
+    assert.equal((await next.tx((s) => s.exec("SELECT 1 AS n")))[0]!["n"], 1);
+    next.close();
+    next.close(); // idempotent
+    assert.throws(() => RivetHost.of(f.c), /has not run/);
+  });
+
   it("handleWake re-arms before the handler runs", async () => {
     const f = fakeActor();
     let now = 1000;

@@ -125,6 +125,7 @@ export class RivetHost implements Host {
   readonly #tasks = new Map<string, Promise<void>>();
   #chain: Promise<void> = Promise.resolve();
   #broken: unknown;
+  #closed = false;
   #epoch: OwnerEpoch | undefined;
   #handler: WakeHandler | undefined;
 
@@ -153,6 +154,22 @@ export class RivetHost implements Host {
     host.#epoch = epoch;
     hosts.set(c.actorId, host);
     return host;
+  }
+
+  /**
+   * Call this when the activation stops (`onSleep`). It removes this host from the registry that `of`
+   * reads, but only if the registered host is this one (a replacement activation may have registered
+   * itself), and closes the in-memory mirror. Calls on this host after `close` fail.
+   */
+  close(): void {
+    if (hosts.get(this.#c.actorId) === this) hosts.delete(this.#c.actorId);
+    if (this.#closed) return;
+    this.#closed = true;
+    try {
+      this.#mirror.close();
+    } catch {
+      // Already closed.
+    }
   }
 
   /** The host of the running actor. Use it inside actions. */

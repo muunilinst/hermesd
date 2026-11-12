@@ -37,4 +37,20 @@ describe("stack scenarios on workerd (Durable Objects, real time)", () => {
       await s.close();
     }
   });
+
+  it("an alarm with nothing due is the activation's first event, so a cold-wake sample is not credited to the send", { skip: skipReason }, async () => {
+    const s = await createWorkerdStack({ script: [{ reply: "x" }], autoSweep: false });
+    try {
+      await s.evict("profile");
+      await s.resetMeters();
+      await s.emptyAlarm("profile");
+      await s.call("profile", "register_session", { session: "s1" });
+      const m = await s.meter("profile");
+      assert.equal(m.activations, 1);
+      assert.deepEqual(m.firstEvents, ["alarm"], "the empty alarm woke the actor");
+      assert.equal(m.events, 2, "the alarm and the call, once each");
+    } finally {
+      await s.close();
+    }
+  });
 });

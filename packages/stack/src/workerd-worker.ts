@@ -60,15 +60,42 @@ const viaServices = (env: Env, path: string): FetcherLike => ({
   fetch: (req) => servicesStub(env).fetch(new Request(`http://services${path}`, req)),
 });
 
+/**
+ * The model request crosses a Durable Object boundary, and workerd does not carry an abort signal across it.
+ * So cancellation is relayed: when the request's signal fires, a second request names the call (its
+ * idempotency key) and `Services` aborts the model call that is waiting for it. The caller's promise
+ * rejects at once, as an aborted fetch does on the other hosts.
+ */
+const modelVia = (env: Env): FetcherLike => ({
+  fetch: (req) => {
+    const signal = req.signal;
+    signal.throwIfAborted();
+    const callId = req.headers.get("idempotency-key");
+    const call = servicesStub(env).fetch(new Request("http://services/model", req));
+    return new Promise<Response>((resolve, reject) => {
+      const onAbort = (): void => {
+        if (callId !== null) {
+          void servicesStub(env)
+            .fetch(new Request("http://services/model/cancel", { method: "POST", body: JSON.stringify({ callId }) }))
+            .catch(() => undefined);
+        }
+        reject(new DOMException("The operation was aborted.", "AbortError"));
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+      call.then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
+    });
+  },
+});
+
 class ActorDO extends DurableObject<Env> {
   readonly #host: CloudflareHost;
   readonly #behavior: ActorBehavior;
-  readonly #name: ActorName;
+  readonly #meter: Meter;
+  readonly #token: number;
   #active: Promise<void> | undefined;
 
   constructor(ctx: DurableObjectState, env: Env, name: ActorName) {
     super(ctx, env);
-    this.#name = name;
     const sidecars: Record<string, FetcherLike> = {
       [NAMES.executor]: viaServices(env, "/executor/rpc"),
       [NAMES.gateway]: viaServices(env, "/gateway/rpc"),
@@ -77,16 +104,19 @@ class ActorDO extends DurableObject<Env> {
       [NAMES.actorTarget(NAMES.session)]: actorStub(env, "s1"),
     };
     const meter = meterOf(name);
+    this.#meter = meter;
     this.#host = new CloudflareHost(ctx, {
       sidecars,
-      fetch: (req) => viaServices(env, "/model").fetch(req),
+      fetch: (req) => modelVia(env).fetch(req),
       onWrite: (kind) => meter.adapterWrite(kind),
     });
     const host = new MeteredHost(this.#host, { actor: name, meter, rules, crash: () => {
       crashesFired += 1;
       ctx.abort("injected crash");
     } });
-    this.#behavior = meteredBehavior(actorFactory(name, optsOf(env), clock)(host), meter);
+    this.#token = host.token;
+    // Alarms are metered once at `alarm()`, before the adapter decides whether any work is due.
+    this.#behavior = meteredBehavior(actorFactory(name, optsOf(env), clock)(host), meter, { token: host.token, alarms: false });
     this.#host.onAlarm(async () => void (await this.#behavior.alarm?.()));
   }
 
@@ -98,7 +128,8 @@ class ActorDO extends DurableObject<Env> {
 
   async alarm(): Promise<void> {
     await this.#ready();
-    await this.#host.handleAlarm();
+    // An alarm with nothing due still activated the actor: it counts as the activation's first event.
+    await this.#meter.event(() => this.#host.handleAlarm(), "alarm", this.#token);
   }
 
   async fetch(req: Request): Promise<Response> {
@@ -122,9 +153,11 @@ class ActorDO extends DurableObject<Env> {
         const rows = await this.#host.tx((s) => s.exec(text));
         return json(rows.map((row) => Object.fromEntries(Object.entries(row).map(([k, v]) => [k, encodeValue(v)]))));
       }
+      // Test hook: the platform's alarm entry, called with nothing due (an early or stale alarm).
+      if (path === "/ctl/alarm") return json(await this.alarm());
       if (path === "/ctl/epoch") return json(this.#host.epoch());
       if (path === "/ctl/abort") {
-        meterOf(this.#name).abandon();
+        this.#meter.abandon(this.#token);
         this.ctx.abort("evicted by the test");
       }
       return json({ error: `no route ${path}` }, 404);
@@ -155,6 +188,8 @@ export class Services extends DurableObject<Env> {
   readonly #model: ModelService;
   readonly #exec = new ExecutorService();
   readonly #gateway = new GatewayService();
+  /** The model calls in flight by idempotency key, so a cancel request can abort the one that waits. */
+  readonly #calls = new Map<string, AbortController>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -165,14 +200,28 @@ export class Services extends DurableObject<Env> {
   async fetch(req: Request): Promise<Response> {
     const path = new URL(req.url).pathname;
     try {
-      if (path === "/model") return await this.#model.fetch(req);
+      if (path === "/model") {
+        const callId = req.headers.get("idempotency-key");
+        const ac = new AbortController();
+        if (callId !== null) this.#calls.set(callId, ac);
+        try {
+          return await this.#model.fetch(req, AbortSignal.any([req.signal, ac.signal]));
+        } finally {
+          if (callId !== null && this.#calls.get(callId) === ac) this.#calls.delete(callId);
+        }
+      }
+      if (path === "/model/cancel") {
+        const { callId } = (await req.json()) as { callId: string };
+        this.#calls.get(callId)?.abort();
+        return json(null);
+      }
       if (path === "/executor/rpc" || path === "/gateway/rpc") {
         const { method, params } = (await req.json()) as { method: string; params: unknown };
         const h = path.startsWith("/executor") ? this.#exec.handle : this.#gateway.handle;
         return json(await h(method, params));
       }
       if (path === "/ctl/state") {
-        return json({ replies: this.#gateway.replies, arrivals: this.#model.arrivals, runs: this.#exec.runs() });
+        return json({ replies: this.#gateway.replies, arrivals: this.#model.arrivals, aborts: this.#model.model.aborted, runs: this.#exec.runs() });
       }
       if (path === "/ctl/release") {
         const { name } = (await req.json()) as { name: string };

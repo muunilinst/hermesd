@@ -1,8 +1,12 @@
 /**
  * The read-only rule of `Stack.rows()`, shared by every host. It accepts one statement that
- * begins with SELECT, or with WITH when no write keyword appears outside string literals,
- * identifiers and comments. One trailing semicolon is dropped; any other semicolon outside
- * a literal is refused. It uses no Node API: workerd runs it as it is.
+ * begins with SELECT (or VALUES), or with WITH when the statement after its CTEs is a SELECT.
+ * Literals, quoted identifiers and comments are blanked first, so words inside them count for
+ * nothing, and write words inside a SELECT (`replace(...)`, `update_time`) are ordinary names.
+ * One trailing semicolon is dropped; any other semicolon outside a literal is refused.
+ * It does not need the database to classify the statement and uses no Node API: workerd
+ * runs it as it is. (SQLite's `sqlite3_stmt_readonly` is not reachable from the Durable Object
+ * SQL API, and `PRAGMA query_only` is not permitted there.)
  */
 export function assertReadOnlySql(sql: string): string {
   // Blank out literals, quoted identifiers and comments, keeping the rest for the checks.
@@ -37,11 +41,26 @@ export function assertReadOnlySql(sql: string): string {
   }
   const trimmed = bare.trimEnd().replace(/;$/, "");
   if (trimmed.includes(";")) throw new Error("rows: one statement only");
-  const head = /^\s*(\w+)/.exec(trimmed)?.[1]?.toLowerCase();
-  if (head !== "select" && head !== "with") throw new Error("rows: read-only queries only (SELECT or WITH ... SELECT)");
-  if (/\b(insert|update|delete|replace|create|drop|alter|attach|detach|pragma|vacuum|reindex)\b/i.test(trimmed)) {
-    throw new Error("rows: read-only queries only (no write keyword)");
+  // The statement's own verb. A SELECT cannot hold a data-changing statement, so after the head nothing in its
+  // text is a write: `replace(...)`, a column called `update_time` and `pragma_table_info(...)` are ordinary
+  // names. Only WITH needs a look at what follows its CTEs.
+  const words = [...trimmed.matchAll(/[A-Za-z_]\w*|[()]/g)].map((m) => m[0]);
+  const head = words[0]?.toLowerCase();
+  if (head === "select" || head === "values") return sql.replace(/;\s*$/, "");
+  if (head !== "with") throw new Error("rows: read-only queries only (SELECT or WITH ... SELECT)");
+  // WITH [RECURSIVE] name [(cols)] AS [[NOT] MATERIALIZED] (...) [, ...] <statement>: the statement is the first
+  // verb outside every parenthesis. Names, AS and MATERIALIZED are none of the verbs.
+  let depth = 0;
+  for (const w of words.slice(1)) {
+    if (w === "(") depth += 1;
+    else if (w === ")") depth -= 1;
+    else if (depth === 0) {
+      const v = w.toLowerCase();
+      if (v === "select" || v === "values") return sql.replace(/;\s*$/, "");
+      if (v === "insert" || v === "update" || v === "delete" || v === "replace") {
+        throw new Error("rows: read-only queries only (WITH ... SELECT, not WITH ... " + v.toUpperCase() + ")");
+      }
+    }
   }
-  // The text that goes to the database: the original with its one trailing semicolon removed.
-  return sql.replace(/;\s*$/, "");
+  throw new Error("rows: read-only queries only (WITH without a SELECT)");
 }

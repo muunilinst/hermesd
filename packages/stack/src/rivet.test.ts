@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -83,20 +83,86 @@ describe("stack scenarios on rivetkit 3.0.7", { timeout: 120_000 }, () => {
     }),
   );
 
-  it("a stack keeps its data in a private store that close removes", { timeout: 120_000 }, (t) =>
+  it("a stack keeps its data in a private store that close removes, and leaves the environment alone", { timeout: 120_000 }, (t) =>
     guarded(t, async () => {
       const prior = process.env["RIVETKIT_STORAGE_PATH"];
       const s = await createRivetStack({ script: [{ reply: "x" }] });
-      const used = process.env["RIVETKIT_STORAGE_PATH"]!;
+      const used = s.storagePath;
       try {
         assert.ok(used.includes("hermesd-rivet-"), `a temporary store, not ~/.rivetkit: ${used}`);
+        assert.equal(process.env["RIVETKIT_STORAGE_PATH"], prior, "the variable is not held after the start");
         await s.send("hi");
         await s.waitReplies(1);
+        assert.ok(readdirSync(used).length > 0, "the engine wrote into the stack's own store");
+        assert.ok(s.liveActivations() > 0);
       } finally {
         await s.close();
       }
       assert.equal(existsSync(used), false, "the store is removed on close");
-      assert.equal(process.env["RIVETKIT_STORAGE_PATH"], prior, "the environment is restored");
+      assert.equal(process.env["RIVETKIT_STORAGE_PATH"], prior, "the environment is as it was");
+      assert.equal(s.liveActivations(), 0, "every activation gave its host mirror back when it stopped");
+    }),
+  );
+
+  it("a second stack in the same process is refused while the first is open, and works after it closed", { timeout: 120_000 }, (t) =>
+    guarded(t, async () => {
+      const prior = process.env["RIVETKIT_STORAGE_PATH"];
+      const a = await createRivetStack({ script: [{ reply: "a" }] });
+      try {
+        await assert.rejects(createRivetStack({ script: [{ reply: "b" }] }), /another rivet stack is open/);
+        await a.send("x");
+        assert.equal((await a.waitReplies(1))[0]!.text, "a", "the open stack is not disturbed");
+      } finally {
+        await a.close();
+      }
+      const b = await createRivetStack({ script: [{ reply: "b" }] });
+      try {
+        assert.notEqual(a.storagePath, b.storagePath);
+        await b.send("x");
+        assert.equal((await b.waitReplies(1))[0]!.text, "b");
+        assert.ok(readdirSync(b.storagePath).length > 0);
+      } finally {
+        await b.close();
+      }
+      assert.equal(process.env["RIVETKIT_STORAGE_PATH"], prior);
+    }),
+  );
+
+  it("an alarm with nothing due is the activation's first event, so a cold-wake sample is not credited to the send", { timeout: 120_000 }, (t) =>
+    guarded(t, async () => {
+      const s = await createRivetStack({ script: [{ reply: "x" }], autoSweep: false });
+      try {
+        await s.evict("profile");
+        await s.resetMeters();
+        await s.emptyAlarm("profile");
+        await s.call("profile", "register_session", { session: "s1" });
+        const m = await s.meter("profile");
+        assert.equal(m.activations, 1);
+        assert.deepEqual(m.firstEvents, ["alarm"]);
+        assert.equal(m.events, 2, "the alarm and the call, once each");
+      } finally {
+        await s.close();
+      }
+    }),
+  );
+
+  it("a stopped activation's open spans end, and the replacement's do not", { timeout: 120_000 }, (t) =>
+    guarded(t, async () => {
+      const s = await createRivetStack({ script: [{ reply: "x", hold: "g1" }], autoSweep: false });
+      try {
+        await s.send("hello");
+        const end = Date.now() + 10_000;
+        while ((await s.modelArrivals()).length === 0) {
+          if (Date.now() > end) throw new Error("the model never saw the request");
+          await new Promise((r) => setTimeout(r, 20));
+        }
+        await s.evict("s1");
+        const a = (await s.meter("s1")).busyMs;
+        await new Promise((r) => setTimeout(r, 300));
+        assert.ok((await s.meter("s1")).busyMs - a < 100, "the dead activation's held request no longer accrues time");
+      } finally {
+        await s.close();
+      }
     }),
   );
 });

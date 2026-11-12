@@ -170,16 +170,26 @@ export function benchScript(turns: number, toolEvery = 2): ModelStep[] {
   return steps;
 }
 
-/** Wrap an actor so that the meter sees each event the platform gives it. */
-export function meteredBehavior(b: ActorBehavior, meter: { event<T>(fn: () => Promise<T>, label?: string): Promise<T> }): ActorBehavior {
+/**
+ * Wrap an actor so that the meter sees each event the platform gives it. `token` tags the spans with the
+ * activation (`MeteredHost.token`). Alarms are metered here unless `alarms` is false: a platform whose glue
+ * can receive an alarm that never reaches the behavior (Durable Objects, Rivet: an early or stale timer)
+ * meters every alarm at its entry instead, once.
+ */
+export function meteredBehavior(
+  b: ActorBehavior,
+  meter: { event<T>(fn: () => Promise<T>, label?: string, token?: number): Promise<T> },
+  opts: { token?: number; alarms?: boolean } = {},
+): ActorBehavior {
+  const { token, alarms = true } = opts;
   const out: ActorBehavior = {
     call: (m, p) => {
       const request = m === "receive" ? (p as { request?: unknown } | null)?.request : undefined;
-      return meter.event(() => b.call(m, p), `call:${m}${typeof request === "string" ? `:${request}` : ""}`);
+      return meter.event(() => b.call(m, p), `call:${m}${typeof request === "string" ? `:${request}` : ""}`, token);
     },
   };
   if (b.activate) out.activate = () => b.activate!();
-  if (b.alarm) out.alarm = () => meter.event(() => b.alarm!(), "alarm");
-  if (b.cron) out.cron = (n) => meter.event(() => b.cron!(n), `cron:${n}`);
+  if (b.alarm) out.alarm = alarms ? () => meter.event(() => b.alarm!(), "alarm", token) : () => b.alarm!();
+  if (b.cron) out.cron = (n) => meter.event(() => b.cron!(n), `cron:${n}`, token);
   return out;
 }

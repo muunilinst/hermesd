@@ -36,6 +36,34 @@ describe("Meter spans", () => {
     assert.equal(s.busyExclModelMs, 20, "the first 10 ms were a model wait");
   });
 
+  it("abandon(token) ends one activation's spans and leaves the replacement's open", async () => {
+    const c = clock();
+    const m = new Meter(c.now);
+    m.reset();
+    const old = m.activated();
+    let never!: () => void;
+    const dead = m.span(() => new Promise<void>((r) => (never = r)), true, old);
+    c.set(10);
+    const next = m.activated();
+    let open!: () => void;
+    const live = m.span(() => new Promise<void>((r) => (open = r)), false, next);
+    c.set(20);
+    m.abandon(old); // the old activation stopped; the new one's span is still open
+    c.set(50);
+    assert.equal(m.snapshot().busyMs, 50, "the replacement's span keeps accruing");
+    // The dead activation starts more work and settles late: neither is counted.
+    await m.span(async () => {}, true, old);
+    never();
+    await dead;
+    c.set(60);
+    open();
+    await live;
+    c.set(100);
+    const s = m.snapshot();
+    assert.equal(s.busyMs, 60, "from 0 to 60, the one union");
+    assert.equal(s.busyExclModelMs, 40, "the dead activation's model wait ended at the abandon (20 ms)");
+  });
+
   it("records the first event of each activation", async () => {
     const m = new Meter(clock().now);
     m.reset();

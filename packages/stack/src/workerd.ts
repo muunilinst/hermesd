@@ -54,7 +54,12 @@ function bundleWorker(): Promise<string> {
   return bundle;
 }
 
-export async function createWorkerdStack(opts: WorkerdStackOptions): Promise<Stack> {
+export type WorkerdStack = Stack & {
+  /** Deliver an alarm to the actor through the platform's alarm entry when no timer is due. */
+  emptyAlarm(actor: ActorName): Promise<void>;
+};
+
+export async function createWorkerdStack(opts: WorkerdStackOptions): Promise<WorkerdStack> {
   const { Miniflare } = await import("miniflare");
   const { tickEveryMs = 5_000, sweepEveryMs = tickEveryMs * 5, ...stackOpts } = opts;
   const worker = await bundleWorker();
@@ -98,7 +103,7 @@ export async function createWorkerdStack(opts: WorkerdStackOptions): Promise<Sta
     throw e;
   }
 
-  async function build(mf: Mf): Promise<Stack> {
+  async function build(mf: Mf): Promise<WorkerdStack> {
   const post = async (path: string, body: unknown = {}): Promise<unknown> => {
     const res = await mf.dispatchFetch(`http://stack.test${path}`, { method: "POST", body: JSON.stringify(body) });
     const v = (await res.json()) as unknown;
@@ -107,7 +112,7 @@ export async function createWorkerdStack(opts: WorkerdStackOptions): Promise<Sta
   };
   const actor = (a: ActorName, op: string, body?: unknown) => post("/actor", { actor: a, op, body });
   const services = (op: string, body?: unknown) => post("/services", { op, body });
-  const state = async () => (await services("/ctl/state")) as { replies: StackReply[]; arrivals: ModelArrival[]; runs: number };
+  const state = async () => (await services("/ctl/state")) as { replies: StackReply[]; arrivals: ModelArrival[]; aborts: number; runs: number };
 
   let closed = false;
   // Register the session with the profile actor, as the node stack does.
@@ -120,6 +125,7 @@ export async function createWorkerdStack(opts: WorkerdStackOptions): Promise<Sta
 
   return {
     host: "workerd",
+    emptyAlarm: async (a) => void (await actor(a, "/ctl/alarm")),
     async send(input, request = `req-${Math.random().toString(36).slice(2)}`) {
       await actor("s1", "/rpc", { method: "receive", params: { principal: "user-1", session: "s1", request, input } });
     },
@@ -149,6 +155,7 @@ export async function createWorkerdStack(opts: WorkerdStackOptions): Promise<Sta
     meter: async (a) => (await post("/meter", { actor: a })) as MeterSnapshot,
     resetMeters: async () => void (await post("/reset-meters")),
     modelArrivals: async () => (await state()).arrivals,
+    modelAborts: async () => (await state()).aborts,
     executorRuns: async () => (await state()).runs,
     async close() {
       if (closed) return;

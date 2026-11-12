@@ -19,8 +19,14 @@ export class Meter {
   #open = 0;
   #openModel = 0;
   #last = 0;
-  /** Bumped by `abandon`; a span that began in an earlier generation does not touch the counts. */
-  #gen = 0;
+  /**
+   * The open spans of each activation (`activated()` returns its token). `abandon(token)` ends one
+   * activation's spans and leaves the others'. Spans without a token share the entry of token 0.
+   */
+  #entries = new Map<number, SpanEntry>();
+  #nextToken = 1;
+  /** Tokens of activations that were abandoned: whatever the dead activation still starts is not counted. */
+  readonly #dead = new Set<number>();
   /** True from an activation until its first event; `#m.firstEvents` takes that event's label. */
   #fresh = false;
   readonly #now: () => number;
@@ -54,10 +60,20 @@ export class Meter {
     return this.#m;
   }
 
-  /** A new activation of the actor began: its first event is recorded. */
-  activated(): void {
+  /**
+   * A new activation of the actor began: its first event is recorded. The token it returns tags the
+   * spans of that activation, so `abandon(token)` can retire them alone.
+   */
+  activated(): number {
     this.#m.activations += 1;
     this.#fresh = true;
+    return this.#nextToken++;
+  }
+
+  #entry(token: number): SpanEntry {
+    let e = this.#entries.get(token);
+    if (!e) this.#entries.set(token, (e = { open: 0, model: 0, dead: false }));
+    return e;
   }
 
   /** The adapters report their own writes here (`onWrite` of CloudflareHost and RivetHost). */
@@ -87,44 +103,68 @@ export class Meter {
   }
 
   /**
-   * End every open span now: the activation that opened them died (a crash or an eviction), and
-   * the promises they wrap may never settle. The spans stop accruing time here; when a wrapped
-   * promise does settle later, it leaves the counts alone, so the activation that replaces the
-   * dead one (which shares this meter) is not disturbed.
+   * End open spans now: the activation that opened them died (a crash or an eviction), and the
+   * promises they wrap may never settle. The spans stop accruing time here; when a wrapped promise
+   * does settle later, it leaves the counts alone, so the activation that replaces the dead one
+   * (which shares this meter) is not disturbed. With a token only that activation's spans end
+   * (a replacement's stay open); without one, every span ends.
    */
-  abandon(): void {
+  abandon(token?: number): void {
     this.#accrue();
-    this.#open = 0;
-    this.#openModel = 0;
-    this.#gen++;
+    const ended = token === undefined ? [...this.#entries.keys()] : [token];
+    for (const t of ended) {
+      const e = this.#entries.get(t);
+      if (!e) continue;
+      this.#open -= e.open;
+      this.#openModel -= e.model;
+      e.dead = true;
+      this.#entries.delete(t);
+    }
+    if (token !== undefined && token !== 0) this.#dead.add(token);
+    else for (const t of ended) if (t !== 0) this.#dead.add(t);
   }
 
   /** Count a span of wall time in `busyMs`. A `model` span is left out of `busyExclModelMs`. */
-  async span<T>(fn: () => Promise<T>, model = false): Promise<T> {
+  async span<T>(fn: () => Promise<T>, model = false, token = 0): Promise<T> {
     this.#accrue();
-    const gen = this.#gen;
+    if (this.#dead.has(token)) return fn();
+    const e = this.#entry(token);
+    e.open++;
     this.#open++;
-    if (model) this.#openModel++;
+    if (model) {
+      e.model++;
+      this.#openModel++;
+    }
     try {
       return await fn();
     } finally {
-      if (gen === this.#gen) {
+      if (!e.dead) {
         this.#accrue();
+        e.open--;
         this.#open--;
-        if (model) this.#openModel--;
+        if (model) {
+          e.model--;
+          this.#openModel--;
+        }
       }
     }
   }
 
   /** The platform glue wraps each event it gives the actor. */
-  event<T>(fn: () => Promise<T>, label = "event"): Promise<T> {
+  event<T>(fn: () => Promise<T>, label = "event", token = 0): Promise<T> {
     this.#m.events += 1;
     if (this.#fresh) {
       this.#fresh = false;
       this.#m.firstEvents.push(label);
     }
-    return this.span(fn);
+    return this.span(fn, false, token);
   }
+}
+
+interface SpanEntry {
+  open: number;
+  model: number;
+  dead: boolean;
 }
 
 /** Crash rules that a test installed, shared by the actors of one isolate. */
@@ -178,6 +218,8 @@ export class CrashedError extends Error {
 export class MeteredHost implements Host {
   readonly inner: Host;
   readonly #o: MeteredHostOptions;
+  /** Tags this activation's spans in the meter (see `Meter.activated`). */
+  readonly token: number;
   readonly disarm?: (key: string) => Promise<void>;
   readonly keepAwake?: <T>(work: Promise<T>) => Promise<T>;
   #changes: "unknown" | "yes" | "no" = "unknown";
@@ -185,19 +227,19 @@ export class MeteredHost implements Host {
   constructor(inner: Host, opts: MeteredHostOptions) {
     this.inner = inner;
     this.#o = opts;
-    opts.meter.activated();
+    this.token = opts.meter.activated();
     if (inner.keepAwake) this.keepAwake = (w) => inner.keepAwake!(w);
     if (inner.disarm) {
       this.disarm = async (key) => {
         this.#o.meter.counts.disarms += 1;
-        await this.#o.meter.span(() => inner.disarm!(key));
+        await this.#o.meter.span(() => inner.disarm!(key), false, this.token);
       };
     }
   }
 
   #point(point: StackFaultPoint, detail?: string): void {
     if (this.#o.rules?.hit(this.#o.actor, point, detail)) {
-      this.#o.meter.abandon();
+      this.#o.meter.abandon(this.token);
       this.#o.crash?.();
       throw new CrashedError(point);
     }
@@ -229,7 +271,7 @@ export class MeteredHost implements Host {
       if (before >= 0 && after >= 0 && m.rowsChanged >= 0) m.rowsChanged += after - before;
       else m.rowsChanged = -1;
       return out;
-    }));
+    }), false, this.token);
     this.#point("tx:after");
     return r;
   }
@@ -249,21 +291,21 @@ export class MeteredHost implements Host {
   async commit(): Promise<void> {
     this.#point("commit:before");
     this.#o.meter.counts.commits += 1;
-    await this.#o.meter.span(() => this.inner.commit());
+    await this.#o.meter.span(() => this.inner.commit(), false, this.token);
     this.#point("commit:after");
   }
 
   async arm(at: Date, key: string): Promise<void> {
     this.#point("arm:before");
     this.#o.meter.counts.arms += 1;
-    await this.#o.meter.span(() => this.inner.arm(at, key));
+    await this.#o.meter.span(() => this.inner.arm(at, key), false, this.token);
     this.#point("arm:after");
   }
 
   async fetch(req: Request, signal?: AbortSignal): Promise<Response> {
     this.#point("fetch:before");
     this.#o.meter.counts.fetches += 1;
-    const res = await this.#o.meter.span(() => this.inner.fetch(req, signal), true);
+    const res = await this.#o.meter.span(() => this.inner.fetch(req, signal), true, this.token);
     this.#point("fetch:after");
     return res;
   }
@@ -276,7 +318,7 @@ export class MeteredHost implements Host {
         this.#point("sidecar:before", detail);
         const s = this.#o.meter.counts.sidecars;
         s[detail] = (s[detail] ?? 0) + 1;
-        const r = await this.#o.meter.span(() => inner.call<T>(method, params, signal));
+        const r = await this.#o.meter.span(() => inner.call<T>(method, params, signal), false, this.token);
         this.#point("sidecar:after", detail);
         return r;
       },

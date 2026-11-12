@@ -23,7 +23,10 @@ export async function createNodeStack(opts: StackOptions, mode: PlatformMode = "
     const meter = new Meter();
     meters.set(name, meter);
     const make = actorFactory(name, opts, platform.clock);
-    platform.defineActor(name, (h) => meteredBehavior(make(new MeteredHost(h, { actor: name, meter })), meter));
+    platform.defineActor(name, (h) => {
+      const host = new MeteredHost(h, { actor: name, meter });
+      return meteredBehavior(make(host), meter, { token: host.token });
+    });
   }
   // The jobs exist whatever autoSweep says, so `Stack.cron` always works; autoSweep only schedules them.
   const auto = opts.autoSweep !== false;
@@ -79,6 +82,7 @@ export async function createNodeStack(opts: StackOptions, mode: PlatformMode = "
       for (const m of meters.values()) m.reset();
     },
     modelArrivals: async () => [...model.arrivals],
+    modelAborts: async () => model.model.aborted,
     executorRuns: async () => exec.runs(),
     close: async () => platform.close(),
   };

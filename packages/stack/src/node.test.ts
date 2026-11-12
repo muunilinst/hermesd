@@ -74,7 +74,10 @@ describe("assertReadOnlySql", () => {
     assert.equal(assertReadOnlySql("SELECT 1;"), "SELECT 1");
     assert.equal(assertReadOnlySql("select ';' as x"), "select ';' as x");
     assert.equal(assertReadOnlySql("WITH t AS (SELECT 1 a) SELECT a FROM t"), "WITH t AS (SELECT 1 a) SELECT a FROM t");
-    for (const bad of ["SELECT 1; DELETE FROM turns", "SELECT 1;;", "DELETE FROM x", "WITH t AS (SELECT 1) DELETE FROM x", "PRAGMA writable_schema = 1", "SELECT 'unterminated", "/* c */ DROP TABLE x"]) {
+    assert.equal(assertReadOnlySql("SELECT replace(content, 'a', 'b') FROM messages"), "SELECT replace(content, 'a', 'b') FROM messages");
+    assert.equal(assertReadOnlySql("select update_time, \"delete\" from t"), "select update_time, \"delete\" from t");
+    assert.equal(assertReadOnlySql("WITH RECURSIVE a(n) AS MATERIALIZED (SELECT 1 UNION SELECT n + 1 FROM a WHERE n < 3), b AS (SELECT 2) SELECT * FROM a"), "WITH RECURSIVE a(n) AS MATERIALIZED (SELECT 1 UNION SELECT n + 1 FROM a WHERE n < 3), b AS (SELECT 2) SELECT * FROM a");
+    for (const bad of ["WITH t AS (SELECT 1) UPDATE x SET a = 1", "WITH t AS (SELECT 1) REPLACE INTO x VALUES (1)", "WITH t AS (SELECT 1)", "REPLACE INTO x VALUES (1)", "SELECT 1; DELETE FROM turns", "SELECT 1;;", "DELETE FROM x", "WITH t AS (SELECT 1) DELETE FROM x", "PRAGMA writable_schema = 1", "SELECT 'unterminated", "/* c */ DROP TABLE x"]) {
       assert.throws(() => assertReadOnlySql(bad), /./, bad);
     }
   });
