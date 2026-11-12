@@ -1,4 +1,4 @@
-import { loadSurface, type ToolSchemasSurface } from "@hermesd/contracts";
+import { TOOL_SCHEMAS } from "@hermesd/contracts/tool-schemas";
 import { TERMINAL_SCHEMA } from "./provisional-schemas.ts";
 
 /**
@@ -44,7 +44,7 @@ let cache: Record<ToolName, ToolDef> | undefined;
 
 export function loadToolDefs(): Record<ToolName, ToolDef> {
   if (cache) return cache;
-  const surface = loadSurface<ToolSchemasSurface>("tool-schemas");
+  const surface = TOOL_SCHEMAS;
   const literal = (name: ToolName): ToolDef => {
     const entry = surface.tools.find((t) => t.name === name);
     if (!entry) throw new Error(`tool ${name} has no literal schema in tool-schemas.json`);

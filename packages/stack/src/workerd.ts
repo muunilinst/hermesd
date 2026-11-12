@@ -29,28 +29,6 @@ export interface WorkerdStackOptions extends StackOptions {
 const bun = (globalThis as unknown as { Bun: { build(o: object): Promise<{ success: boolean; logs: unknown[]; outputs: Array<{ text(): Promise<string> }> }> } }).Bun;
 let bundle: Promise<string> | undefined;
 
-/**
- * `@hermesd/contracts` reads the committed upstream JSON from the file system at run
- * time (`readFileSync` on a `file:` URL), which workerd has not. The session actor
- * needs `tool-schemas.json`; the bundle gets it as data, from the same file.
- */
-const contractsPlugin = {
-  name: "contracts-as-data",
-  setup(b: { onResolve(o: { filter: RegExp }, f: () => object): void; onLoad(o: { filter: RegExp; namespace: string }, f: () => object): void }) {
-    b.onResolve({ filter: /^@hermesd\/contracts$/ }, () => ({ path: "contracts", namespace: "contracts-data" }));
-    b.onLoad({ filter: /.*/, namespace: "contracts-data" }, () => {
-      const json = join(import.meta.dirname, "..", "..", "..", "contracts", "upstream", "tool-schemas.json");
-      return {
-        loader: "js",
-        contents:
-          `import toolSchemas from ${JSON.stringify(json)};\n` +
-          `const data = { "tool-schemas": toolSchemas };\n` +
-          `export const loadSurface = (n) => { if (!(n in data)) throw new Error("contract " + n + " is not in the workerd bundle"); return data[n]; };\n`,
-      };
-    });
-  },
-};
-
 /** Bundle the worker. `cloudflare:workers` is the platform's own module. */
 function bundleWorker(): Promise<string> {
   bundle ??= (async () => {
@@ -59,7 +37,6 @@ function bundleWorker(): Promise<string> {
       target: "browser",
       format: "esm",
       external: ["cloudflare:workers"],
-      plugins: [contractsPlugin],
     });
     if (!out.success) throw new Error(`bundling the worker failed: ${out.logs.map(String).join("\n")}`);
     return out.outputs[0]!.text();
