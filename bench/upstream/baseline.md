@@ -11,7 +11,7 @@ The raw numbers are in `baseline.json`, and each run's output is in `work/result
 - OrbStack Linux machine `hermes-base`: Ubuntu 26.04.1, kernel 7.0.14-orbstack, aarch64, 10 vCPU, 8,998 MiB RAM. The host is an Apple M3 Pro (11 cores, 18 GiB), macOS 27.0. The VM shares its CPUs with the host. OrbStack hung once during the run and was restarted; every number below comes from runs after the restart, except cold start, which came before it.
 - Hermes `a9ff9799` (reports 0.23.0), installed from a source checkout with `uv sync --frozen --extra anthropic --extra bedrock --extra messaging` on CPython 3.14.10 (SQLite 3.53.1). `state.db` is in WAL mode with a page size of 4096.
 - Long-lived mode: `hermes gateway run` in the foreground with the API server platform (`API_SERVER_ENABLED=true`, `API_SERVER_KEY`, port 8642, set in `$HERMES_HOME/.env`). A turn is a non-streaming `POST /v1/chat/completions`. `X-Hermes-Session-Id` continues the session.
-- Config: a custom provider at the scripted server, `streaming: false`, title generation off, `_config_version: 52`.
+- Config: a custom provider at the scripted server, `streaming: false`, title generation off, background memory and skill reviews off (`auxiliary.background_review.enabled: false`; added after the 2026-11-12 Mac validation, where the reviews added model requests and failed the request-count check), `_config_version: 52`.
 - Model: `packages/golden/scripted-server/server.mjs` under bun 1.4.2 on 127.0.0.1:8090. It answers at once, so the times below are Hermes time.
 
 ## Cold start (5 runs each)

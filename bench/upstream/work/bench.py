@@ -59,7 +59,9 @@ def write_script(name, steps, commands=None):
 def fresh_home(tag):
     home = DIRS.make(tag)  # unique per call; never an existing directory
     cfg = {"_config_version": 52,
-           "auxiliary": {"title_generation": {"enabled": False}},
+           # Background memory and skill reviews make extra model requests, which fail the per-turn
+           # request-count check and inflate the storage counts; the benchmark measures turns only.
+           "auxiliary": {"title_generation": {"enabled": False}, "background_review": {"enabled": False}},
            "model": {"default": "gpt-4o", "provider": "custom", "base_url": f"http://127.0.0.1:{MODEL_PORT}/v1",
                      "api_key": "x", "streaming": False}}
     json.dump(cfg, open(f"{home}/config.yaml", "w"), indent=2)
