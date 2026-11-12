@@ -48,9 +48,12 @@ class T(unittest.TestCase):
             tmp = cmd[cmd.index("--out") + 1]
             json.dump(self.content, open(tmp, "w"))
             return mock.Mock(returncode=0, stdout="", stderr="")
-        good = {"format": "hermesd-golden/1", "side": "upstream", "script": "x", "requests": [{}], "rows": {"messages": [{}], "admissions": []}}
+        good = {"format": "hermesd-golden/1", "side": "upstream", "script": "x", "requests": [{}], "rows": {"messages": [{}], "admissions": [{}]}}
         with mock.patch.object(R.subprocess, "run", fake_run):
             self.content = {**good, "requests": []}
+            with self.assertRaises(SystemExit): R.publish_transcript("s", "l", "d", out, "x", [])
+            self.assertEqual(open(out).read(), "OLD"); self.assertEqual(os.listdir(d), ["x.json"])
+            self.content = {**good, "rows": {"messages": [{}], "admissions": []}}
             with self.assertRaises(SystemExit): R.publish_transcript("s", "l", "d", out, "x", [])
             self.assertEqual(open(out).read(), "OLD"); self.assertEqual(os.listdir(d), ["x.json"])
             self.content = good
@@ -63,6 +66,24 @@ class T(unittest.TestCase):
         with mock.patch.object(R.subprocess, "run", lambda *a, **k: mock.Mock(returncode=1, stdout="", stderr="boom")):
             with self.assertRaises(SystemExit): R.publish_transcript("s", "l", "d", out, "x", [])
         self.assertEqual(open(out).read(), "OLD")
+
+    def test_env_cannot_redirect_hermes_home(self):
+        with self.assertRaises(SystemExit): R.env_for("/h", {}, {"HERMES_HOME": "/other"})
+        self.assertEqual(R.env_for("/h", {}, {"HERMES_HOME": "/h", "X": "1"})["HERMES_HOME"], "/h")
+        self.assertEqual(R.env_for("/h", {}, {"X": "1"})["HERMES_HOME"], "/h")
+
+    def test_refuses_userinfo_and_remote_base_url(self):
+        for url in ("http://127.0.0.1:8089@remote.example/v1", "https://127.0.0.1:8089/v1",
+                    "http://remote.example:8089/v1", "http://127.0.0.1:9/v1"):
+            cfg = R.config_for({}); cfg["model"]["base_url"] = url
+            with self.assertRaises(SystemExit, msg=url): R.check_settings({}, cfg, R.env_for("/h", {}))
+        cfg = R.config_for({})
+        R.check_settings({}, cfg, R.env_for("/h", {}))
+
+    def test_refuses_remote_fallback_url(self):
+        s = {"fallback": {"model": "m"}}
+        cfg = R.config_for(s); cfg["fallback_providers"][0]["base_url"] = "http://evil.example:8089/v1"
+        with self.assertRaises(SystemExit): R.check_settings(s, cfg, R.env_for("/h", s))
 
 
 if __name__ == "__main__":

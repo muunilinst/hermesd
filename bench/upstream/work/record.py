@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Record one golden script against upstream Hermes (run inside the OrbStack VM).
 
-    python3 record.py <name> [--keep] [--extra-config JSON] [--yolo]
+    python3 record.py <name> [--keep] [--extra-config JSON] [--env JSON] [--yolo]
+
+Each run gets its own HERMES_HOME (a fresh directory under ~/hh) and removes only that directory at the end;
+--keep (or a failed capture) leaves it in place. Nothing outside it is ever deleted.
 
 Follows packages/golden/UPSTREAM.md: fresh HERMES_HOME, plugins, config, scripted
 server on 8089, inputs through `hermes chat -q` (first) and `hermes chat -c -q` (rest),
@@ -10,8 +13,9 @@ then assemble.mjs into transcripts/upstream/<name>.json.
 import json, os, shutil, signal, socket, subprocess, sys, time, urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from benchlib import (capture_failures, count_lines, find_tool_trigger, proc_cmdline, trigger_observed,
-                      validate_fixture_file)
+from benchlib import (RunDirs, capture_failures, check_scenario_name, commit_validated, known_scenarios,
+                      validate_local_endpoint, count_lines, find_tool_trigger, proc_cmdline, trigger_observed,
+                      )
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 G = os.path.join(ROOT, "packages/golden/scripted-server")
@@ -66,7 +70,7 @@ def config_for(script):
 def env_for(home, script, extra_env=None):
     """Environment for Hermes. Bedrock is pinned to the scripted server (UPSTREAM.md 6): endpoint override and
     bearer token. Ambient AWS credentials/profile are removed so nothing can sign a request for real Bedrock."""
-    env = dict(os.environ, HERMES_HOME=home)
+    env = dict(os.environ)
     if script.get("mode", "chat_completions") == "bedrock_converse":
         for k in list(env):
             if k.startswith("AWS_") or k in ("BEDROCK_API_KEY",):
@@ -74,17 +78,39 @@ def env_for(home, script, extra_env=None):
         env["AWS_ENDPOINT_URL_BEDROCK_RUNTIME"] = LOCAL
         env["AWS_BEARER_TOKEN_BEDROCK"] = "x"
         env["AWS_REGION"] = env["AWS_DEFAULT_REGION"] = "us-east-1"
-    env.update(extra_env or {})
+    extra_env = dict(extra_env or {})
+    if "HERMES_HOME" in extra_env and extra_env["HERMES_HOME"] != home:
+        raise SystemExit(f"record.py: --env may not redirect HERMES_HOME (got {extra_env['HERMES_HOME']!r}, run home is {home!r})")
+    env.update(extra_env)
+    env["HERMES_HOME"] = home  # applied last: the recorder's owned home always wins
     return env
+
+
+def endpoints(cfg):
+    """(label, url) of every base_url in the final config: model, named providers, fallback providers"""
+    out = []
+    m = cfg.get("model")
+    if isinstance(m, dict) and "base_url" in m: out.append(("model.base_url", m["base_url"]))
+    for k, p in (cfg.get("providers") or {}).items():
+        if isinstance(p, dict): out.append((f"providers.{k}.base_url", p.get("base_url")))
+    for i, p in enumerate(cfg.get("fallback_providers") or []):
+        if isinstance(p, dict): out.append((f"fallback_providers[{i}].base_url", p.get("base_url")))
+    return out
 
 
 def check_settings(script, cfg, env):
     """Refuse to launch Hermes unless the documented settings are in force. Raises SystemExit."""
     mode = script.get("mode", "chat_completions")
     problems = []
+
+    def local(label, url):
+        try: validate_local_endpoint(url, PORT)
+        except ValueError as e: problems.append(f"{label}: {e}")
+
+    for label, url in endpoints(cfg):
+        local(label, url)
     if mode == "bedrock_converse":
-        if env.get("AWS_ENDPOINT_URL_BEDROCK_RUNTIME") != LOCAL:
-            problems.append(f"AWS_ENDPOINT_URL_BEDROCK_RUNTIME must be {LOCAL} (got {env.get('AWS_ENDPOINT_URL_BEDROCK_RUNTIME')!r}); refusing to risk the real Bedrock endpoint")
+        local("AWS_ENDPOINT_URL_BEDROCK_RUNTIME", env.get("AWS_ENDPOINT_URL_BEDROCK_RUNTIME"))
         if not env.get("AWS_BEARER_TOKEN_BEDROCK"):
             problems.append("AWS_BEARER_TOKEN_BEDROCK is not set")
         for k in ("AWS_ENDPOINT_URL", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SESSION_TOKEN"):
@@ -93,9 +119,6 @@ def check_settings(script, cfg, env):
             problems.append("model.context_length is not set")
     if mode in ("anthropic_messages", "codex_responses", "bedrock_converse") and cfg["model"].get("streaming") is not False:
         problems.append("model.streaming must be false for named providers")
-    if mode in ("anthropic_messages", "codex_responses"):
-        if not all(str(p.get("base_url", "")).startswith(LOCAL) for p in cfg["providers"].values()):
-            problems.append("provider base_url is not the scripted server")
     if problems:
         raise SystemExit("record.py: refusing to start:\n  - " + "\n  - ".join(problems))
 
@@ -152,16 +175,34 @@ def wait_for_trigger(kind, p, log, n0, before, home, timeout=120):
 
 def main():
     args = sys.argv[1:]
-    name = args[0]
+    if not args or args[0].startswith("-"):
+        raise SystemExit("usage: record.py <name> [--keep] [--extra-config JSON] [--env JSON] [--yolo]")
+    scripts_dir = os.path.join(ROOT, "packages/golden/scripts")
+    try: name = check_scenario_name(args[0], known_scenarios(scripts_dir))
+    except ValueError as e: raise SystemExit(f"record.py: {e}")
     extra = {}
     if "--extra-config" in args:
         extra = json.loads(args[args.index("--extra-config") + 1])
     yolo = "--yolo" in args
-    spath = os.path.join(ROOT, "packages/golden/scripts", name + ".json")
+    spath = os.path.join(scripts_dir, name + ".json")
     script = json.load(open(spath))
-    home = os.path.expanduser(f"~/hh/{name}")
-    shutil.rmtree(home, ignore_errors=True)
-    os.makedirs(home)
+    if port_busy():
+        raise SystemExit(f"record.py: port {PORT} is already in use; refusing to start (not killing whoever holds it)")
+    dirs = RunDirs(os.path.expanduser("~/hh"), keep="--keep" in args)
+    home = dirs.make(name)  # this run's own HERMES_HOME; the only directory this invocation may delete
+    ok = False
+    try:
+        run(args, name, script, spath, home, extra, yolo)
+        ok = True
+    finally:
+        if ok: dirs.cleanup()
+        else:
+            dirs.keep = True  # a failed capture keeps its evidence
+            print(f"record.py: kept {home}", file=sys.stderr)
+        if ok and dirs.keep: print(f"record.py: kept {home}")
+
+
+def run(args, name, script, spath, home, extra, yolo):
     cfg = config_for(script)
     env = env_for(home, script, json.loads(args[args.index("--env") + 1]) if "--env" in args else None)
     if script.get("hooks"):
@@ -171,8 +212,6 @@ def main():
                           "hook_callback_timeout": script["hooks"].get("timeoutMs", 30000) / 1000}
     deep_merge(cfg, extra)
     check_settings(script, cfg, env)
-    if port_busy():
-        raise SystemExit(f"record.py: port {PORT} is already in use; refusing to start (not killing whoever holds it)")
     with open(f"{home}/config.yaml", "w") as f:
         json.dump(cfg, f, indent=2)  # JSON is valid YAML
     log = f"{home}/requests.jsonl"
@@ -251,9 +290,8 @@ def publish_transcript(spath, log, db, out, name, failed):
         print(r.stdout + r.stderr)
         if r.returncode != 0 or not os.path.exists(tmp):
             raise SystemExit(f"record.py {name}: FAILED (fixture not written): assemble.mjs exited {r.returncode}")
-        try: validate_fixture_file(tmp, name)
+        try: commit_validated(tmp, out, name)
         except ValueError as e: raise SystemExit(f"record.py {name}: FAILED (fixture not written): {e}")
-        os.replace(tmp, out)
     finally:
         if os.path.exists(tmp): os.unlink(tmp)
     print(f"wrote {out}")

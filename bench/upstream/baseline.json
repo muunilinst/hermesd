@@ -1,5 +1,15 @@
 {
  "status": "complete",
+ "status_note": "Historical samples, kept unchanged. They were collected by the drivers as they were before PR review (see collection_method) and have not been re-run with the fixed drivers or re-validated. Sections marked pending_rerun must be re-collected on the Mac before being relied on; sections marked unaffected_by_known_driver_flaws were not touched by the known flaws but share the same unvalidated run.",
+ "collection_method": {
+  "drivers": "bench/upstream/work/bench.py and bench-all.sh as of the original run, before the static fixes described in bench/upstream/baseline.md",
+  "kill_samples": "gateway killed after a fixed 60 s wait whether or not the intended trigger (held model request / running tool) had been observed; the retry sample reused one result dictionary after a 30 s join of the original request; an invalid retry still exited 0",
+  "clean_latency": "clean pass timed each POST /v1/chat/completions without checking the reply text, error envelope or model-request count",
+  "traced_turns": "replies of traced turns were not checked against the scripted text and the per-turn model-request delta was not checked (the tool run recorded 98 model requests where the workload expected 82)",
+  "wal_deltas": "frame counts of state.db-wal subtracted across snapshots without comparing WAL header salts, so checkpoint/restart generations could be mixed",
+  "cold_start": "first_reply_s ended at the first parsed HTTP 200 body (not required to be the scripted 'ok' reply) and the 120 s deadline was not passed to the HTTP client (600 s default)",
+  "recorded_by": "unchanged numbers; nothing in this file was recomputed after the driver fixes"
+ },
  "environment": {
   "where": "OrbStack Linux machine hermes-base (Ubuntu 26.04.1, kernel 7.0.14-orbstack, aarch64) on an Apple M3 Pro Mac (11 cores, 18 GiB), macOS 27.0",
   "vm_cpus": 10,
@@ -91,7 +101,9 @@
    ],
    "median_health_s": 3.24,
    "median_first_reply_s": 4.396
-  }
+  },
+  "status": "pending_rerun",
+  "pending_rerun_reason": "first reply not required to be the scripted 'ok' reply; deadline not enforced per attempt"
  },
  "memory_rss_kib": {
   "method": "sum of VmRSS over the gateway process tree (/proc/<pid>/status)",
@@ -112,7 +124,8 @@
   "tool_after_start_and_warmup": 286280,
   "tool_after_40_turns": 309724,
   "idle_start": 281460,
-  "after_5_min_idle": 260884
+  "after_5_min_idle": 260884,
+  "status": "unaffected_by_known_driver_flaws"
  },
  "turn_overhead_s": {
   "method": "wall time of POST /v1/chat/completions (non-streaming) with X-Hermes-Session-Id, scripted model answers instantly; one warm-up turn first; 20 turns with strace attached, then 20 without; numbers below are the 20 without strace",
@@ -170,7 +183,9 @@
    ],
    "median_with_strace": 0.35235,
    "note": "2 model requests + 1 real `echo hello` per turn; an earlier run whose last 2 turns exhausted the scripted steps is kept in work/results/turns-tool.run1-steps-exhausted.json and not used"
-  }
+  },
+  "status": "pending_rerun",
+  "pending_rerun_reason": "clean-pass latency (median, p95, raw) came from a pass that did not validate replies or request counts"
  },
  "writes_per_turn": {
   "method": "row counts of every state.db table before/after each turn (read-only connection), WAL commit frames parsed from state.db-wal (valid salt only; null when a checkpoint reset the WAL during the turn), and strace counts of syscalls on state.db-wal. Row counts show inserts, not in-place updates.",
@@ -227,7 +242,9 @@
     "state_meta": 1,
     "session_admissions": 1
    }
-  }
+  },
+  "status": "pending_rerun",
+  "pending_rerun_reason": "WAL commit/frame counts were subtracted without checking the WAL generation; traced turns did not check model-request counts"
  },
  "idle_cpu": {
   "method": "utime+stime from /proc/<pid>/stat of the gateway tree over 300 s after one turn, as percent of one core",
@@ -285,7 +302,8 @@
     "rss_kib": 260884,
     "cpu_ticks": 516
    }
-  ]
+  ],
+  "status": "unaffected_by_known_driver_flaws"
  },
  "shutdown_survival": {
   "method": "kill -9 of the gateway pid (a) while the scripted model holds the answer, then restart, release the hold after the restart; (b) while the terminal tool runs `echo start >> m; sleep 30; echo end >> m`. Watch 75 s after restart, then retry the request with the same Idempotency-Key. 3 runs each.",
@@ -1294,6 +1312,8 @@
     ],
     "marker": "start\n"
    }
-  ]
+  ],
+  "status": "pending_rerun",
+  "pending_rerun_reason": "kill -9 samples were taken without observing the trigger; the retry shared a result holder with the original request; invalid retries exited 0"
  }
 }

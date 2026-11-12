@@ -10,12 +10,18 @@ before Hermes gets the tool call; the hold is released after the fault. Nothing 
 Outputs (work/ = bench/upstream/work):
     work/<name>.<variant>.driver.json       what the driver saw
     work/<name>.<variant>.transcript.json   the assembled transcript of that variant
-The canonical packages/golden/transcripts/upstream/<name>.json is the DISK-FULL capture. It is written only by a
-successful --full run (copied from work/<name>.full.transcript.json); the chmod variant never touches it.
+The canonical packages/golden/transcripts/upstream/<name>.json is the DISK-FULL capture. It is published (validated,
+atomically, the same path record.py uses) only by a --full run whose transcript shows the failure BEFORE the tool
+ran (no tool row, no second model request). Otherwise the capture stays a diagnostic file next to the driver log and
+the script exits nonzero. The chmod variant never touches the canonical fixture.
+
+Every run works in its own directory under ~/hh (HERMES_HOME, request log, snapshot, tmpfs mount point). Only the
+mount this run made is unmounted and only the directory it made is removed; --keep leaves the directory.
 """
 import json, os, shutil, subprocess, sys, time, urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import record as R
+from benchlib import RunDirs, commit_validated, pre_tool_failure, validate_fixture_data
 
 name = "persistence-failure-before-tool"
 WORK = os.path.join(R.ROOT, "bench/upstream/work")
@@ -27,6 +33,20 @@ def n_lines(p):
 
 
 def main():
+    dirs = RunDirs(os.path.expanduser("~/hh"), keep="--keep" in sys.argv)
+    try:
+        rc = run(dirs)
+    except BaseException:
+        dirs.keep = True  # keep the evidence of a failed run
+        raise
+    finally:
+        left = dirs.unmount_all()
+        if left: print(f"persist_fail: could not unmount {left}; leaving those directories", file=sys.stderr)
+        dirs.cleanup()
+    sys.exit(rc)
+
+
+def run(dirs):
     full = "--full" in sys.argv
     variant = "full" if full else "chmod"
     spath = os.path.join(R.ROOT, "packages/golden/scripts", name + ".json")
@@ -34,23 +54,20 @@ def main():
     held = json.loads(json.dumps(script)); held["steps"][0]["hold"] = "p0"
     hpath = os.path.join(WORK, "scripts", name + ".held.json"); os.makedirs(os.path.dirname(hpath), exist_ok=True)
     json.dump(held, open(hpath, "w"), indent=1)
-    home = os.path.expanduser(f"~/hh/{name}")
     if R.port_busy():
         raise SystemExit(f"persist_fail: port {R.PORT} is in use; refusing to start")
-    subprocess.run(["sudo", "umount", home], capture_output=True)  # only our own mount point; fails harmlessly if unmounted
-    shutil.rmtree(home, ignore_errors=True); os.makedirs(home)
-    mounted = False
+    runroot = dirs.make(f"{name}-{variant}")
+    home = os.path.join(runroot, "home"); os.makedirs(home)
     srv = p = None
     env = R.env_for(home, script)
     try:
         if full:
             subprocess.run(["sudo", "mount", "-t", "tmpfs", "-o", f"size=400m,uid={os.getuid()},gid={os.getgid()}", "tmpfs", home], check=True)
-            mounted = True
+            dirs.record_mount(home)
         cfg = R.config_for(script)
         R.check_settings(script, cfg, env)
         json.dump(cfg, open(f"{home}/config.yaml", "w"))
-        log = os.path.expanduser(f"~/hh/{name}.{variant}.requests.jsonl")
-        if os.path.exists(log): os.remove(log)
+        log = os.path.join(runroot, "requests.jsonl")
         srv = subprocess.Popen([R.BUN, f"{R.G}/server.mjs", hpath, "--port", str(R.PORT), "--log", log], stdout=subprocess.PIPE, text=True)
         if '"listening"' not in srv.stdout.readline():
             raise SystemExit("persist_fail: scripted server did not start")
@@ -78,7 +95,7 @@ def main():
         except subprocess.TimeoutExpired: p.kill(); out, _ = p.communicate()
         time.sleep(1)
         # read the rows back from a copy with write access restored
-        snap = os.path.expanduser(f"~/hh/{name}.{variant}.snap"); shutil.rmtree(snap, ignore_errors=True); os.makedirs(snap)
+        snap = os.path.join(runroot, "snap"); os.makedirs(snap)
         for f in ("state.db", "state.db-wal", "state.db-shm"):
             if os.path.exists(f"{home}/{f}"): shutil.copy(f"{home}/{f}", f"{snap}/{f}"); os.chmod(f"{snap}/{f}", 0o644)
         logs = subprocess.run(f"grep -h -i 'readonly\\|read-only\\|disk\\|full\\|persist\\|OperationalError' {home}/logs/*.log | tail -25", shell=True, capture_output=True, text=True).stdout
@@ -91,15 +108,30 @@ def main():
             raise SystemExit(f"persist_fail: assemble.mjs exited {r.returncode}")
         print(json.dumps({k: v for k, v in rec.items() if k != "out"}, indent=1)); print(out[-1500:])
         print(f"wrote {o}")
-        if full:  # explicit publication of the disk-full capture; the chmod capture is never published
-            shutil.copy(o, CANONICAL)
-            print(f"published {o} -> {CANONICAL}")
+        with open(o) as f: rec_t = json.load(f)
+        if not full:
+            return 0  # the chmod capture is never published
+        problems = validate_fixture_data(rec_t, name)
+        if problems or not pre_tool_failure(rec_t):
+            why = problems or ["the failure was not observed before the tool ran (tool row stored or a second model request was made)"]
+            print(f"persist_fail: NOT published; kept as diagnostic {o}: " + "; ".join(why), file=sys.stderr)
+            return 1
+        stage = os.path.join(os.path.dirname(CANONICAL), f".{name}.json.tmp")
+        try:
+            shutil.copyfile(o, stage)
+            commit_validated(stage, CANONICAL, name)
+        except ValueError as e:
+            print(f"persist_fail: NOT published; kept as diagnostic {o}: {e}", file=sys.stderr)
+            return 1
+        finally:
+            if os.path.exists(stage): os.unlink(stage)
+        print(f"published {o} -> {CANONICAL}")
+        return 0
     finally:
         if srv: srv.terminate()
         try: R.stop_home_gateway(env)  # this HERMES_HOME's gateway only
         except Exception as e: print("warning: gateway stop failed:", e, file=sys.stderr)
         if p and p.poll() is None: p.kill()
-        if mounted: subprocess.run(["sudo", "umount", home])
 
 
 if __name__ == "__main__":

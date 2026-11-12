@@ -2,8 +2,12 @@
 import json
 import os
 import re
+import shutil
 import socket
 import struct
+import subprocess
+import tempfile
+import urllib.parse
 
 WAL_HEADER = 32
 FRAME_HEADER = 24
@@ -113,25 +117,147 @@ def count_lines(path):
         return 0
 
 
+def validate_fixture_data(rec, name):
+    """Problems (list of str) that make transcript `rec` of script `name` unusable. Mirrors validateFixture in
+    packages/golden/src/baseline.ts for side "upstream": format, side, script, nonempty requests, nonempty
+    messages rows and nonempty admissions rows."""
+    if not isinstance(rec, dict):
+        return ["transcript is not an object"]
+    problems = []
+    if rec.get("format") != GOLDEN_FORMAT: problems.append(f"format {rec.get('format')!r}")
+    if rec.get("side") != "upstream": problems.append(f"side {rec.get('side')!r}")
+    if rec.get("script") != name: problems.append(f"script {rec.get('script')!r}, wanted {name!r}")
+    reqs = rec.get("requests")
+    if not isinstance(reqs, list) or not reqs: problems.append("no requests")
+    rows = rec.get("rows")
+    msgs = rows.get("messages") if isinstance(rows, dict) else None
+    adm = rows.get("admissions") if isinstance(rows, dict) else None
+    if not isinstance(msgs, list) or not msgs: problems.append("no messages rows")
+    if not isinstance(adm, list) or not adm: problems.append("no admissions rows")
+    return problems
+
+
 def validate_fixture_file(path, name):
     """Raise ValueError unless `path` is a usable upstream transcript of script `name`."""
     try:
         rec = json.load(open(path))
     except (OSError, ValueError) as e:
         raise ValueError(f"{path}: unreadable: {e}")
-    if not isinstance(rec, dict):
-        raise ValueError("transcript is not an object")
-    problems = []
-    if rec.get("format") != GOLDEN_FORMAT: problems.append(f"format {rec.get('format')!r}")
-    if rec.get("side") != "upstream": problems.append(f"side {rec.get('side')!r}")
-    if rec.get("script") != name: problems.append(f"script {rec.get('script')!r}, wanted {name!r}")
-    if not rec.get("requests"): problems.append("no requests")
-    rows = rec.get("rows") or {}
-    if not rows.get("messages"): problems.append("no messages rows")
+    problems = validate_fixture_data(rec, name)
     if problems:
         raise ValueError("invalid transcript: " + "; ".join(problems))
 
 
+def commit_validated(tmp, out, name):
+    """Validate the staged transcript `tmp` and only then atomically replace `out` with it (os.replace; `tmp` must
+    be on the same filesystem). Raises ValueError and leaves `out` untouched when it is not usable."""
+    validate_fixture_file(tmp, name)
+    os.replace(tmp, out)
+
+
+def pre_tool_failure(rec):
+    """True only if transcript `rec` shows the persistence failure landed BEFORE the tool ran: no `tool` message
+    row was stored and the model was never asked a second time (the second request carries the tool result)."""
+    if not isinstance(rec, dict):
+        return False
+    rows = rec.get("rows") or {}
+    msgs = rows.get("messages") or []
+    if any(isinstance(m, dict) and m.get("role") == "tool" for m in msgs):
+        return False
+    return len(rec.get("requests") or []) == 1
+
+
+# ---------------------------------------------------------------- run-owned resources and input checks
+
+SCENARIO_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
+
+
+def check_scenario_name(name, known=None):
+    """The scenario name, or ValueError. Must match a safe pattern (no separators, dots, leading dash) and, when
+    `known` is given, be one of the known scripts."""
+    if not isinstance(name, str) or not SCENARIO_RE.match(name):
+        raise ValueError(f"invalid scenario name {name!r}")
+    if known is not None and name not in known:
+        raise ValueError(f"unknown scenario {name!r}")
+    return name
+
+
+def known_scenarios(scripts_dir):
+    try:
+        return sorted(f[:-5] for f in os.listdir(scripts_dir) if f.endswith(".json"))
+    except OSError:
+        return []
+
+
+LOCAL_HOSTS = ("127.0.0.1", "localhost", "::1")
+
+
+def validate_local_endpoint(url, port):
+    """Raise ValueError unless `url` is an http URL whose parsed host is 127.0.0.1/localhost/::1, port is `port`
+    and that carries no user information (so 'http://127.0.0.1:8089@remote/' is refused)."""
+    if not isinstance(url, str) or any(c.isspace() or c == chr(92) or ord(c) < 32 for c in url):
+        raise ValueError(f"unusable URL {url!r}")
+    try:
+        u = urllib.parse.urlsplit(url)
+        host, uport = u.hostname, u.port
+    except ValueError as e:
+        raise ValueError(f"unparseable URL {url!r}: {e}")
+    if u.scheme != "http": raise ValueError(f"{url!r}: scheme must be http")
+    if "@" in u.netloc or u.username is not None or u.password is not None:
+        raise ValueError(f"{url!r}: user information is not allowed")
+    if host not in LOCAL_HOSTS: raise ValueError(f"{url!r}: host {host!r} is not local")
+    if uport != port: raise ValueError(f"{url!r}: port {uport!r}, wanted {port}")
+
+
+class RunDirs:
+    """Directories (and mounts) created by THIS invocation, under `base`. Only what make()/record_mount() saw is
+    ever removed or unmounted; with keep=True nothing is removed."""
+
+    def __init__(self, base, keep=False, umount=None):
+        self.base, self.keep = base, keep
+        self.dirs, self.mounts = [], []
+        self._umount = umount or (lambda p: subprocess.run(["sudo", "umount", p], capture_output=True).returncode == 0)
+
+    def make(self, prefix):
+        os.makedirs(self.base, exist_ok=True)
+        p = tempfile.mkdtemp(prefix=prefix + "-", dir=self.base)
+        self.dirs.append(p)
+        return p
+
+    def record_mount(self, path):
+        self.mounts.append(path)
+
+    def unmount_all(self):
+        """unmount only the mounts we recorded; returns the paths that could not be unmounted"""
+        stuck = []
+        for m in reversed(list(self.mounts)):
+            if self._umount(m): self.mounts.remove(m)
+            else: stuck.append(m)
+        return stuck
+
+    def cleanup(self):
+        """remove what we created (not with keep); a directory that is still mounted is left alone"""
+        stuck = self.unmount_all()
+        if self.keep:
+            return
+        for d in reversed(self.dirs):
+            if any(m == d or m.startswith(d + os.sep) for m in stuck):
+                continue
+            shutil.rmtree(d, ignore_errors=True)
+        self.dirs = [d for d in self.dirs if os.path.exists(d)]
+
+
+def remaining_time(deadline, now):
+    """seconds left until `deadline` (same clock as `now`); raises TimeoutError when none are left."""
+    left = deadline - now
+    if left <= 0:
+        raise TimeoutError("deadline passed")
+    return left
+
+
+def retry_exit_code(result):
+    """Process exit status for a kill sample: nonzero unless the sample is valid."""
+    return 0 if result.get("valid") else 1
 def capture_failures(transcript, inputs):
     """Reasons a recorded driver transcript cannot be trusted. `transcript` is the list of driver entries
     (entries with a 'cmd' are the chat runs); an interrupted input is expected to exit nonzero."""
@@ -221,3 +347,10 @@ def request_outcome(holder):
     if "error" in holder:
         return "client_error"
     return "no_response"
+
+
+def check_request_delta(label, before, after, want):
+    """Raise RuntimeError unless exactly `want` model requests happened between two counts of the request log
+    (a retry inside Hermes would inflate whatever is being measured)."""
+    if after - before != want:
+        raise RuntimeError(f"{label}: {after - before} model requests, wanted {want}")

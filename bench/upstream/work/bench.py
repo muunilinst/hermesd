@@ -6,10 +6,10 @@ Runs inside the OrbStack VM from the worktree root:
 phases: cold, turns, idle, kill-model, kill-tool
 Every phase prints and appends JSON results to bench/upstream/work/results/<phase>.json.
 """
-import atexit, json, os, socket, shutil, signal, sqlite3, statistics, subprocess, sys, time, urllib.error, urllib.request
+import atexit, json, os, socket, signal, sqlite3, statistics, subprocess, sys, time, urllib.error, urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from benchlib import parse_strace, request_outcome, strace_problem, pct, wal_snapshot, wal_delta, require_ports_free, proc_cmdline, validate_reply
+from benchlib import RunDirs, check_request_delta, remaining_time, retry_exit_code, parse_strace, request_outcome, strace_problem, pct, wal_snapshot, wal_delta, require_ports_free, proc_cmdline, validate_reply
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 WORK = os.path.join(ROOT, "bench/upstream/work")
@@ -18,6 +18,11 @@ BUN = os.path.expanduser("~/.bun/bin/bun")
 HERMES = os.path.expanduser("~/hvenv/bin/hermes")
 MODEL_PORT, API_PORT, KEY = int(os.environ.get("BENCH_MODEL_PORT", 8090)), int(os.environ.get("BENCH_API_PORT", 8642)), "bench-key-0123456789abcdef"
 # Everything this run starts is registered here and stopped at exit; nothing else is ever killed.
+# Every HERMES_HOME this run creates is a fresh directory under ~/hb recorded in DIRS; at exit only those are
+# removed, unless --keep was given or the run failed (the evidence stays).
+KEEP = "--keep" in sys.argv
+sys.argv = [a for a in sys.argv if a != "--keep"]
+DIRS = RunDirs(os.path.expanduser("~/hb"), keep=KEEP)
 _LIVE = []
 _TRACKED_PIDS = {}  # pid -> cmdline at the time we saw it, for processes of ours that outlive their parent
 
@@ -27,6 +32,7 @@ def _cleanup():
         try: o.stop()
         except Exception: pass
     kill_tracked()
+    DIRS.cleanup()
 
 
 def kill_tracked():
@@ -51,9 +57,7 @@ def write_script(name, steps, commands=None):
 
 
 def fresh_home(tag):
-    home = os.path.expanduser(f"~/hb/{tag}")
-    shutil.rmtree(home, ignore_errors=True)
-    os.makedirs(home)
+    home = DIRS.make(tag)  # unique per call; never an existing directory
     cfg = {"_config_version": 52,
            "auxiliary": {"title_generation": {"enabled": False}},
            "model": {"default": "gpt-4o", "provider": "custom", "base_url": f"http://127.0.0.1:{MODEL_PORT}/v1",
@@ -214,23 +218,37 @@ def save(phase, obj):
 def phase_cold(n=5):
     script = write_script("cold", [{"reply": "ok"}] * (n + 2))
     res = []
+    home0 = None
     for i in range(n):
-        home = fresh_home(f"cold{i}") if i == 0 or "--fresh" in sys.argv else os.path.expanduser("~/hb/cold0")
+        fresh = i == 0 or "--fresh" in sys.argv
+        home = fresh_home(f"cold{i}") if fresh else home0
+        if i == 0: home0 = home
         m = Model(script, f"{home}/requests-{i}.jsonl")
         g = Gateway(home).start()
         health = g.wait_health()
-        # first request accepted: first chat completion that returns 200
+        # first request accepted: the first chat completion that is a normal reply with the scripted text "ok"
         first = None
         t_first = time.time()
+        deadline = t_first + 120
         while first is None:
-            if time.time() - t_first > 120: raise RuntimeError("cold: no 200 reply within 120 s")
             try:
-                dt, sid, data = chat(f"cold {i}")
-                first = time.time() - g.t0
-            except urllib.error.HTTPError as e:
-                time.sleep(0.1)
+                left = remaining_time(deadline, time.time())
+            except TimeoutError:
+                raise RuntimeError("cold: no valid 'ok' reply within 120 s")
+            try:
+                dt, sid, data = chat(f"cold {i}", timeout=left)
+            except urllib.error.HTTPError:
+                time.sleep(0.1); continue
+            except (TimeoutError, socket.timeout):
+                raise RuntimeError("cold: request exceeded the 120 s deadline")
+            except urllib.error.URLError as e:
+                if isinstance(e.reason, (TimeoutError, socket.timeout)):
+                    raise RuntimeError("cold: request exceeded the 120 s deadline")
+                time.sleep(0.1); continue
+            validate_reply(data, "ok")  # anything else is a failed sample, not a first reply
+            first = time.time() - g.t0
         rss, _ = g.rss_kib()
-        res.append({"run": i, "home": "fresh" if i == 0 or "--fresh" in sys.argv else "warm(reused HERMES_HOME)",
+        res.append({"run": i, "home": "fresh" if fresh else "warm(reused HERMES_HOME)",
                     "health_s": round(health, 3), "first_reply_s": round(first, 3), "rss_kib_after_first": rss})
         g.stop(); m.stop()
     save("cold", {"runs": res, "median_health_s": statistics.median(r["health_s"] for r in res),
@@ -291,9 +309,15 @@ def phase_turns(kind, n=20):
         w0 = wal_snapshot(db + "-wal")
         tr = f"{home}/strace-{i}.log"
         st = strace_start(g.p.pid, tr); time.sleep(0.7)
-        dt, sid2, data = chat(f"turn {i}", session_id=sid)
-        validate_reply(data, expected(1 + i))
-        time.sleep(0.3)
+        reqs0 = m.count()
+        try:
+            dt, sid2, data = chat(f"turn {i}", session_id=sid)
+            validate_reply(data, expected(1 + i))
+            time.sleep(0.3)
+            check_request_delta(f"traced turn {i}", reqs0, m.count(), per_turn)  # a retry would inflate the storage counts
+        except BaseException:
+            strace_stop(st, tr)
+            raise
         syscalls, trace_problem = strace_stop(st, tr)
         if syscalls is None and not trace_problem: trace_problem = "strace log empty"
         after = counts(db)
@@ -310,8 +334,7 @@ def phase_turns(kind, n=20):
         reqs0 = m.count()
         dt, _, data = chat(f"clean turn {i}", session_id=sid, timeout=60)
         validate_reply(data, expected(1 + n + i))
-        if m.count() - reqs0 != per_turn:
-            raise RuntimeError(f"clean turn {i}: {m.count() - reqs0} model requests, wanted {per_turn}")
+        check_request_delta(f"clean turn {i}", reqs0, m.count(), per_turn)
         clean.append(round(dt, 4))
     rss_20, per_20 = g.rss_kib()
     jm = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
@@ -366,8 +389,8 @@ def session_rows(db, sid):
 
 def phase_kill(kind, run):
     import threading
-    marker = os.path.expanduser(f"~/hb/kill-{kind}-{run}.marker")
-    if os.path.exists(marker): os.remove(marker)
+    home = fresh_home(f"kill-{kind}-{run}")
+    marker = os.path.join(home, "tool.marker")  # inside this run's own home
     if kind == "model":
         steps = [{"reply": "warm"}, {"hold": "h", "reply": "REPLY-A (the held answer)"}, {"reply": "REPLY-B (a second request)"},
                  {"reply": "REPLY-C"}, {"reply": "REPLY-D"}]
@@ -376,32 +399,31 @@ def phase_kill(kind, run):
         steps = [{"reply": "warm"}, {"reply": "running", "toolCalls": [{"id": "call_s", "name": "terminal", "arguments": {"command": cmd}}]},
                  {"reply": "REPLY-AFTER-TOOL"}, {"reply": "REPLY-C"}, {"reply": "REPLY-D"}]
     script = write_script(f"kill-{kind}", steps)
-    home = fresh_home(f"kill-{kind}-{run}")
     m = Model(script, f"{home}/requests.jsonl")
     g = Gateway(home).start(); g.wait_health()
     _, sid, _ = chat("warm")
     db = f"{home}/state.db"
     result = {"kind": kind, "run": run, "events": []}
     ev = result["events"]
-    holder = {}
+    holder = {}   # the ORIGINAL request's outcome; the retry has its own holder (rholder) so a late original cannot leak into it
 
     RETRY_TIMEOUT = 240  # seconds the retry may take; the join below waits longer than this
 
-    def send(timeout=900):
+    def send(h, timeout=900):
         try:
-            dt, s, data = chat("the turn under test", session_id=sid, timeout=timeout, idem=f"kill-{kind}-{run}")
-            holder["reply"] = data["choices"][0]["message"]["content"]; holder["dt"] = dt
+            dt, s_, data = chat("the turn under test", session_id=sid, timeout=timeout, idem=f"kill-{kind}-{run}")
+            h["reply"] = data["choices"][0]["message"]["content"]; h["dt"] = dt
         except urllib.error.HTTPError as e:  # the server answered: an HTTP response, whatever its status
-            holder["http_status"] = e.code; holder["error"] = repr(e)[:300]
+            h["http_status"] = e.code; h["error"] = repr(e)[:300]
         except (TimeoutError, socket.timeout) as e:
-            holder["timeout"] = True; holder["error"] = repr(e)[:300]
+            h["timeout"] = True; h["error"] = repr(e)[:300]
         except urllib.error.URLError as e:
-            if isinstance(e.reason, (TimeoutError, socket.timeout)): holder["timeout"] = True
-            holder["error"] = repr(e)[:300]
+            if isinstance(e.reason, (TimeoutError, socket.timeout)): h["timeout"] = True
+            h["error"] = repr(e)[:300]
         except Exception as e:
-            holder["error"] = repr(e)[:300]
+            h["error"] = repr(e)[:300]
 
-    th = threading.Thread(target=send); th.start()
+    th = threading.Thread(target=send, args=(holder,), daemon=True); th.start()
     t0 = time.time()
     # wait for the moment: model request held / sleep running
     # The kill is only meaningful once the intended trigger has been observed: for "model" the second model
@@ -432,7 +454,8 @@ def phase_kill(kind, run):
     ev.append({"t": round(time.time() - t0, 2), "event": "kill -9 gateway", "model_requests": m.count()})
     g.kill9()
     th.join(timeout=30)
-    ev.append({"t": round(time.time() - t0, 2), "event": "client result after kill", **holder})
+    original_outstanding = th.is_alive()
+    ev.append({"t": round(time.time() - t0, 2), "event": "client result after kill", "original_outstanding": original_outstanding, **dict(holder)})
     survivors = [p for p in pids_before if os.path.exists(f"/proc/{p}")]
     ev.append({"event": "processes of old gateway tree still alive", "pids": [(p, open(f"/proc/{p}/cmdline").read().replace("\0", " ")[:120]) for p in survivors if os.path.exists(f"/proc/{p}")]})
     rows_at_kill, adm_at_kill = session_rows(db, sid)
@@ -448,16 +471,21 @@ def phase_kill(kind, run):
         time.sleep(5)
     ev.append({"t": round(time.time() - t0, 2), "event": "after 75s watch", "model_requests": m.count()})
     # client retries with the same idempotency key (what a careful client does)
-    holder.clear(); th = threading.Thread(target=send, args=(RETRY_TIMEOUT,)); th.start(); th.join(timeout=RETRY_TIMEOUT + 30)
-    if th.is_alive():
+    rholder = {}
+    rth = threading.Thread(target=send, args=(rholder, RETRY_TIMEOUT), daemon=True); rth.start(); rth.join(timeout=RETRY_TIMEOUT + 30)
+    if rth.is_alive():
         # Cancel the retry: stopping the gateway breaks its connection. Then it has finished, but we never saw a response.
-        g2.stop(); th.join(timeout=60)
-        holder["timeout"] = True
-    retry_outcome = request_outcome(holder)
+        g2.stop(); rth.join(timeout=60)
+        rholder["timeout"] = True
+    retry_outcome = request_outcome(rholder)
     ev.append({"t": round(time.time() - t0, 2), "event": "client retry with same Idempotency-Key", "retry_outcome": retry_outcome,
-               **holder, "model_requests": m.count()})
+               **dict(rholder), "model_requests": m.count()})
     result["retry_outcome"] = retry_outcome
-    if retry_outcome != "http_response":
+    if th.is_alive():  # the original request never ended: its state is unknown and it may have shared the gateway with the retry
+        result["original_outstanding"] = True
+        ev.append({"event": "original request still outstanding at the end of the sample", **dict(holder)})
+        result.update({"valid": False, "invalid_reason": "the original request was still outstanding; its late reply could not be told apart from the retry"})
+    elif retry_outcome != "http_response":
         result.update({"valid": False, "invalid_reason": f"retry outcome {retry_outcome}: no HTTP response was observed"})
     rows, adm = session_rows(db, sid)
     reqs = [json.loads(l) for l in open(m.log)]
@@ -467,13 +495,25 @@ def phase_kill(kind, run):
                    "marker": open(marker).read() if os.path.exists(marker) else None})
     save(f"kill-{kind}", result)
     g2.stop(); m.stop(); kill_tracked()
+    return retry_exit_code(result)  # a diagnostic result was saved above; an invalid sample still fails the run
 
 
-if __name__ == "__main__":
+def main():
     ph = sys.argv[1] if len(sys.argv) > 1 else ""
     if ph == "cold": phase_cold()
     elif ph == "turns" and len(sys.argv) > 2 and sys.argv[2] in ("plain", "tool"): phase_turns(sys.argv[2])
     elif ph == "idle": phase_idle()
-    elif ph == "kill" and len(sys.argv) > 3 and sys.argv[2] in ("model", "tool"): phase_kill(sys.argv[2], int(sys.argv[3]))
+    elif ph == "kill" and len(sys.argv) > 3 and sys.argv[2] in ("model", "tool"): return phase_kill(sys.argv[2], int(sys.argv[3]))
     else:
-        sys.exit("usage: bench.py cold | turns plain|tool | idle | kill model|tool <run>")
+        sys.exit("usage: bench.py cold | turns plain|tool | idle | kill model|tool <run> [--keep]")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        rc = main()
+    except BaseException:
+        DIRS.keep = True  # a failed run keeps its homes as evidence
+        raise
+    if rc: DIRS.keep = True
+    sys.exit(rc)

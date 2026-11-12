@@ -6,10 +6,12 @@ import record as R
 name = "clarify-sequential"
 spath = os.path.join(R.ROOT, "packages/golden/scripts", name + ".json")
 script = json.load(open(spath))
-home = os.path.expanduser(f"~/hh/{name}"); shutil.rmtree(home, ignore_errors=True); os.makedirs(home)
+if R.port_busy(): raise SystemExit(f"clarify_pty: port {R.PORT} is already in use; refusing to start")
+from benchlib import RunDirs
+dirs = RunDirs(os.path.expanduser("~/hh"), keep="--keep" in sys.argv)
+home = dirs.make(name)  # this run's own HERMES_HOME; only it is removed at the end (not with --keep or on failure)
 json.dump(R.config_for(script), open(f"{home}/config.yaml", "w"))
 log = f"{home}/requests.jsonl"
-if R.port_busy(): raise SystemExit(f"clarify_pty: port {R.PORT} is already in use; refusing to start")
 srv = subprocess.Popen([R.BUN, f"{R.G}/server.mjs", spath, "--port", str(R.PORT), "--log", log], stdout=subprocess.PIPE, text=True)
 inputs = [i["send"] for i in script["inputs"]]
 env = dict(os.environ, HERMES_HOME=home, TERM="xterm-256color", COLUMNS="120", LINES="40")
@@ -61,4 +63,10 @@ finally:
 open(os.path.join(R.ROOT, "bench/upstream/work", name + ".pty.txt"), "w").write(strip(buf))
 out = os.path.join(R.ROOT, "packages/golden/transcripts/upstream", name + ".json")
 print(events)
-R.publish_transcript(spath, log, f"{home}/state.db", out, name, failed)
+try:
+    R.publish_transcript(spath, log, f"{home}/state.db", out, name, failed)
+except SystemExit:
+    dirs.keep = True; print(f"clarify_pty: kept {home}", file=sys.stderr)
+    raise
+finally:
+    dirs.cleanup()
