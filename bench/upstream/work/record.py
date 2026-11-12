@@ -9,6 +9,10 @@ then assemble.mjs into transcripts/upstream/<name>.json.
 """
 import json, os, shutil, signal, socket, subprocess, sys, time, urllib.request
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from benchlib import (capture_failures, count_lines, find_tool_trigger, proc_cmdline, trigger_observed,
+                      validate_fixture_file)
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 G = os.path.join(ROOT, "packages/golden/scripted-server")
 BUN = os.path.expanduser("~/.bun/bin/bun")
@@ -107,6 +111,45 @@ def stop_home_gateway(env):
     subprocess.run([HERMES, "gateway", "stop"], env=env, capture_output=True, timeout=60)
 
 
+def list_procs():
+    """{pid: (ppid, cmdline)} of every process (Linux /proc)"""
+    out = {}
+    for d in os.listdir("/proc"):
+        if not d.isdigit(): continue
+        try:
+            stat = open(f"/proc/{d}/stat").read()
+            ppid = int(stat.rsplit(")", 1)[1].split()[1])
+        except (OSError, ValueError, IndexError):
+            continue
+        cmd = proc_cmdline(int(d))
+        if cmd is not None: out[int(d)] = (ppid, cmd)
+    return out
+
+
+def home_of(pid):
+    """HERMES_HOME in the environment of `pid`, or None (unreadable/gone)"""
+    try:
+        for kv in open(f"/proc/{pid}/environ", "rb").read().split(b"\0"):
+            if kv.startswith(b"HERMES_HOME="): return kv[len(b"HERMES_HOME="):].decode()
+    except OSError:
+        pass
+    return None
+
+
+def wait_for_trigger(kind, p, log, n0, before, home, timeout=120):
+    """Block until the interrupt trigger of the current turn is observed. False if it never was (or the client ended)."""
+    deadline = time.time() + timeout
+    while time.time() < deadline and p.poll() is None:
+        n = count_lines(log)
+        pid = None
+        if kind == "tool_running" and n > n0:
+            pid = find_tool_trigger(list_procs(), before, home_of, home)
+        if trigger_observed(kind, n0, n, pid):
+            return True
+        time.sleep(0.2)
+    return False
+
+
 def main():
     args = sys.argv[1:]
     name = args[0]
@@ -145,38 +188,40 @@ def main():
     try:
         for i, inp in enumerate(inputs):
             cmd = [HERMES, "chat"] + (["-c"] if i else []) + ["-q", inp["send"]] + (["--yolo"] if yolo else [])
+            # snapshot BEFORE the client exists, so a fast request or an earlier process cannot be mistaken for this turn
+            n0 = count_lines(log)
+            before = set(list_procs())
             t0 = time.time()
             p = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, cwd=home)
+            aborted = False
             if inp.get("interrupt"):
-                # wait for the trigger, then SIGINT (stands in for Ctrl-C)
-                n0 = sum(1 for _ in open(log)) if os.path.exists(log) else 0
-                deadline = time.time() + 120
-                seen = False
-                while time.time() < deadline and p.poll() is None:
-                    n = sum(1 for _ in open(log)) if os.path.exists(log) else 0
-                    if inp["interrupt"] == "model_call" and n > n0:
-                        seen = True; break
-                    if inp["interrupt"] == "tool_running" and subprocess.run(["pgrep", "-f", "sleep 60"], capture_output=True).returncode == 0:
-                        seen = True; break
-                    time.sleep(0.2)
+                seen = wait_for_trigger(inp["interrupt"], p, log, n0, before, home)
                 if not seen:
-                    failed.append(f"input {i}: interrupt trigger {inp['interrupt']!r} never observed")
-                time.sleep(0.5)
-                p.send_signal(signal.SIGINT)
-                transcript.append({"input": i, "event": "SIGINT sent", "at": round(time.time() - t0, 2)})
-                if inp["interrupt"] == "model_call":
+                    # never interrupt a turn whose trigger was not observed: the capture would be meaningless
+                    failed.append(f"input {i}: interrupt trigger {inp['interrupt']!r} never observed; aborting")
+                    p.kill(); aborted = True
+                else:
+                    time.sleep(0.5)
+                    p.send_signal(signal.SIGINT)
+                    transcript.append({"input": i, "event": "SIGINT sent", "at": round(time.time() - t0, 2)})
+                if seen and inp["interrupt"] == "model_call":
                     time.sleep(1)
                     for hold in {s["hold"] for s in script["steps"] if s.get("hold")}:
                         try:
-                            urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:8089/__release/{hold}", method="POST"), timeout=5).read()
+                            urllib.request.urlopen(urllib.request.Request(f"{LOCAL}/__release/{hold}", method="POST"), timeout=5).read()
                         except Exception as e:
                             transcript.append({"release_error": str(e)})
+                            failed.append(f"input {i}: releasing hold {hold!r} failed: {e}")
+            timed_out = False
             try:
                 out, _ = p.communicate(timeout=300)
             except subprocess.TimeoutExpired:
-                p.kill()
+                p.kill(); timed_out = True
                 out, _ = p.communicate()
-            transcript.append({"input": i, "cmd": cmd[1:], "rc": p.returncode, "secs": round(time.time() - t0, 2), "out": out[-3000:]})
+            transcript.append({"input": i, "cmd": cmd[1:], "rc": p.returncode, "timed_out": timed_out,
+                               "secs": round(time.time() - t0, 2), "out": out[-3000:]})
+            if aborted:
+                break
     finally:
         srv.terminate()
         # stop the gateway hermes chat spawned for this home (and only that one)
@@ -185,17 +230,31 @@ def main():
         try: srv.wait(timeout=10)
         except subprocess.TimeoutExpired: srv.kill()
         time.sleep(1)
+    failed += capture_failures(transcript, inputs)
     json.dump(transcript, open(f"{home}/driver.json", "w"), indent=2)
     shutil.copy(f"{home}/driver.json", os.path.join(ROOT, "bench/upstream/work", name + ".driver.json"))
     out = os.path.join(ROOT, "packages/golden/transcripts/upstream", name + ".json")
-    r = subprocess.run([BUN, f"{G}/assemble.mjs", spath, "--log", log, "--db", f"{home}/state.db", "--out", out], capture_output=True, text=True)
-    print(r.stdout + r.stderr)
     for t in transcript:
         print(json.dumps({k: v for k, v in t.items() if k != "out"}), "\n", t.get("out", "")[-800:])
-    if r.returncode != 0 or not os.path.exists(out):
-        failed.append(f"assemble.mjs exited {r.returncode}")
+    publish_transcript(spath, log, f"{home}/state.db", out, name, failed)
+
+
+def publish_transcript(spath, log, db, out, name, failed):
+    """Assemble into a temporary file next to `out`, validate it, and only then atomically replace the canonical
+    fixture. A capture that already failed (nonzero exit, timeout, missed trigger) never replaces anything."""
     if failed:
-        raise SystemExit(f"record.py {name}: FAILED: " + "; ".join(failed))
+        raise SystemExit(f"record.py {name}: FAILED (fixture not written): " + "; ".join(failed))
+    tmp = os.path.join(os.path.dirname(out), f".{name}.json.tmp")
+    try:
+        r = subprocess.run([BUN, f"{G}/assemble.mjs", spath, "--log", log, "--db", db, "--out", tmp], capture_output=True, text=True)
+        print(r.stdout + r.stderr)
+        if r.returncode != 0 or not os.path.exists(tmp):
+            raise SystemExit(f"record.py {name}: FAILED (fixture not written): assemble.mjs exited {r.returncode}")
+        try: validate_fixture_file(tmp, name)
+        except ValueError as e: raise SystemExit(f"record.py {name}: FAILED (fixture not written): {e}")
+        os.replace(tmp, out)
+    finally:
+        if os.path.exists(tmp): os.unlink(tmp)
     print(f"wrote {out}")
 
 

@@ -6,10 +6,10 @@ Runs inside the OrbStack VM from the worktree root:
 phases: cold, turns, idle, kill-model, kill-tool
 Every phase prints and appends JSON results to bench/upstream/work/results/<phase>.json.
 """
-import atexit, json, os, shutil, signal, sqlite3, statistics, subprocess, sys, time, urllib.error, urllib.request
+import atexit, json, os, socket, shutil, signal, sqlite3, statistics, subprocess, sys, time, urllib.error, urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from benchlib import pct, wal_snapshot, wal_delta, require_ports_free, proc_cmdline, validate_reply
+from benchlib import parse_strace, request_outcome, strace_problem, pct, wal_snapshot, wal_delta, require_ports_free, proc_cmdline, validate_reply
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 WORK = os.path.join(ROOT, "bench/upstream/work")
@@ -238,22 +238,27 @@ def phase_cold(n=5):
 
 
 def strace_start(pid, path):
-    return subprocess.Popen(["sudo", "strace", "-f", "-qq", "-p", str(pid), "-e", "trace=pwrite64,write,fsync,fdatasync",
-                             "-yy", "-o", path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    """attach strace to pid; stderr goes to <path>.err so an attach failure is visible (see strace_problem)"""
+    err = open(path + ".err", "w")
+    p = subprocess.Popen(["sudo", "strace", "-f", "-qq", "-p", str(pid), "-e", "trace=pwrite64,write,fsync,fdatasync",
+                          "-yy", "-o", path], stdout=subprocess.DEVNULL, stderr=err)
+    p._err = err
+    return p
 
 
-def wal_stats(path):
-    """count syscalls on state.db-wal / state.db from an strace log"""
-    s = {"wal_writes": 0, "wal_fsyncs": 0, "db_writes": 0, "db_fsyncs": 0}
-    if not os.path.exists(path): return s
-    for l in open(path, errors="replace"):
-        if "state.db-wal>" in l:
-            if "fsync" in l or "fdatasync" in l: s["wal_fsyncs"] += 1
-            elif "write" in l: s["wal_writes"] += 1
-        elif "state.db>" in l:
-            if "fsync" in l or "fdatasync" in l: s["db_fsyncs"] += 1
-            elif "write" in l: s["db_writes"] += 1
-    return s
+def strace_stop(st, path):
+    """stop strace and return (counters or None, problem or None). None counters mean 'unavailable', never zeros."""
+    running = st.poll()
+    if running is None:
+        subprocess.run(["sudo", "kill", "-INT", str(st.pid)])
+    try: st.wait(timeout=30)
+    except subprocess.TimeoutExpired:
+        subprocess.run(["sudo", "kill", "-KILL", str(st.pid)]); st.wait()
+    st._err.close()
+    try: err = open(path + ".err", errors="replace").read()
+    except OSError: err = ""
+    problem = strace_problem(err, running, path)
+    return (None if problem else parse_strace(path)), problem
 
 
 def phase_turns(kind, n=20):
@@ -288,12 +293,15 @@ def phase_turns(kind, n=20):
         st = strace_start(g.p.pid, tr); time.sleep(0.7)
         dt, sid2, data = chat(f"turn {i}", session_id=sid)
         validate_reply(data, expected(1 + i))
-        time.sleep(0.3); subprocess.run(["sudo", "kill", "-INT", str(st.pid)]); st.wait()
+        time.sleep(0.3)
+        syscalls, trace_problem = strace_stop(st, tr)
+        if syscalls is None and not trace_problem: trace_problem = "strace log empty"
         after = counts(db)
         w1 = wal_snapshot(db + "-wal")
         delta = {k: after.get(k, 0) - before.get(k, 0) for k in set(before) | set(after) if after.get(k, 0) != before.get(k, 0)}
         turns.append({"turn": i, "wall_s": round(dt, 4), "reply": data["choices"][0]["message"]["content"],
-                      "row_count_delta": delta, **wal_delta(w0, w1), "syscalls": wal_stats(tr)})
+                      "row_count_delta": delta, **wal_delta(w0, w1), "syscalls": syscalls,
+                      **({"syscalls_unavailable": trace_problem} if syscalls is None else {})})
     # timings without strace attached (strace slows syscalls): a second pass
     # Every sample is validated (exact scripted reply, no error envelope, the expected number of model
     # requests) BEFORE its latency is recorded; any failure aborts the run instead of becoming a data point.
@@ -377,10 +385,19 @@ def phase_kill(kind, run):
     ev = result["events"]
     holder = {}
 
-    def send():
+    RETRY_TIMEOUT = 240  # seconds the retry may take; the join below waits longer than this
+
+    def send(timeout=900):
         try:
-            dt, s, data = chat("the turn under test", session_id=sid, timeout=900, idem=f"kill-{kind}-{run}")
+            dt, s, data = chat("the turn under test", session_id=sid, timeout=timeout, idem=f"kill-{kind}-{run}")
             holder["reply"] = data["choices"][0]["message"]["content"]; holder["dt"] = dt
+        except urllib.error.HTTPError as e:  # the server answered: an HTTP response, whatever its status
+            holder["http_status"] = e.code; holder["error"] = repr(e)[:300]
+        except (TimeoutError, socket.timeout) as e:
+            holder["timeout"] = True; holder["error"] = repr(e)[:300]
+        except urllib.error.URLError as e:
+            if isinstance(e.reason, (TimeoutError, socket.timeout)): holder["timeout"] = True
+            holder["error"] = repr(e)[:300]
         except Exception as e:
             holder["error"] = repr(e)[:300]
 
@@ -431,8 +448,17 @@ def phase_kill(kind, run):
         time.sleep(5)
     ev.append({"t": round(time.time() - t0, 2), "event": "after 75s watch", "model_requests": m.count()})
     # client retries with the same idempotency key (what a careful client does)
-    holder.clear(); th = threading.Thread(target=send); th.start(); th.join(timeout=120)
-    ev.append({"t": round(time.time() - t0, 2), "event": "client retry with same Idempotency-Key", **holder, "model_requests": m.count()})
+    holder.clear(); th = threading.Thread(target=send, args=(RETRY_TIMEOUT,)); th.start(); th.join(timeout=RETRY_TIMEOUT + 30)
+    if th.is_alive():
+        # Cancel the retry: stopping the gateway breaks its connection. Then it has finished, but we never saw a response.
+        g2.stop(); th.join(timeout=60)
+        holder["timeout"] = True
+    retry_outcome = request_outcome(holder)
+    ev.append({"t": round(time.time() - t0, 2), "event": "client retry with same Idempotency-Key", "retry_outcome": retry_outcome,
+               **holder, "model_requests": m.count()})
+    result["retry_outcome"] = retry_outcome
+    if retry_outcome != "http_response":
+        result.update({"valid": False, "invalid_reason": f"retry outcome {retry_outcome}: no HTTP response was observed"})
     rows, adm = session_rows(db, sid)
     reqs = [json.loads(l) for l in open(m.log)]
     result.update({"rows_at_kill": rows_at_kill, "admissions_at_kill": adm_at_kill, "rows_final": rows, "admissions_final": adm,

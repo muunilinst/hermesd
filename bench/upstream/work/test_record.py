@@ -34,6 +34,36 @@ class T(unittest.TestCase):
         self.assertIs(cfg["model"]["streaming"], False)
         R.check_settings({"mode": "anthropic_messages"}, cfg, R.env_for("/h", {}))
 
+    def test_publish_does_not_replace_fixture_when_capture_failed(self):
+        import tempfile
+        d = tempfile.mkdtemp(); out = os.path.join(d, "x.json"); open(out, "w").write("OLD")
+        with self.assertRaises(SystemExit): R.publish_transcript("s.json", "log", "db", out, "x", ["input 0: hermes chat exited 1"])
+        self.assertEqual(open(out).read(), "OLD")
+        self.assertEqual(os.listdir(d), ["x.json"])
+
+    def test_publish_validates_before_replacing(self):
+        import json, tempfile, unittest.mock as mock
+        d = tempfile.mkdtemp(); out = os.path.join(d, "x.json"); open(out, "w").write("OLD")
+        def fake_run(cmd, **kw):
+            tmp = cmd[cmd.index("--out") + 1]
+            json.dump(self.content, open(tmp, "w"))
+            return mock.Mock(returncode=0, stdout="", stderr="")
+        good = {"format": "hermesd-golden/1", "side": "upstream", "script": "x", "requests": [{}], "rows": {"messages": [{}], "admissions": []}}
+        with mock.patch.object(R.subprocess, "run", fake_run):
+            self.content = {**good, "requests": []}
+            with self.assertRaises(SystemExit): R.publish_transcript("s", "l", "d", out, "x", [])
+            self.assertEqual(open(out).read(), "OLD"); self.assertEqual(os.listdir(d), ["x.json"])
+            self.content = good
+            R.publish_transcript("s", "l", "d", out, "x", [])
+            self.assertEqual(json.load(open(out))["script"], "x"); self.assertEqual(os.listdir(d), ["x.json"])
+
+    def test_publish_assembler_failure_keeps_fixture(self):
+        import tempfile, unittest.mock as mock
+        d = tempfile.mkdtemp(); out = os.path.join(d, "x.json"); open(out, "w").write("OLD")
+        with mock.patch.object(R.subprocess, "run", lambda *a, **k: mock.Mock(returncode=1, stdout="", stderr="boom")):
+            with self.assertRaises(SystemExit): R.publish_transcript("s", "l", "d", out, "x", [])
+        self.assertEqual(open(out).read(), "OLD")
+
 
 if __name__ == "__main__":
     unittest.main()

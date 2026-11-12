@@ -26,7 +26,8 @@ intended change; the diff tells you which.
 bun packages/golden/src/cli.ts list
 bun packages/golden/src/cli.ts check [name...]
 bun packages/golden/src/cli.ts record [name...]
-bun packages/golden/src/cli.ts compare [name...] [--ignore path] [--strict]
+bun packages/golden/src/cli.ts compare [name...] [--ignore path] [--strict]   # default: policy vs transcripts/upstream/expected-differences.json; --strict: exact parity
+bun packages/golden/src/cli.ts baseline [name...]    # rewrite expected-differences.json
 ```
 
 `node` works in place of `bun`.
