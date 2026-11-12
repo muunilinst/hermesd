@@ -88,7 +88,10 @@ export class ProviderRouter {
       events.push(e);
       this.#deps.onEvent?.(e);
     };
-    const st = this.state;
+    // The health of each target (cooldowns, key pools) is shared by every request. Which target this
+    // request is on, and its retry counters, are its own: with a shared `active`, a 429 that a request
+    // got from the primary was charged to the fallback that a concurrent request had moved to.
+    const st: RouterState = { ...this.state, targets: this.state.targets };
     restorePrimary(st, now());
     let attempts = 0;
     for (;;) {

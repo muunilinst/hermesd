@@ -321,3 +321,23 @@ describe("every mode as a fallback target", () => {
     });
   }
 });
+
+describe("concurrent requests", () => {
+  it("a 429 from the primary is not charged to the fallback another request moved to", async () => {
+    // Both requests reach the primary, then both get 429. Each must fall back on its own.
+    const { router, p, f } = setup(
+      [{ status: 429, hold: "a" }, { status: 429, hold: "b" }],
+      [{ reply: "fallback one" }, { reply: "fallback two" }],
+    );
+    const one = router.call(INPUT, { callId: "c1" });
+    const two = router.call(INPUT, { callId: "c2" });
+    while (p.requests.length < 2) await new Promise((r) => setImmediate(r));
+    p.release("a");
+    const r1 = await one;
+    p.release("b");
+    const r2 = await two;
+    assert.equal(r1.ok, true);
+    assert.equal(r2.ok, true, r2.ok ? "" : r2.text);
+    assert.equal(f.requests.length, 2);
+  });
+});
