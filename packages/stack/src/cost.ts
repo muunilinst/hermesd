@@ -39,17 +39,34 @@ export interface CostLine {
   rowsWritten: number;
   storage: number;
   total: number;
+  /** True when the figure leaves out something that the harness cannot count. It always is, for now. */
+  partial: boolean;
+  /** What the figure leaves out or approximates. */
+  missing: string[];
 }
 
+/**
+ * Rows written per turn: the rows SQLite reports changed inside `tx`, the adapter's own rows
+ * (`wake_timers`, `host_meta`) and its platform timer calls (`setAlarm`, `deleteAlarm`; on Rivet
+ * `schedule.at` and `cancel`, taken as the same). Only the node simulator has no adapter to
+ * report them; there the alarm rows are estimated from `arms` and the figure says so.
+ */
 export function durableObjectsCost(r: BenchResult, u: UsageAssumption = DEFAULT_USAGE): CostLine {
   const t = u.turnsPerMonth;
   const requests = r.perTurn.events * t * PRICES.doRequestUsd;
   const duration = (r.perTurn.busyMs / 1000) * PRICES.doMemoryGb * t * PRICES.doGbSecondUsd;
-  // A row the SQL changed, plus the alarm rows (each arm sets the alarm once).
-  const rows = Math.max(0, r.perTurn.rowsChanged) + r.perTurn.arms;
+  const reported = r.host !== "node";
+  const rows = Math.max(0, r.perTurn.rowsChanged) + (reported ? r.perTurn.adapterRows + r.perTurn.timerCalls : r.perTurn.arms);
   const rowsWritten = rows * t * PRICES.doRowWrittenUsd;
   const storage = u.storageGb * PRICES.doStorageGbMonthUsd;
   const total = requests + duration + rowsWritten + storage;
   const r6 = (x: number) => Math.round(x * 1e6) / 1e6;
-  return { requests: r6(requests), duration: r6(duration), rowsWritten: r6(rowsWritten), storage: r6(storage), total: r6(total) };
+  const missing = [
+    "index entries: SQLite total_changes() counts table rows, Durable Objects also bill the rows written to indexes",
+    "rows read, which are billed but cheap, and storage is an assumption",
+    "requests: only events that reached the actor, not the gateway or sidecar requests that carry them",
+  ];
+  if (r.perTurn.rowsChanged < 0) missing.push("rowsChanged is unknown on this host, so SQL rows are counted as 0");
+  if (!reported) missing.push("the node simulator has no adapter: alarm rows are estimated as one per arm");
+  return { requests: r6(requests), duration: r6(duration), rowsWritten: r6(rowsWritten), storage: r6(storage), total: r6(total), partial: true, missing };
 }

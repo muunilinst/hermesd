@@ -63,8 +63,12 @@ class ActorDO extends DurableObject<Env> {
       [NAMES.profile]: actorStub(env, "profile"),
       [NAMES.actorTarget(NAMES.session)]: actorStub(env, "s1"),
     };
-    this.#host = new CloudflareHost(ctx, { sidecars, fetch: (req) => viaServices(env, "/model").fetch(req) });
     const meter = meterOf(name);
+    this.#host = new CloudflareHost(ctx, {
+      sidecars,
+      fetch: (req) => viaServices(env, "/model").fetch(req),
+      onWrite: (kind) => meter.adapterWrite(kind),
+    });
     const host = new MeteredHost(this.#host, { actor: name, meter, rules, crash: () => {
       crashesFired += 1;
       ctx.abort("injected crash");
@@ -103,6 +107,7 @@ class ActorDO extends DurableObject<Env> {
         }
         return json(await this.#host.tx((s) => s.exec(text)));
       }
+      if (path === "/ctl/epoch") return json(this.#host.epoch());
       if (path === "/ctl/abort") this.ctx.abort("evicted by the test");
       return json({ error: `no route ${path}` }, 404);
     } catch (e) {

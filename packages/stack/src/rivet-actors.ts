@@ -101,6 +101,7 @@ export function defineWorldActor(name: ActorName, w: RivetWorld, rivet: { actor:
     // Rule 1: activate first. It loads the mirror and raises the owner epoch durably.
     const raw = await RivetHost.activate(c, {
       sidecars: sidecarsFor(w),
+      onWrite: (kind) => meter.adapterWrite(kind),
       fetch: (req) => w.model.fetch(req, req.signal),
       // The retry delay of a failed timer handler. Short, so a test does not wait a minute.
       retryDelayMs: Math.max(1_000, w.opts.minDelayMs ?? 1_000),

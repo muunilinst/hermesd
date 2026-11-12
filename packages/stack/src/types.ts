@@ -39,6 +39,8 @@ export interface StackReply {
   kind: string;
   turn: string;
   key: string;
+  /** Wall time in ms since the epoch when the gateway received it (first delivery). */
+  at: number;
 }
 
 /** A place in a Host call where a crash can be injected (a subset of the Node fault points). */
@@ -83,13 +85,17 @@ export interface MeterSnapshot {
   fetches: number;
   /** Sidecar calls by `<name>.<method>`. */
   sidecars: Record<string, number>;
+  /** Rows the adapter itself wrote (`wake_timers`, `host_meta`), outside `tx`. Zero on hosts that do not report them. */
+  adapterRows: number;
+  /** Platform timer calls of the adapter: `setAlarm`/`deleteAlarm` on Durable Objects, `schedule.at`/`cancel` on Rivet. */
+  timerCalls: number;
   /**
-   * Wall time with at least one event, commit, arm, fetch or sidecar call in flight, in ms.
+   * Wall time with at least one event, tx, commit, arm, fetch or sidecar call in flight, in ms.
    * It is the time a platform that bills for duration while a request or its I/O is open
    * would count. Time between turns is not in it.
    */
   busyMs: number;
-  /** The same, without the time spent waiting for the model (`fetch`). */
+  /** The union of those spans minus the union of the model waits (`fetch`), also when a wait is nested in an event. */
   busyExclModelMs: number;
 }
 

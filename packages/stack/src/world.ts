@@ -126,7 +126,7 @@ export class GatewayService {
     this.deliveries += 1;
     if (!this.#seen.has(p.idempotencyKey)) {
       this.#seen.add(p.idempotencyKey);
-      this.replies.push({ text: p.text, kind: p.kind, turn: p.turn, key: p.idempotencyKey });
+      this.replies.push({ text: p.text, kind: p.kind, turn: p.turn, key: p.idempotencyKey, at: Date.now() });
     }
     return { ok: true };
   };

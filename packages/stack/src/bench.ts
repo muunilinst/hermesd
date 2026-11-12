@@ -1,4 +1,4 @@
-import type { ActorName, MeterSnapshot, Stack, StackFactory } from "./types.ts";
+import type { ActorName, MeterSnapshot, Stack, StackFactory, StackReply } from "./types.ts";
 import { benchScript } from "./world.ts";
 
 /**
@@ -6,8 +6,23 @@ import { benchScript } from "./world.ts";
  *
  * The workload is `turns` turns against the scripted model, every `toolEvery`-th one
  * with a terminal call. A warm-up turn is not counted. Then `coldSamples` cold wakes:
- * the session is evicted and the next input arrives; the wake latency is the time from
- * the send to the model request, minus the same on a warm session.
+ * the session is evicted (which does not wake it) and the send that wakes it is timed;
+ * the wake latency is the time from that send to the model request. The epoch must have
+ * risen after the send, or the sample is not a cold wake and the bench fails.
+ *
+ * Definitions:
+ * - Turn latency: the gateway stamps each reply when it receives it (`StackReply.at`).
+ *   The latency is that stamp minus the time just before the send. The polling of
+ *   `waitReplies` is not in it.
+ * - Percentiles: linear interpolation between order statistics, rank = q * (n - 1) on the
+ *   sorted samples (numpy's default, Python `statistics.quantiles(method="inclusive")`).
+ *   For n = 20 the median is the mean of the 10th and 11th samples and p95 is
+ *   `s[18] + 0.05 * (s[19] - s[18])`, not the maximum. The upstream side must use the same.
+ * - Drain: before the meters are reset and before they are read, the bench waits until `s1`
+ *   has no unsent outbox row, no open turn and no pending call, op or row, and the profile
+ *   actor's applied-index count has stopped moving.
+ * - A sample is valid only if its reply is the scripted text of that turn with kind
+ *   `reply`, no other reply arrived, and the model received the calls the script has for it.
  */
 export interface BenchOptions {
   turns?: number;
@@ -16,9 +31,10 @@ export interface BenchOptions {
   coldSamples?: number;
 }
 
+/** `median` and `p95` are null when there are no samples (n = 0). */
 export interface Dist {
-  median: number;
-  p95: number;
+  median: number | null;
+  p95: number | null;
   n: number;
 }
 
@@ -36,6 +52,10 @@ export interface BenchResult {
     commits: number;
     arms: number;
     sidecarCalls: number;
+    /** Rows the adapters wrote themselves (`wake_timers`, `host_meta`). Zero where the host does not report them. */
+    adapterRows: number;
+    /** Platform timer calls of the adapters (`setAlarm`, `deleteAlarm`, `schedule.at`, `schedule.cancel`). */
+    timerCalls: number;
     /** Wall time with any work or I/O open, the model call included (what Durable Objects bill as duration). */
     busyMs: number;
     /** The same without the model wait. */
@@ -43,24 +63,50 @@ export interface BenchResult {
   };
   /** The session actor alone, per turn. */
   session: MeterSnapshot;
-  /** Wall time from send to reply. */
+  /** Wall time from just before the send to the gateway receiving the reply. */
   turnMs: Dist;
   /** turnMs minus the model delay of the turn's calls: what the port adds. */
   overheadMs: Dist;
   /** Send to the model request, on a warm session. */
   warmToModelMs: Dist;
-  /** Send to the model request, right after an eviction. */
+  /** Send to the model request, for the send that wakes an evicted session. */
   coldToModelMs: Dist;
 }
 
+/** Percentile `q` (0..1) by linear interpolation, rank = q * (n - 1). `xs` must be sorted. */
+export function percentile(sorted: number[], q: number): number {
+  const rank = q * (sorted.length - 1);
+  const lo = Math.floor(rank);
+  const hi = Math.ceil(rank);
+  return sorted[lo]! + (sorted[hi]! - sorted[lo]!) * (rank - lo);
+}
+
 export function dist(xs: number[]): Dist {
+  if (xs.some((x) => !Number.isFinite(x))) throw new Error(`dist: a sample is not finite: ${JSON.stringify(xs)}`);
+  if (xs.length === 0) return { n: 0, median: null, p95: null };
   const s = [...xs].sort((a, b) => a - b);
-  const at = (q: number) => s[Math.min(s.length - 1, Math.floor(q * s.length))] ?? NaN;
-  return { median: round(at(0.5)), p95: round(at(0.95)), n: s.length };
+  return { median: round(percentile(s, 0.5)), p95: round(percentile(s, 0.95)), n: s.length };
 }
 
 const round = (x: number) => Math.round(x * 100) / 100;
 const ACTORS: ActorName[] = ["s1", "sweeper", "profile"];
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** Throws unless the options can produce a measurement. */
+export function validateOptions(opts: BenchOptions): Required<BenchOptions> {
+  const turns = opts.turns ?? 20;
+  const toolEvery = opts.toolEvery ?? 2;
+  const modelDelayMs = opts.modelDelayMs ?? 0;
+  const coldSamples = opts.coldSamples ?? 5;
+  const int = (name: string, v: number, min: number) => {
+    if (!Number.isInteger(v) || v < min) throw new Error(`bench: ${name} must be an integer >= ${min}, got ${v}`);
+  };
+  int("turns", turns, 1);
+  int("coldSamples", coldSamples, 0);
+  int("toolEvery", toolEvery, 0);
+  if (!Number.isFinite(modelDelayMs) || modelDelayMs < 0) throw new Error(`bench: modelDelayMs must be a finite number >= 0, got ${modelDelayMs}`);
+  return { turns, toolEvery, modelDelayMs, coldSamples };
+}
 
 function per(m: MeterSnapshot, n: number): MeterSnapshot {
   const sidecars: Record<string, number> = {};
@@ -76,52 +122,138 @@ function per(m: MeterSnapshot, n: number): MeterSnapshot {
     disarms: round(m.disarms / n),
     fetches: round(m.fetches / n),
     sidecars,
+    adapterRows: round(m.adapterRows / n),
+    timerCalls: round(m.timerCalls / n),
     busyMs: round(m.busyMs / n),
     busyExclModelMs: round(m.busyExclModelMs / n),
   };
 }
 
-async function timedTurn(s: Stack, input: string, seen: number): Promise<{ turnMs: number; toModelMs: number }> {
+/** What a turn must show: the scripted reply and the number of model calls the script has for it. */
+interface Expect {
+  text: string;
+  calls: number;
+}
+
+/** Each turn's expectation, in the order the turns are sent. */
+function expectations(script: ReturnType<typeof benchScript>): Expect[] {
+  const out: Expect[] = [];
+  let calls = 0;
+  for (const step of script) {
+    calls += 1;
+    if ("reply" in step && typeof step.reply === "string") {
+      out.push({ text: step.reply, calls });
+      calls = 0;
+    }
+  }
+  return out;
+}
+
+interface Sample {
+  turnMs: number;
+  toModelMs: number;
+  calls: number;
+}
+
+/** Send one input and measure it. The timer starts just before the send, the first event of the turn. */
+async function timedTurn(s: Stack, input: string, idx: number, exp: Expect): Promise<Sample> {
   const before = (await s.modelArrivals()).length;
   const t0 = Date.now();
   await s.send(input);
-  await s.waitReplies(seen + 1, 60_000);
-  const turnMs = Date.now() - t0;
-  const first = (await s.modelArrivals())[before];
-  return { turnMs, toModelMs: first ? first.at - t0 : NaN };
+  const replies = await s.waitReplies(idx + 1, 60_000);
+  const arrivals = await s.modelArrivals();
+  const label = `turn ${idx} (${input})`;
+  if (replies.length !== idx + 1) throw new Error(`bench: ${label}: expected ${idx + 1} replies, got ${replies.length}`);
+  const r: StackReply = replies[idx]!;
+  if (r.kind !== "reply") throw new Error(`bench: ${label}: reply kind is ${JSON.stringify(r.kind)}, not "reply": ${JSON.stringify(r.text).slice(0, 200)}`);
+  if (r.text !== exp.text) throw new Error(`bench: ${label}: reply ${JSON.stringify(r.text).slice(0, 200)}, scripted ${JSON.stringify(exp.text)}`);
+  const calls = arrivals.length - before;
+  if (calls !== exp.calls) throw new Error(`bench: ${label}: ${calls} model calls, the script has ${exp.calls}`);
+  const first = arrivals[before];
+  if (!first) throw new Error(`bench: ${label}: the model saw no request`);
+  return { turnMs: r.at - t0, toModelMs: first.at - t0, calls };
 }
 
-export async function runBench(make: StackFactory, opts: BenchOptions = {}): Promise<BenchResult> {
-  const turns = opts.turns ?? 20;
-  const toolEvery = opts.toolEvery ?? 2;
-  const modelDelayMs = opts.modelDelayMs ?? 0;
-  const coldSamples = opts.coldSamples ?? 5;
+/** Rows of `sql` on `actor` as a count. */
+async function count(s: Stack, actor: ActorName, sql: string): Promise<number> {
+  return Number((await s.rows(actor, sql))[0]?.["n"] ?? 0);
+}
+
+/**
+ * Wait until background work has ended: `s1` has no unsent outbox row, no open turn, no
+ * pending model call, tool operation or runtime row, and the profile actor's count of applied
+ * index updates has stopped moving (it must read the same twice, 100 ms apart).
+ */
+export async function drain(s: Stack, timeoutMs = 30_000): Promise<void> {
+  const end = Date.now() + timeoutMs;
+  const open = [
+    "SELECT count(*) AS n FROM outbox",
+    "SELECT count(*) AS n FROM turns WHERE status = 'open'",
+    "SELECT count(*) AS n FROM pending_rows WHERE status = 'pending'",
+    "SELECT count(*) AS n FROM pending_call WHERE status = 'pending'",
+    "SELECT count(*) AS n FROM pending_op WHERE status = 'pending'",
+  ];
+  let lastApplied = -1;
+  for (;;) {
+    let busy = 0;
+    for (const q of open) busy += await count(s, "s1", q);
+    if (busy === 0) {
+      const applied = await count(s, "profile", "SELECT count(*) AS n FROM applied");
+      if (applied === lastApplied) return;
+      lastApplied = applied;
+    } else {
+      lastApplied = -1;
+    }
+    if (Date.now() > end) throw new Error(`bench: background work did not drain in ${timeoutMs} ms (${busy} open rows on s1)`);
+    await sleep(busy === 0 ? 100 : 20);
+  }
+}
+
+export async function runBench(make: StackFactory, options: BenchOptions = {}): Promise<BenchResult> {
+  const { turns, toolEvery, modelDelayMs, coldSamples } = validateOptions(options);
   const total = 1 + turns + coldSamples * 2;
   const script = benchScript(total, 0).slice(0, 1).concat(benchScript(turns, toolEvery), benchScript(coldSamples * 2, 0));
+  const exp = expectations(script);
+  if (exp.length !== total) throw new Error(`bench: the script has ${exp.length} turns, expected ${total}`);
   const s = await make({ script, modelDelayMs });
   try {
     let seen = 0;
-    await timedTurn(s, "warm-up", seen++);
+    await timedTurn(s, "warm-up", seen, exp[seen]!);
+    seen++;
+    await drain(s);
     await s.resetMeters();
     const arrivals0 = (await s.modelArrivals()).length;
+    const runs0 = await s.executorRuns();
     const turnMs: number[] = [];
     const overhead: number[] = [];
     const warm: number[] = [];
+    let toolTurns = 0;
     for (let i = 0; i < turns; i++) {
-      const a = (await s.modelArrivals()).length;
-      const r = await timedTurn(s, `turn ${i}`, seen++);
-      const calls = (await s.modelArrivals()).length - a;
+      const e = exp[seen]!;
+      const r = await timedTurn(s, `turn ${i}`, seen++, e);
+      if (e.calls > 1) toolTurns++;
       turnMs.push(r.turnMs);
-      overhead.push(r.turnMs - calls * modelDelayMs);
+      overhead.push(r.turnMs - r.calls * modelDelayMs);
       warm.push(r.toModelMs);
     }
+    await drain(s);
     const meters = await Promise.all(ACTORS.map((a) => s.meter(a)));
     const modelCalls = (await s.modelArrivals()).length - arrivals0;
+    const ran = (await s.executorRuns()) - runs0;
+    if (ran !== toolTurns) throw new Error(`bench: the executor ran ${ran} commands in ${toolTurns} tool turns`);
     const cold: number[] = [];
     for (let i = 0; i < coldSamples; i++) {
-      await timedTurn(s, `prime ${i}`, seen++);
+      await timedTurn(s, `prime ${i}`, seen, exp[seen]!);
+      seen++;
+      await drain(s);
+      const epoch0 = await s.epochOf("s1");
       await s.evict("s1");
-      cold.push((await timedTurn(s, `cold ${i}`, seen++)).toModelMs);
+      // The timer starts at the send that wakes the evicted session, so activation is in it.
+      const r = await timedTurn(s, `cold ${i}`, seen, exp[seen]!);
+      seen++;
+      const epoch1 = await s.epochOf("s1");
+      if (epoch1 <= epoch0) throw new Error(`bench: cold sample ${i}: s1 epoch ${epoch0} -> ${epoch1}, so the send did not wake an evicted actor`);
+      cold.push(r.toModelMs);
     }
     const sum = (f: (m: MeterSnapshot) => number) => round(meters.reduce((acc, m) => acc + f(m), 0) / turns);
     return {
@@ -137,6 +269,8 @@ export async function runBench(make: StackFactory, opts: BenchOptions = {}): Pro
         commits: sum((m) => m.commits),
         arms: sum((m) => m.arms),
         sidecarCalls: sum((m) => Object.values(m.sidecars).reduce((a, b) => a + b, 0)),
+        adapterRows: sum((m) => m.adapterRows),
+        timerCalls: sum((m) => m.timerCalls),
         busyMs: sum((m) => m.busyMs),
         busyExclModelMs: sum((m) => m.busyExclModelMs),
       },

@@ -11,7 +11,10 @@ import type { StackFactory } from "./types.ts";
 const args = process.argv.slice(2);
 const flag = (n: string, d: number) => {
   const i = args.indexOf(n);
-  return i >= 0 ? Number(args[i + 1]) : d;
+  if (i < 0) return d;
+  const v = args[i + 1];
+  if (v === undefined || v.trim() === "") throw new Error(`${n} needs a value`);
+  return Number(v);
 };
 const outAt = args.indexOf("--out");
 const hosts = args.filter((a, i) => !a.startsWith("--") && !(i > 0 && args[i - 1]!.startsWith("--")));

@@ -10,11 +10,15 @@ import type { MeterSnapshot, StackFaultPoint, StackFaultRule } from "./types.ts"
  */
 export class Meter {
   #m: MeterSnapshot = Meter.empty();
-  /** Open spans, all and without the model call. */
+  /**
+   * Open spans: all of them, and the model-wait ones among them (a model span is also in
+   * `#open`). Time is accrued at every change and at every snapshot, as intervals:
+   * `busyMs` is the union of all spans, `busyExclModelMs` is that union minus the union of
+   * the model spans, so a model wait nested inside an event is subtracted from the event.
+   */
   #open = 0;
-  #openExcl = 0;
-  #since = 0;
-  #sinceExcl = 0;
+  #openModel = 0;
+  #last = 0;
   readonly #now: () => number;
 
   constructor(now: () => number = () => performance.now()) {
@@ -33,6 +37,8 @@ export class Meter {
       disarms: 0,
       fetches: 0,
       sidecars: {},
+      adapterRows: 0,
+      timerCalls: 0,
       busyMs: 0,
       busyExclModelMs: 0,
     };
@@ -43,32 +49,43 @@ export class Meter {
     return this.#m;
   }
 
-  snapshot(): MeterSnapshot {
+  /** The adapters report their own writes here (`onWrite` of CloudflareHost and RivetHost). */
+  adapterWrite(kind: "row" | "timer", n = 1): void {
+    if (kind === "row") this.#m.adapterRows += n;
+    else this.#m.timerCalls += n;
+  }
+
+  #accrue(): void {
     const now = this.#now();
-    const m = { ...this.#m, sidecars: { ...this.#m.sidecars } };
-    if (this.#open > 0) m.busyMs += now - this.#since;
-    if (this.#openExcl > 0) m.busyExclModelMs += now - this.#sinceExcl;
-    return m;
+    const dt = now - this.#last;
+    this.#last = now;
+    if (this.#open > 0) {
+      this.#m.busyMs += dt;
+      if (this.#openModel === 0) this.#m.busyExclModelMs += dt;
+    }
+  }
+
+  snapshot(): MeterSnapshot {
+    this.#accrue();
+    return { ...this.#m, sidecars: { ...this.#m.sidecars } };
   }
 
   reset(): void {
-    const now = this.#now();
     this.#m = Meter.empty();
-    this.#since = now;
-    this.#sinceExcl = now;
+    this.#last = this.#now();
   }
 
   /** Count a span of wall time in `busyMs`. A `model` span is left out of `busyExclModelMs`. */
   async span<T>(fn: () => Promise<T>, model = false): Promise<T> {
-    const start = this.#now();
-    if (this.#open++ === 0) this.#since = start;
-    if (!model && this.#openExcl++ === 0) this.#sinceExcl = start;
+    this.#accrue();
+    this.#open++;
+    if (model) this.#openModel++;
     try {
       return await fn();
     } finally {
-      const end = this.#now();
-      if (--this.#open === 0) this.#m.busyMs += end - this.#since;
-      if (!model && --this.#openExcl === 0) this.#m.busyExclModelMs += end - this.#sinceExcl;
+      this.#accrue();
+      this.#open--;
+      if (model) this.#openModel--;
     }
   }
 
@@ -93,16 +110,18 @@ export class FaultRules {
 
   /** True when a rule for this actor and point acts now. */
   hit(actor: string, point: StackFaultPoint, detail?: string): boolean {
+    // Every matching rule counts the event, as in host-node's FaultHooks.match: do not return early.
+    let fire = false;
     for (const r of this.#rules) {
       if (r.done || r.rule.actor !== actor || r.rule.point !== point) continue;
       if (r.rule.detail !== undefined && r.rule.detail !== detail) continue;
       r.seen += 1;
       if (r.seen >= (r.rule.nth ?? 1)) {
         r.done = true;
-        return true;
+        fire = true;
       }
     }
-    return false;
+    return fire;
   }
 }
 
@@ -164,7 +183,8 @@ export class MeteredHost implements Host {
     const m = this.#o.meter.counts;
     this.#point("tx:before");
     m.tx += 1;
-    const r = await this.inner.tx((sql) => {
+    // The span covers the call to the adapter: Rivet awaits its native database there.
+    const r = await this.#o.meter.span(() => this.inner.tx((sql) => {
       const counted: Sql = {
         exec: (q, ...p) => {
           m.statements += 1;
@@ -177,7 +197,7 @@ export class MeteredHost implements Host {
       if (before >= 0 && after >= 0 && m.rowsChanged >= 0) m.rowsChanged += after - before;
       else m.rowsChanged = -1;
       return out;
-    });
+    }));
     this.#point("tx:after");
     return r;
   }

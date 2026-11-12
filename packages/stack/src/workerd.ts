@@ -123,7 +123,7 @@ export async function createWorkerdStack(opts: WorkerdStackOptions): Promise<Sta
     rows: async (a, sql) => (await actor(a, "/ctl/rows", { sql })) as SqlRow[],
     // The abort ends the request; nothing follows it, so the actor stays out of memory until the next event.
     evict: async (a) => void (await actor(a, "/ctl/abort")),
-    epochOf: async (a) => Number((await actor(a, "/ctl/rows", { sql: "SELECT v FROM host_meta WHERE k = 'owner_epoch'" }) as SqlRow[])[0]!["v"]),
+    epochOf: async (a) => Number(await actor(a, "/ctl/epoch")),
     advance: (ms) => new Promise((r) => setTimeout(r, ms)),
     crashesFired: async () => Number(await post("/crashes")),
     crashAt: async (rule: StackFaultRule) => void (await post("/crash-at", { rule })),

@@ -143,7 +143,7 @@ export async function createRivetStack(opts: StackOptions): Promise<RivetStack> 
         await new Promise((r) => setTimeout(r, 10));
       }
     },
-    epochOf: (a) => epoch(a),
+    epochOf: async (a) => Number(await epoch(a)),
     advance: (ms) => new Promise((r) => setTimeout(r, ms)),
     crashesFired: async () => world.crashes.fired,
     ghostsDestroyed: () => world.ghosts.destroyed,
