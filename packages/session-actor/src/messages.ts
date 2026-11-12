@@ -178,7 +178,8 @@ export function loadActiveMessages(sql: Sql, sessionId: string): NewMessage[] {
     )
     .map(fromRow);
   for (const m of rows) {
-    const o = m.role === "assistant" ? replay.get(m.messageUid) : undefined;
+    // A row that compaction rewrote (the summary merged into it) has new text: the stored blocks would replay the old text.
+    const o = m.role === "assistant" && !m.compressedSummary ? replay.get(m.messageUid) : undefined;
     if (o) m.orderedBlocks = o;
   }
   return rows;
