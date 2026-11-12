@@ -25,6 +25,10 @@ function world() {
     afterArm: null as null | ((key: string) => void),
     /** Runs before each transaction. */
     onTx: null as null | (() => Promise<void>),
+    /** Runs after a transaction, before its caller sees the result. */
+    afterTx: null as null | (() => Promise<void>),
+    /** Runs inside `disarm`, before the timer is removed. */
+    onDisarm: null as null | ((key: string) => Promise<void>),
     /** Runs after each commit. */
     onCommit: null as null | (() => void),
     timers,
@@ -44,6 +48,7 @@ function world() {
       try {
         const r = fn(sql);
         db.exec("RELEASE t");
+        await w.afterTx?.();
         return r;
       } catch (e) {
         db.exec("ROLLBACK TO t");
@@ -65,6 +70,7 @@ function world() {
     },
     async disarm(key) {
       if (w.dead) return never();
+      await w.onDisarm?.(key);
       timers.delete(key);
     },
     fetch: () => never(),
@@ -133,5 +139,45 @@ describe("timers of closed obligations", () => {
     assert.deepEqual([...w.timers.keys()], open, "only the open obligation has a timer");
     assert.equal(w.timers.get(String(open[0])), due);
     assert.deepEqual(w.rows("SELECT key FROM rt_timers").map((r) => r.key), open);
+  });
+
+  it("a cleanup that started first does not remove a timer that a new obligation claimed", async () => {
+    const w = world();
+    await w.actor.activate();
+    await ticks();
+    const t0 = w.clock.now();
+    await w.actor.call("schedule_job", { job: "a", dueAt: t0 + 30_000 });
+    await ticks();
+    // b reads a as the earliest open obligation. Before b goes on, a runs and closes, and the
+    // cleanup decides a's timer is stale. While that disarm is in flight, b claims the timer and commits.
+    let step: "read" | "cleanup" | "done" = "read";
+    let release!: () => void;
+    const bDone = new Promise<void>((r) => (release = r));
+    let inDisarm!: () => void;
+    const disarming = new Promise<void>((r) => (inDisarm = r));
+    w.afterTx = async () => {
+      if (step !== "read") return;
+      step = "cleanup";
+      w.advance(31_000);
+      void w.actor.alarm();
+      await disarming;
+    };
+    w.onDisarm = async () => {
+      if (step !== "cleanup") return;
+      step = "done";
+      inDisarm();
+      await bDone;
+    };
+    const due = t0 + 300_000;
+    await w.actor.call("schedule_job", { job: "b", dueAt: due });
+    w.afterTx = null;
+    release();
+    await ticks(300);
+    w.onDisarm = null;
+    assert.equal(step, "done", "the race happened");
+    assert.equal(w.rows("SELECT 1 FROM job_runs").length, 1, "job a ran");
+    const open = w.rows("SELECT id, due_at FROM wake_obligations WHERE state = 'open'");
+    assert.equal(open.length, 1);
+    assert.ok([...w.timers.values()].some((at) => at <= due), "job b still has a timer");
   });
 });

@@ -97,8 +97,9 @@ export const SESSION_DDL: string[] = [
   )`,
   // Every key this actor may have a host timer for. A key is written (and committed) before its
   // arm, and leaves only once the host has disarmed it. A key whose obligation is not open is a
-  // timer to remove, also one that an arm in flight or a crash left behind.
-  `CREATE TABLE IF NOT EXISTS rt_timers (key TEXT PRIMARY KEY)`,
+  // timer to remove, also one that an arm in flight or a crash left behind. Each arm raises `gen`,
+  // so a cleanup can tell that the key was claimed again after it decided to remove it.
+  `CREATE TABLE IF NOT EXISTS rt_timers (key TEXT PRIMARY KEY, gen INTEGER NOT NULL DEFAULT 0)`,
 ];
 
 interface Armed {
@@ -341,7 +342,7 @@ export class SessionActor implements ActorBehavior {
   /** Record the key, then arm it. The caller holds the key (see `#holding`). */
   async #arm(at: number, key: string): Promise<void> {
     if (this.#host.disarm) {
-      await this.#host.tx((sql) => sql.exec("INSERT OR IGNORE INTO rt_timers (key) VALUES (?)", key));
+      await this.#host.tx((sql) => sql.exec("INSERT INTO rt_timers (key, gen) VALUES (?, 1) ON CONFLICT (key) DO UPDATE SET gen = gen + 1", key));
       await this.#host.commit();
     }
     await this.#host.arm(new Date(at), key);
@@ -397,19 +398,26 @@ export class SessionActor implements ActorBehavior {
   async #reconcilePass(): Promise<void> {
     await this.#ensureOutboxWake();
     const stale = await this.#host.tx((sql) =>
-      sql.exec("SELECT key FROM rt_timers WHERE key NOT IN (SELECT id FROM wake_obligations WHERE state = 'open') ORDER BY key").map((r) => str(r.key)),
+      sql
+        .exec("SELECT key, gen FROM rt_timers WHERE key NOT IN (SELECT id FROM wake_obligations WHERE state = 'open') ORDER BY key")
+        .map((r) => ({ key: str(r.key), gen: num(r.gen) })),
     );
-    const keys = stale.filter((k) => !this.#arming.has(k));
+    const keys = stale.filter((k) => !this.#arming.has(k.key));
     if (keys.length === 0) return;
     await this.#armEarliest();
-    for (const k of keys) await this.#host.disarm!(k);
-    // A key that an arm took up meanwhile keeps its row: that arm's own cleanup removes it.
-    const done = keys.filter((k) => !this.#arming.has(k));
-    await this.#host.tx((sql) => {
-      for (const k of done) sql.exec("DELETE FROM rt_timers WHERE key = ?", k);
+    for (const k of keys) await this.#host.disarm!(k.key);
+    // An arm may have claimed a key after it was read here (a new obligation reuses an earlier
+    // timer), and the disarm above may have removed that arm's timer. Such a key has a new `gen`:
+    // its row stays, and the next pass arms the earliest open obligation again before it looks.
+    const claimed = await this.#host.tx((sql) => {
+      let n = 0;
+      for (const k of keys) if (sql.exec("DELETE FROM rt_timers WHERE key = ? AND gen = ? RETURNING key", k.key, k.gen).length === 0) n++;
+      return n;
     });
     await this.#host.commit();
+    if (claimed > 0) this.#reconcileAgain = true;
   }
+
 
   /** Unsent outbox rows keep an "outbox" obligation of their own, due a retry from now. */
   async #ensureOutboxWake(): Promise<void> {
