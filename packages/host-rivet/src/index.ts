@@ -181,25 +181,16 @@ export class RivetHost implements Host {
     // `PRAGMA table_list` names the shadow tables (a name check would also match an ordinary table
     // such as an external content table named `notes_segments`). The ordinary tables go first: an
     // FTS4 external content table must exist before its virtual table is created.
-    let listed: Record<string, unknown>[] | null = null;
+    let listed: Record<string, unknown>[];
     try {
       listed = await this.#c.db.execute("PRAGMA table_list");
     } catch {
-      listed = null;
+      listed = shadowsInScratch(objects, isVirtual); // an SQLite before 3.37 has no table_list
     }
-    const shadowNames = new Set((listed ?? []).filter((r) => r["type"] === "shadow" && r["schema"] === "main").map((r) => String(r["name"])));
+    const shadowNames = new Set(listed.filter((r) => r["type"] === "shadow" && r["schema"] === "main").map((r) => String(r["name"])));
     const isShadow = (name: string): boolean => shadowNames.has(name);
-    if (!listed) {
-      // An SQLite before 3.37 has no table_list: the tables that creating the virtual tables makes are its shadows.
-      const tablesNow = (): Set<string> =>
-        new Set(this.#mirror.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((r) => String(r["name"])));
-      const before = tablesNow();
-      for (const o of objects) if (o["type"] === "table" && isVirtual(o)) this.#mirror.exec(String(o["sql"]));
-      const virtualNames = new Set(objects.filter((o) => o["type"] === "table" && isVirtual(o)).map((o) => String(o["name"])));
-      for (const n of tablesNow()) if (!before.has(n) && !virtualNames.has(n)) shadowNames.add(n);
-    }
     const tables = objects.filter((o) => o["type"] === "table");
-    for (const o of [...tables.filter((x) => !isVirtual(x)), ...(listed ? tables.filter(isVirtual) : []), ...objects.filter((o) => o["type"] !== "table")]) {
+    for (const o of [...tables.filter((x) => !isVirtual(x)), ...tables.filter(isVirtual), ...objects.filter((o) => o["type"] !== "table")]) {
       if (o["type"] === "table" && isShadow(String(o["name"]))) continue;
       this.#mirror.exec(String(o["sql"]));
     }
@@ -436,5 +427,33 @@ export class RivetHost implements Host {
         return (await res.json()) as T;
       },
     };
+  }
+}
+
+/**
+ * `PRAGMA table_list` of a scratch database that holds only the virtual tables, for a source SQLite
+ * without it. A virtual table that needs an ordinary table (FTS4 `content=` with no columns) gets it
+ * first: the error names it.
+ */
+function shadowsInScratch(objects: Record<string, unknown>[], isVirtual: (o: Record<string, unknown>) => boolean): Record<string, unknown>[] {
+  const scratch = new DatabaseSync(":memory:");
+  try {
+    const byName = new Map(objects.filter((o) => o["type"] === "table").map((o) => [String(o["name"]), o] as const));
+    for (const v of objects.filter((o) => o["type"] === "table" && isVirtual(o))) {
+      for (let tries = 0; ; tries++) {
+        try {
+          scratch.exec(String(v["sql"]));
+          break;
+        } catch (e) {
+          const missing = /no such table: (?:main\.)?"?([^"\s]+)"?/.exec(e instanceof Error ? e.message : "")?.[1];
+          const dep = missing !== undefined ? byName.get(missing) : undefined;
+          if (!dep || isVirtual(dep) || tries > objects.length) throw e;
+          scratch.exec(String(dep["sql"]));
+        }
+      }
+    }
+    return scratch.prepare("PRAGMA table_list").all() as Record<string, unknown>[];
+  } finally {
+    scratch.close();
   }
 }

@@ -175,18 +175,28 @@ describe("RivetHost with a fake context", () => {
     assert.deepEqual(await again.tx((s) => s.exec("SELECT rowid FROM notes WHERE notes MATCH 'durable'").map((r) => r["rowid"])), [1]);
   });
 
-  it("reloads an FTS4 external content table, which needs its content table first", async () => {
-    const f = fakeActor();
-    const h = await RivetHost.activate(f.c);
-    await h.tx((s) => {
-      s.exec("CREATE TABLE zdocs (id INTEGER PRIMARY KEY, body TEXT)"); // named to sort after its virtual table
-      s.exec("CREATE VIRTUAL TABLE adocs USING fts4(content='zdocs') /* the columns come from zdocs */");
-      s.exec("INSERT INTO zdocs (id, body) VALUES (1, 'durable note')");
-      s.exec("INSERT INTO adocs (docid, body) VALUES (1, 'durable note')");
+  for (const oldSqlite of [false, true]) {
+    it(`reloads an FTS4 external content table, which needs its content table first${oldSqlite ? " (no PRAGMA table_list)" : ""}`, async () => {
+      const db = fakeDb();
+      const execute = db.execute;
+      if (oldSqlite) db.execute = async (q, ...a) => (/table_list/i.test(q) ? Promise.reject(new Error("unknown pragma")) : execute(q, ...a));
+      const f = fakeActor(db);
+      const h = await RivetHost.activate(f.c);
+      await h.tx((s) => {
+        s.exec("CREATE TABLE zdocs (id INTEGER PRIMARY KEY, body TEXT)"); // named to sort after its virtual table
+        s.exec("CREATE VIRTUAL TABLE adocs USING fts4(content='zdocs') /* the columns come from zdocs */");
+        s.exec("INSERT INTO zdocs (id, body) VALUES (1, 'durable note')");
+        s.exec("INSERT INTO adocs (docid, body) VALUES (1, 'durable note')");
+        s.exec("CREATE TABLE notes_segments (id INTEGER PRIMARY KEY, body TEXT)"); // named like an FTS4 shadow table
+        s.exec("CREATE VIRTUAL TABLE notes USING fts5(body, content='notes_segments', content_rowid='id')");
+        s.exec("INSERT INTO notes_segments (id, body) VALUES (1, 'kept note')");
+        s.exec("INSERT INTO notes (rowid, body) VALUES (1, 'kept note')");
+      });
+      const again = await RivetHost.activate(f.c);
+      assert.deepEqual(await again.tx((s) => s.exec("SELECT docid FROM adocs WHERE adocs MATCH 'durable'").map((r) => r["docid"])), [1]);
+      assert.deepEqual(await again.tx((s) => s.exec("SELECT rowid FROM notes WHERE notes MATCH 'kept'").map((r) => r["rowid"])), [1]);
     });
-    const again = await RivetHost.activate(f.c);
-    assert.deepEqual(await again.tx((s) => s.exec("SELECT docid FROM adocs WHERE adocs MATCH 'durable'").map((r) => r["docid"])), [1]);
-  });
+  }
 
   it("rejects an async tx callback", async () => {
     const h = await RivetHost.activate(fakeActor().c);
