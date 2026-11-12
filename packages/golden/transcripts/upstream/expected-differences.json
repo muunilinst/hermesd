@@ -185,21 +185,6 @@
       ],
       "digest": "d633815dd163f41753c1677ac00b618523bcf74f89124688b86dcdd79eed8e1c"
     },
-    "persistence-failure-before-tool": {
-      "diffCount": 9,
-      "fields": [
-        "messages row count",
-        "request count",
-        "requests[0].body.reasoning_effort",
-        "requests[1]",
-        "rows.admissions[0].outcome",
-        "rows.admissions[0].status",
-        "rows.messages[1]",
-        "rows.messages[2]",
-        "rows.messages[3]"
-      ],
-      "digest": "bdcf0752cd9b64b36c114dacfc7efc04f25921c824f6c36fedea6730a9305311"
-    },
     "plain-reply": {
       "diffCount": 1,
       "fields": [
