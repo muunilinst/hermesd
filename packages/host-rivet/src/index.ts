@@ -38,9 +38,6 @@
 import { DatabaseSync } from "node:sqlite";
 import type { Host, OwnerEpoch, RpcClient, Sql, SqlRow, SqlValue } from "@hermesd/host";
 
-/** The shadow tables that FTS5 (and FTS4) make for each virtual table. */
-const SHADOW_SUFFIXES = ["config", "content", "data", "docsize", "idx", "segdir", "segments", "stat"] as const;
-
 /** The part of the `c.db` client that the adapter uses. */
 export interface DbLike {
   execute(query: string, ...args: unknown[]): Promise<Record<string, unknown>[]>;
@@ -181,11 +178,18 @@ export class RivetHost implements Host {
         "ORDER BY CASE type WHEN 'table' THEN 0 ELSE 1 END, name",
     );
     const isVirtual = (o: Record<string, unknown>): boolean => /^\s*CREATE\s+VIRTUAL\s+TABLE/i.test(String(o["sql"]));
-    const virtualNames = objects.filter((o) => o["type"] === "table" && isVirtual(o)).map((o) => String(o["name"]));
-    const isShadow = (name: string): boolean =>
-      virtualNames.some((v) => name !== v && SHADOW_SUFFIXES.some((sfx) => name === `${v}_${sfx}`));
+    // The virtual tables go first. The tables that creating them made are their shadow tables: a name
+    // check would also match an ordinary table such as an external content table named `notes_segments`.
+    const tablesNow = (): Set<string> =>
+      new Set(this.#mirror.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((r) => String(r["name"])));
+    const before = tablesNow();
+    for (const o of objects) if (o["type"] === "table" && isVirtual(o)) this.#mirror.exec(String(o["sql"]));
+    const made = tablesNow();
+    const virtualNames = new Set(objects.filter((o) => o["type"] === "table" && isVirtual(o)).map((o) => String(o["name"])));
+    const shadowNames = new Set([...made].filter((n) => !before.has(n) && !virtualNames.has(n)));
+    const isShadow = (name: string): boolean => shadowNames.has(name);
     for (const o of objects) {
-      if (o["type"] === "table" && isShadow(String(o["name"]))) continue;
+      if (o["type"] === "table" && (isVirtual(o) || isShadow(String(o["name"])))) continue;
       this.#mirror.exec(String(o["sql"]));
     }
     // The tables are copied by name, so a row can arrive before the row its foreign key points at.

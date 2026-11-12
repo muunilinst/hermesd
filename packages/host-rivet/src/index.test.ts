@@ -160,6 +160,21 @@ describe("RivetHost with a fake context", () => {
     await assert.rejects(again.tx((s) => s.exec("INSERT INTO messages (session_id, body) VALUES ('nope', 'x')")), /FOREIGN KEY/);
   });
 
+  it("reloads an ordinary table whose name looks like an FTS shadow table", async () => {
+    const f = fakeActor();
+    const h = await RivetHost.activate(f.c);
+    await h.tx((s) => {
+      // An external content table that happens to be named like an FTS4 shadow table of `notes`.
+      s.exec("CREATE TABLE notes_segments (id INTEGER PRIMARY KEY, body TEXT)");
+      s.exec("CREATE VIRTUAL TABLE notes USING fts5(body, content='notes_segments', content_rowid='id')");
+      s.exec("INSERT INTO notes_segments (id, body) VALUES (1, 'durable note')");
+      s.exec("INSERT INTO notes (rowid, body) VALUES (1, 'durable note')");
+    });
+    const again = await RivetHost.activate(f.c);
+    assert.deepEqual(await again.tx((s) => s.exec("SELECT body FROM notes_segments").map((r) => r["body"])), ["durable note"]);
+    assert.deepEqual(await again.tx((s) => s.exec("SELECT rowid FROM notes WHERE notes MATCH 'durable'").map((r) => r["rowid"])), [1]);
+  });
+
   it("rejects an async tx callback", async () => {
     const h = await RivetHost.activate(fakeActor().c);
     await assert.rejects(h.tx((async () => 1) as never), TypeError);
