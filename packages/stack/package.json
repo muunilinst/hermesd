@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./world": "./src/world.ts",
-    "./meter": "./src/meter.ts"
+    "./meter": "./src/meter.ts",
+    "./rivet": "./src/rivet.ts"
   },
   "dependencies": {
     "@hermesd/executor-model": "*",
@@ -14,11 +15,13 @@
     "@hermesd/host": "*",
     "@hermesd/host-cloudflare": "*",
     "@hermesd/host-node": "*",
+    "@hermesd/host-rivet": "*",
     "@hermesd/profile-actor": "*",
     "@hermesd/runtime": "*",
     "@hermesd/session-actor": "*"
   },
   "devDependencies": {
-    "miniflare": "4.20260730.0"
+    "miniflare": "4.20260730.0",
+    "rivetkit": "3.0.7"
   }
 }

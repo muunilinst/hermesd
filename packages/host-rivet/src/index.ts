@@ -244,7 +244,7 @@ export class RivetHost implements Host {
     const cols = Object.keys(row);
     this.#mirror
       .prepare(`INSERT INTO "${table}" (${cols.map((x) => `"${x}"`).join(",")}) VALUES (${cols.map(() => "?").join(",")})`)
-      .run(...(Object.values(row) as SqlValue[]));
+      .run(...(Object.values(row).map(blobOf) as SqlValue[]));
   }
 
   id(): string {
@@ -431,6 +431,15 @@ export class RivetHost implements Host {
       },
     };
   }
+}
+
+/**
+ * rivetkit 3.0.7's native `c.db.execute` returns a BLOB column as a plain array of byte
+ * numbers (found on the FTS5 `_data.block` column), which `node:sqlite` cannot bind.
+ * A value that comes back as an array is a BLOB: turn it into bytes.
+ */
+function blobOf(v: unknown): unknown {
+  return Array.isArray(v) ? Uint8Array.from(v as number[]) : v;
 }
 
 /**

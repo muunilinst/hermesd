@@ -201,6 +201,19 @@ describe("RivetHost with a fake context", () => {
     });
   }
 
+  it("reloads a BLOB that the platform returns as an array of byte numbers", async () => {
+    // rivetkit 3.0.7's native c.db.execute does this (seen on the FTS5 _data.block column).
+    const raw = new DatabaseSync(":memory:");
+    const real = fakeDb(raw);
+    const f = fakeActor({ ...real, execute: async (q, ...a) => (await real.execute(q, ...a)).map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v instanceof Uint8Array ? Array.from(v) : v]))) });
+    const h = await RivetHost.activate(f.c);
+    await h.tx((s) => s.exec("CREATE TABLE b (id INTEGER PRIMARY KEY, data BLOB)"));
+    await h.tx((s) => s.exec("INSERT INTO b VALUES (1, x'0203')"));
+    const again = await RivetHost.activate(f.c);
+    const row = (await again.tx((s) => s.exec("SELECT data FROM b")))[0]!["data"] as Uint8Array;
+    assert.deepEqual(Array.from(row), [2, 3]);
+  });
+
   it("rejects an async tx callback", async () => {
     const h = await RivetHost.activate(fakeActor().c);
     await assert.rejects(h.tx((async () => 1) as never), TypeError);
