@@ -95,12 +95,10 @@ export const SESSION_DDL: string[] = [
     job TEXT NOT NULL,
     ran_at INTEGER NOT NULL
   )`,
-  // The host timers still to remove: an obligation's key lands here in the transaction that closes
-  // it, and leaves only once the host has disarmed it. A crash in between is redone on activation.
-  `CREATE TABLE IF NOT EXISTS rt_disarm (key TEXT PRIMARY KEY)`,
-  `CREATE TRIGGER IF NOT EXISTS rt_obligation_closed AFTER UPDATE OF state ON wake_obligations
-     WHEN OLD.state = 'open' AND NEW.state = 'done'
-     BEGIN INSERT OR IGNORE INTO rt_disarm (key) VALUES (NEW.id); END`,
+  // Every key this actor may have a host timer for. A key is written (and committed) before its
+  // arm, and leaves only once the host has disarmed it. A key whose obligation is not open is a
+  // timer to remove, also one that an arm in flight or a crash left behind.
+  `CREATE TABLE IF NOT EXISTS rt_timers (key TEXT PRIMARY KEY)`,
 ];
 
 interface Armed {
@@ -134,6 +132,12 @@ export class SessionActor implements ActorBehavior {
   #draining = false;
   #again = false;
   #registered = false;
+  /** Keys with an arm in flight, or armed for an obligation not committed yet: not stale. */
+  readonly #arming = new Map<string, number>();
+  #reconciling = false;
+  /** Counts cleanup requests: a hold that saw one may have kept a stale key, and cleans up when it ends. */
+  #cleanups = 0;
+  #reconcileAgain = false;
 
   constructor(host: Host, deps: SessionDeps) {
     this.#host = host;
@@ -308,37 +312,59 @@ export class SessionActor implements ActorBehavior {
       const r = sql.exec("SELECT id, due_at FROM wake_obligations WHERE state = 'open' ORDER BY due_at LIMIT 1")[0];
       return r ? { at: num(r.due_at), key: str(r.id) } : null;
     });
+    // An earlier timer covers this obligation too: arm that key again rather than add one. The key
+    // is held until the commit, so no cleanup removes it meanwhile, and the arm puts it back if one
+    // already did. After the hold its cleanup arms the earliest open obligation before it disarms.
     const armAt: Armed = earliest && earliest.at <= due ? earliest : { at: due, key: id };
-    await this.#host.arm(new Date(armAt.at), armAt.key);
-    const epoch = this.#host.epoch();
-    const value = await this.#host.tx((sql) =>
-      write(sql, () => {
-        sql.exec(
-          "INSERT INTO wake_obligations (id, kind, ref, turn_id, due_at, state, epoch) VALUES (?, ?, ?, ?, ?, 'open', ?)",
-          id,
-          spec.kind,
-          spec.ref,
-          spec.turnId,
-          due,
-          epoch,
-        );
-        return id;
-      }),
-    );
-    await this.#host.commit();
-    if (armAt.key !== id) {
-      // The timer was borrowed. A close of its obligation between our read and our commit may
-      // disarm it, and its reconcile may have looked for the earliest open one before ours existed.
-      const gone = await this.#host.tx((sql) => sql.exec("SELECT 1 AS x FROM wake_obligations WHERE id = ? AND state = 'open'", armAt.key).length === 0);
-      if (gone) await this.#armEarliest().catch(() => {}); // committed: a failure is left to the sweep
+    return this.#holding(armAt.key, async () => {
+      await this.#arm(armAt.at, armAt.key);
+      const epoch = this.#host.epoch();
+      const value = await this.#host.tx((sql) =>
+        write(sql, () => {
+          sql.exec(
+            "INSERT INTO wake_obligations (id, kind, ref, turn_id, due_at, state, epoch) VALUES (?, ?, ?, ?, ?, 'open', ?)",
+            id,
+            spec.kind,
+            spec.ref,
+            spec.turnId,
+            due,
+            epoch,
+          );
+          return id;
+        }),
+      );
+      await this.#host.commit();
+      return value;
+    });
+  }
+
+  /** Record the key, then arm it. The caller holds the key (see `#holding`). */
+  async #arm(at: number, key: string): Promise<void> {
+    if (this.#host.disarm) {
+      await this.#host.tx((sql) => sql.exec("INSERT OR IGNORE INTO rt_timers (key) VALUES (?)", key));
+      await this.#host.commit();
     }
-    return value;
+    await this.#host.arm(new Date(at), key);
+  }
+
+  /** Keep `key` out of the cleanup while `fn` runs; then clean up, in case it went stale meanwhile. */
+  async #holding<T>(key: string, fn: () => Promise<T>): Promise<T> {
+    this.#arming.set(key, (this.#arming.get(key) ?? 0) + 1);
+    const cleanups = this.#cleanups;
+    try {
+      return await fn();
+    } finally {
+      const n = this.#arming.get(key)! - 1;
+      if (n === 0) this.#arming.delete(key);
+      else this.#arming.set(key, n);
+      if (this.#cleanups !== cleanups) this.#background(() => this.#reconcileTimers());
+    }
   }
 
   /** Arm the earliest open obligation with its own key. */
   async #armEarliest(): Promise<void> {
     const next = await this.#host.tx((sql) => sql.exec("SELECT id, due_at FROM wake_obligations WHERE state = 'open' ORDER BY due_at, id LIMIT 1")[0]);
-    if (next) await this.#host.arm(new Date(num(next.due_at)), str(next.id));
+    if (next) await this.#holding(str(next.id), () => this.#arm(num(next.due_at), str(next.id)));
   }
 
   /**
@@ -350,19 +376,39 @@ export class SessionActor implements ActorBehavior {
    */
   async #reconcileTimers(): Promise<void> {
     if (!this.#host.disarm) return;
-    try {
-      await this.#ensureOutboxWake();
-      const keys = await this.#host.tx((sql) => sql.exec("SELECT key FROM rt_disarm ORDER BY key").map((r) => str(r.key)));
-      if (keys.length === 0) return;
-      await this.#armEarliest();
-      for (const k of keys) await this.#host.disarm(k);
-      await this.#host.tx((sql) => {
-        for (const k of keys) sql.exec("DELETE FROM rt_disarm WHERE key = ?", k);
-      });
-      await this.#host.commit();
-    } catch {
-      // Left in rt_disarm for the next run.
+    this.#cleanups++;
+    if (this.#reconciling) {
+      this.#reconcileAgain = true; // a key may have gone stale after the running pass read the rows
+      return;
     }
+    this.#reconciling = true;
+    try {
+      do {
+        this.#reconcileAgain = false;
+        await this.#reconcilePass();
+      } while (this.#reconcileAgain);
+    } catch {
+      // The keys stay in rt_timers for the next run.
+    } finally {
+      this.#reconciling = false;
+    }
+  }
+
+  async #reconcilePass(): Promise<void> {
+    await this.#ensureOutboxWake();
+    const stale = await this.#host.tx((sql) =>
+      sql.exec("SELECT key FROM rt_timers WHERE key NOT IN (SELECT id FROM wake_obligations WHERE state = 'open') ORDER BY key").map((r) => str(r.key)),
+    );
+    const keys = stale.filter((k) => !this.#arming.has(k));
+    if (keys.length === 0) return;
+    await this.#armEarliest();
+    for (const k of keys) await this.#host.disarm!(k);
+    // A key that an arm took up meanwhile keeps its row: that arm's own cleanup removes it.
+    const done = keys.filter((k) => !this.#arming.has(k));
+    await this.#host.tx((sql) => {
+      for (const k of done) sql.exec("DELETE FROM rt_timers WHERE key = ?", k);
+    });
+    await this.#host.commit();
   }
 
   /** Unsent outbox rows keep an "outbox" obligation of their own, due a retry from now. */
@@ -420,24 +466,26 @@ export class SessionActor implements ActorBehavior {
     }
     if (rearm) {
       const target = rearm;
-      await this.#host.arm(new Date(target.at), target.key);
-      const epoch = this.#host.epoch();
-      await this.#host.tx((sql) => {
-        for (const o of snap.due) {
-          sql.exec("UPDATE wake_obligations SET due_at = ? WHERE id = ? AND state = 'open' AND due_at <= ?", retryAt, str(o.id), now);
-        }
-        if (target.recheckFor) {
-          sql.exec(
-            "INSERT INTO wake_obligations (id, kind, ref, turn_id, due_at, state, epoch) VALUES (?, 'recheck', ?, ?, ?, 'open', ?)",
-            target.key,
-            target.recheckFor,
-            target.recheckFor,
-            target.at,
-            epoch,
-          );
-        }
+      await this.#holding(target.key, async () => {
+        await this.#arm(target.at, target.key);
+        const epoch = this.#host.epoch();
+        await this.#host.tx((sql) => {
+          for (const o of snap.due) {
+            sql.exec("UPDATE wake_obligations SET due_at = ? WHERE id = ? AND state = 'open' AND due_at <= ?", retryAt, str(o.id), now);
+          }
+          if (target.recheckFor) {
+            sql.exec(
+              "INSERT INTO wake_obligations (id, kind, ref, turn_id, due_at, state, epoch) VALUES (?, 'recheck', ?, ?, ?, 'open', ?)",
+              target.key,
+              target.recheckFor,
+              target.recheckFor,
+              target.at,
+              epoch,
+            );
+          }
+        });
+        await this.#host.commit();
       });
-      await this.#host.commit();
     }
 
     await this.#extendHorizons();
