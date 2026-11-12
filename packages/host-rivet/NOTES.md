@@ -30,6 +30,17 @@
   of the actor data is therefore bounded by memory. Not tested with large data.
 - `RivetHost.of(c)` uses a module-level map keyed by `actorId`.
 
+## Found by the stack scenarios
+
+- rivetkit 3.0.7's native `c.db.execute` returns a BLOB column as a plain array of
+  byte numbers (seen on the FTS5 `search_fts_data.block` column of the profile actor).
+  `node:sqlite` cannot bind an array, so the next wake of an actor with an FTS5 index
+  failed in `activate`. The mirror load now turns an array value into bytes
+  (`blobOf`; unit test in `index.test.ts`).
+- The engine keeps its data under `~/.rivetkit` between runs (set `RIVETKIT_STORAGE_PATH`
+  before the process starts to move it; setting it from inside bun has no effect). An
+  actor id follows from its key, so a repeated key meets the rows of an earlier run.
+
 ## Not verified
 
 - Whether a crash (process kill) in the middle of the `c.db` replay is atomic.

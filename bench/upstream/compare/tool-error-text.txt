@@ -1,0 +1,68 @@
+DIFFERS tool-error-text
+request 0: requests[0].body.reasoning_effort
+  port:     "<absent>"
+  upstream: "medium"
+request 1: requests[1].body.messages[1].content
+  port:     null
+  upstream: ""
+request 1: requests[1].body.messages[2].tool_call_id
+  port:     "call_1"
+  upstream: "call_2"
+request 1: requests[1].body.messages[2].content
+  port:     "{\"output\":\"ls: cannot access 'nope': No such file or directory\\n\",\"exit_code\":2,\"error\":null}"
+  upstream: "Tool 'frobnicate' does not exist. Available tools: browser_exec, delegate_task, execute_code, manage_connections, memory, patch, read_file, search_files, sk...
+request 1: requests[1].body.messages[3].tool_call_id
+  port:     "call_2"
+  upstream: "call_1"
+request 1: requests[1].body.messages[3].content
+  port:     "{\"error\":\"Unknown tool 'frobnicate'\"}"
+  upstream: "{\"output\": \"ls: cannot access 'nope': No such file or directory\", \"exit_code\": 2, \"error\": null}"
+request 1: requests[1].body.messages[4].content
+  port:     "{\"error\":\"terminal needs a non-empty `command` string\"}"
+  upstream: "{\"output\": \"\", \"exit_code\": -1, \"error\": \"Invalid command: expected string, got NoneType\", \"status\": \"error\"}"
+request 1: requests[1].body.reasoning_effort
+  port:     "<absent>"
+  upstream: "medium"
+messages row 1: rows.messages[1].content
+  port:     null
+  upstream: ""
+messages row 1: rows.messages[1].tool_calls[0].call_id
+  port:     "<absent>"
+  upstream: "call_1"
+messages row 1: rows.messages[1].tool_calls[0].response_item_id
+  port:     "<absent>"
+  upstream: "fc_1"
+messages row 1: rows.messages[1].tool_calls[1].call_id
+  port:     "<absent>"
+  upstream: "call_2"
+messages row 1: rows.messages[1].tool_calls[1].response_item_id
+  port:     "<absent>"
+  upstream: "fc_2"
+messages row 1: rows.messages[1].tool_calls[2].call_id
+  port:     "<absent>"
+  upstream: "call_3"
+messages row 1: rows.messages[1].tool_calls[2].response_item_id
+  port:     "<absent>"
+  upstream: "fc_3"
+messages row 2: rows.messages[2].content
+  port:     "{\"output\":\"ls: cannot access 'nope': No such file or directory\\n\",\"exit_code\":2,\"error\":null}"
+  upstream: "Tool 'frobnicate' does not exist. Available tools: browser_exec, delegate_task, execute_code, manage_connections, memory, patch, read_file, search_files, sk...
+messages row 2: rows.messages[2].tool_call_id
+  port:     "call_1"
+  upstream: "call_2"
+messages row 2: rows.messages[2].tool_name
+  port:     "terminal"
+  upstream: "frobnicate"
+messages row 3: rows.messages[3].content
+  port:     "{\"error\":\"Unknown tool 'frobnicate'\"}"
+  upstream: "{\"output\": \"ls: cannot access 'nope': No such file or directory\", \"exit_code\": 2, \"error\": null}"
+messages row 3: rows.messages[3].tool_call_id
+  port:     "call_2"
+  upstream: "call_1"
+messages row 3: rows.messages[3].tool_name
+  port:     "frobnicate"
+  upstream: "terminal"
+messages row 4: rows.messages[4].content
+  port:     "{\"error\":\"terminal needs a non-empty `command` string\"}"
+  upstream: "{\"output\": \"\", \"exit_code\": -1, \"error\": \"Invalid command: expected string, got NoneType\", \"status\": \"error\"}"
+1 compared, 1 differ

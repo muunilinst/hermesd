@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import type { GoldenRecord } from "@hermesd/session-actor";
+import { GOLDEN_FORMAT, type GoldenRecord } from "@hermesd/session-actor";
+import { baselineProblems, checkAgainstBaseline, checkRecords, loadBaseline, summarize, type Baseline } from "./baseline.ts";
 import { compareTranscripts, formatDiffs } from "./compare.ts";
 import { runScript, serialize, type RunOutput } from "./runner.ts";
 import { PORT_DIR, UPSTREAM_DIR, loadScript, scriptNames, type Script } from "./script.ts";
@@ -148,18 +149,89 @@ describe("port transcripts: played on node/durable-objects and node/rivet", () =
 });
 
 describe("port against upstream", () => {
+  const baseline = loadBaseline();
+
+  it("expected-differences.json names real scripts that have an upstream transcript", () => {
+    assert.deepEqual(baselineProblems(baseline, names), []);
+  });
+
   for (const name of names) {
     const upstreamFile = join(UPSTREAM_DIR, `${name}.json`);
     if (!existsSync(upstreamFile)) {
       it(`${name}: no upstream transcript`, { skip: `no upstream transcript at transcripts/upstream/${name}.json; record it with packages/golden/UPSTREAM.md` }, () => {});
       continue;
     }
-    it(`${name}: the port and upstream transcripts agree`, () => {
-      const port = JSON.parse(readFileSync(join(PORT_DIR, `${name}.json`), "utf8")) as GoldenRecord;
-      const upstream = JSON.parse(readFileSync(upstreamFile, "utf8")) as GoldenRecord;
-      assert.equal(upstream.side, "upstream");
-      const diffs = compareTranscripts(port, upstream, { ignore: loadScript(name).upstream.ignore ?? [] });
-      assert.equal(diffs.length, 0, `\n${formatDiffs(diffs)}`);
+    // The policy of `cli.ts compare`: valid fixtures, and exactly the differences of the baseline (none if it has no entry).
+    it(`${name}: the fixture is valid and the differences are exactly the expected ones`, () => {
+      const r = checkAgainstBaseline(name, baseline);
+      assert.deepEqual(r.problems, [], `\n${formatDiffs(r.diffs)}`);
     });
   }
+});
+
+describe("the expected-differences policy", () => {
+  const name = "plain-reply";
+  const port = JSON.parse(readFileSync(join(PORT_DIR, `${name}.json`), "utf8")) as GoldenRecord;
+  const upstream = JSON.parse(readFileSync(join(UPSTREAM_DIR, `${name}.json`), "utf8")) as GoldenRecord;
+  const ignore = loadScript(name).upstream.ignore ?? [];
+  const base = loadBaseline();
+  const check = (up: unknown, b: Baseline = base) => checkRecords(name, port, up, ignore, b).problems;
+  const clone = (): GoldenRecord => JSON.parse(JSON.stringify(upstream)) as GoldenRecord;
+
+  it("accepts the recorded fixture", () => assert.deepEqual(check(upstream), []));
+
+  it("rejects a fixture with the right header and empty arrays", () => {
+    const empty = { ...clone(), requests: [], rows: { messages: [], admissions: [] } };
+    assert.ok(check(empty).some((p) => /no requests/.test(p)));
+    assert.ok(check(empty).some((p) => /no messages rows/.test(p)));
+  });
+
+  it("rejects the wrong script, side or format", () => {
+    assert.ok(check({ ...clone(), script: "one-tool-call" }).some((p) => /records script/.test(p)));
+    assert.ok(check({ ...clone(), side: "port" }).some((p) => /side/.test(p)));
+    assert.ok(check({ ...clone(), format: "hermesd-golden/0" }).some((p) => /format/.test(p)));
+  });
+
+  it("rejects a new regression next to an existing mismatch", () => {
+    const up = clone();
+    up.rows.messages[1]!.content = "something else entirely";
+    assert.ok(check(up).some((p) => /changed from the baseline/.test(p)), "changed difference");
+  });
+
+  it("rejects a script with no baseline entry that differs, and an entry that vanished", () => {
+    assert.ok(check(upstream, { note: "", scripts: {} }).some((p) => /does not list/.test(p)));
+    assert.ok(checkRecords(name, port, port, ignore, base).problems.some((p) => /now agrees|side/.test(p)));
+    const same = JSON.parse(JSON.stringify(port)) as GoldenRecord;
+    same.side = "upstream";
+    assert.ok(checkRecords(name, port, same, ignore, base).problems.some((p) => /now agrees/.test(p)));
+  });
+
+  it("summarize is stable and sensitive to values", () => {
+    const d = [{ where: "request 0", field: "requests[0].x", port: 1, upstream: 2 }];
+    assert.equal(summarize(d).digest, summarize(structuredClone(d)).digest);
+    assert.notEqual(summarize(d).digest, summarize([{ ...d[0]!, upstream: 3 }]).digest);
+  });
+
+  it("the digest ignores key order and record order", () => {
+    const a = { where: "messages row 1", field: "rows.messages[1]", port: { tool_call_id: "c1", content: "x", n: { b: 1, a: 2 } }, upstream: { content: "y", tool_call_id: "c1" } };
+    const reordered = { where: a.where, field: a.field, port: { n: { a: 2, b: 1 }, content: "x", tool_call_id: "c1" }, upstream: { tool_call_id: "c1", content: "y" } };
+    const other = { where: "request 0", field: "requests[0].x", port: 1, upstream: 2 };
+    assert.equal(summarize([a, other]).digest, summarize([other, reordered]).digest);
+    assert.notEqual(summarize([a]).digest, summarize([{ ...a, upstream: { content: "z", tool_call_id: "c1" } }]).digest);
+  });
+
+  it("the digest of tool-error-text is unchanged when the keys of the rows are reordered", () => {
+    const n = "tool-error-text";
+    const port = JSON.parse(readFileSync(join(PORT_DIR, `${n}.json`), "utf8")) as GoldenRecord;
+    const up = JSON.parse(readFileSync(join(UPSTREAM_DIR, `${n}.json`), "utf8")) as GoldenRecord;
+    const flip = (o: unknown): unknown =>
+      Array.isArray(o) ? o.map(flip) : typeof o === "object" && o !== null
+        ? Object.fromEntries(Object.entries(o).reverse().map(([k, v]) => [k, flip(v)])) : o;
+    const ig = loadScript(n).upstream.ignore ?? [];
+    const d1 = compareTranscripts(port, up, { ignore: ig });
+    const d2 = compareTranscripts(flip(port) as GoldenRecord, flip(up) as GoldenRecord, { ignore: ig });
+    assert.ok(d1.length > 0);
+    assert.equal(summarize(d2).digest, summarize(d1).digest);
+    assert.equal(summarize(d1).digest, loadBaseline().scripts[n]?.digest);
+  });
 });

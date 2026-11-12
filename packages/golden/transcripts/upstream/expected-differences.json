@@ -1,0 +1,244 @@
+{
+  "note": "Expected differences between the port and upstream Hermes (recorded 2026-11-12, hermes-agent a9ff979), not yet sorted into port bug, upstream change or stand-in (UPSTREAM.md, 'Reading a difference'). Per script: the number of differences, their field paths and a digest of the full list (fields and both values). The unit test and `cli.ts compare` fail on a difference not listed here, on an entry whose difference vanished or changed. Regenerate with `bun packages/golden/src/cli.ts baseline [name...]` after reading the diff. `compare --strict` ignores this file.",
+  "scripts": {
+    "cancellation-during-tool": {
+      "diffCount": 19,
+      "fields": [
+        "messages row count",
+        "requests[0].body.reasoning_effort",
+        "requests[1].body.messages[1].content",
+        "requests[1].body.messages[2].content",
+        "requests[1].body.messages[3].content",
+        "requests[1].body.messages[3].role",
+        "requests[1].body.messages[4]",
+        "requests[1].body.reasoning_effort",
+        "rows.admissions[0].outcome",
+        "rows.messages[1].content",
+        "rows.messages[1].tool_calls[0].call_id",
+        "rows.messages[1].tool_calls[0].response_item_id",
+        "rows.messages[2].content",
+        "rows.messages[3].content",
+        "rows.messages[3].role",
+        "rows.messages[4].content",
+        "rows.messages[4].finish_reason",
+        "rows.messages[4].role",
+        "rows.messages[5]"
+      ],
+      "digest": "727c22848374b37e749099cfa471eadcfc3f0631962ea8f8698a8f663aa266a4"
+    },
+    "clarify-sequential": {
+      "diffCount": 15,
+      "fields": [
+        "admissions row count",
+        "requests[0].body.reasoning_effort",
+        "requests[1].body.messages[1].content",
+        "requests[1].body.messages[1].tool_calls[0].function.arguments",
+        "requests[1].body.messages[2].content",
+        "requests[1].body.messages[3].content",
+        "requests[1].body.reasoning_effort",
+        "rows.admissions[1]",
+        "rows.messages[1].content",
+        "rows.messages[1].tool_calls[0].call_id",
+        "rows.messages[1].tool_calls[0].response_item_id",
+        "rows.messages[1].tool_calls[1].call_id",
+        "rows.messages[1].tool_calls[1].response_item_id",
+        "rows.messages[2].content",
+        "rows.messages[3].content"
+      ],
+      "digest": "3a6b20cb66f44e344e5303dd98ca18b646879caa9ed26043a8e9209d47640b4b"
+    },
+    "dropped-stream-mid-token": {
+      "diffCount": 2,
+      "fields": [
+        "requests[0].body.reasoning_effort",
+        "requests[1].body.reasoning_effort"
+      ],
+      "digest": "9a308b30fe47c41efebb132db207b8a41616a0323b1e47b856f9bbab12785ac3"
+    },
+    "format-anthropic-messages": {
+      "diffCount": 8,
+      "fields": [
+        "requests[0].body.messages[0].content",
+        "requests[1].body.messages[1].content[0].cache_control",
+        "requests[1].body.messages[2].content[0].cache_control",
+        "requests[1].body.messages[2].content[0].content",
+        "rows.messages[1].tool_calls[0].call_id",
+        "rows.messages[1].tool_calls[0].function.arguments",
+        "rows.messages[1].tool_calls[0].response_item_id",
+        "rows.messages[2].content"
+      ],
+      "digest": "74800b20b50ec9ec2eb084cf5de7b3de4466fa773148a061325f0d9d276a252b"
+    },
+    "format-bedrock-converse": {
+      "diffCount": 7,
+      "fields": [
+        "requests[0].body.inferenceConfig",
+        "requests[1].body.inferenceConfig",
+        "requests[1].body.messages[2].content[0].toolResult.content[0].text",
+        "rows.messages[1].tool_calls[0].call_id",
+        "rows.messages[1].tool_calls[0].function.arguments",
+        "rows.messages[1].tool_calls[0].response_item_id",
+        "rows.messages[2].content"
+      ],
+      "digest": "93d8d5566162fe674ba429f5aab72f20baa7e2bd7c75beed0b96b8b63130e990"
+    },
+    "format-chat-completions": {
+      "diffCount": 6,
+      "fields": [
+        "requests[0].body.reasoning_effort",
+        "requests[1].body.messages[2].content",
+        "requests[1].body.reasoning_effort",
+        "rows.messages[1].tool_calls[0].call_id",
+        "rows.messages[1].tool_calls[0].response_item_id",
+        "rows.messages[2].content"
+      ],
+      "digest": "2a892dff2113448b958d3c89688935c03b462293cda5e7c726e3f9389b8eb95f"
+    },
+    "format-codex-responses": {
+      "diffCount": 6,
+      "fields": [
+        "requests[0].body.stream",
+        "requests[1].body.input[1].id",
+        "requests[1].body.input[3].output",
+        "requests[1].body.stream",
+        "rows.messages[1].tool_calls[0].response_item_id",
+        "rows.messages[2].content"
+      ],
+      "digest": "53af2ed41d152c9527a2945da04c688ee7a139d2efacff681c3504af8b84b2e8"
+    },
+    "hook-blocks-tool": {
+      "diffCount": 4,
+      "fields": [
+        "requests[0].body.reasoning_effort",
+        "requests[1].body.reasoning_effort",
+        "rows.messages[1].tool_calls[0].call_id",
+        "rows.messages[1].tool_calls[0].response_item_id"
+      ],
+      "digest": "e4ad4fa0408e4f44c272d867289df92cf33eb4a1697508f7e5525fe341820c3a"
+    },
+    "hook-crashes": {
+      "diffCount": 4,
+      "fields": [
+        "requests[0].body.reasoning_effort",
+        "requests[1].body.reasoning_effort",
+        "rows.messages[1].tool_calls[0].call_id",
+        "rows.messages[1].tool_calls[0].response_item_id"
+      ],
+      "digest": "e4ad4fa0408e4f44c272d867289df92cf33eb4a1697508f7e5525fe341820c3a"
+    },
+    "hook-time-budget": {
+      "diffCount": 4,
+      "fields": [
+        "requests[0].body.reasoning_effort",
+        "requests[1].body.reasoning_effort",
+        "rows.messages[1].tool_calls[0].call_id",
+        "rows.messages[1].tool_calls[0].response_item_id"
+      ],
+      "digest": "e4ad4fa0408e4f44c272d867289df92cf33eb4a1697508f7e5525fe341820c3a"
+    },
+    "interrupt-mid-call": {
+      "diffCount": 13,
+      "fields": [
+        "messages row count",
+        "requests[0].body.reasoning_effort",
+        "requests[1].body.messages[1].content",
+        "requests[1].body.messages[1].role",
+        "requests[1].body.messages[2]",
+        "requests[1].body.reasoning_effort",
+        "rows.admissions[0].outcome",
+        "rows.messages[1].content",
+        "rows.messages[1].role",
+        "rows.messages[2].content",
+        "rows.messages[2].finish_reason",
+        "rows.messages[2].role",
+        "rows.messages[3]"
+      ],
+      "digest": "2fd03dd0640bf6282d3cca9ed4b64174a680aae24bac0c0da6dc0ad63da86405"
+    },
+    "one-tool-call": {
+      "diffCount": 6,
+      "fields": [
+        "requests[0].body.reasoning_effort",
+        "requests[1].body.messages[2].content",
+        "requests[1].body.reasoning_effort",
+        "rows.messages[1].tool_calls[0].call_id",
+        "rows.messages[1].tool_calls[0].response_item_id",
+        "rows.messages[2].content"
+      ],
+      "digest": "2a892dff2113448b958d3c89688935c03b462293cda5e7c726e3f9389b8eb95f"
+    },
+    "parallel-tools": {
+      "diffCount": 12,
+      "fields": [
+        "requests[0].body.reasoning_effort",
+        "requests[1].body.messages[1].content",
+        "requests[1].body.messages[2].content",
+        "requests[1].body.messages[3].content",
+        "requests[1].body.reasoning_effort",
+        "rows.messages[1].content",
+        "rows.messages[1].tool_calls[0].call_id",
+        "rows.messages[1].tool_calls[0].response_item_id",
+        "rows.messages[1].tool_calls[1].call_id",
+        "rows.messages[1].tool_calls[1].response_item_id",
+        "rows.messages[2].content",
+        "rows.messages[3].content"
+      ],
+      "digest": "d633815dd163f41753c1677ac00b618523bcf74f89124688b86dcdd79eed8e1c"
+    },
+    "plain-reply": {
+      "diffCount": 1,
+      "fields": [
+        "requests[0].body.reasoning_effort"
+      ],
+      "digest": "9f377067fcd01e5a0f3641858b5117ed354db2a1b051a2f471e781b4d76d0805"
+    },
+    "provider-fallback-429": {
+      "diffCount": 2,
+      "fields": [
+        "requests[0].body.reasoning_effort",
+        "requests[1].body.reasoning_effort"
+      ],
+      "digest": "9a308b30fe47c41efebb132db207b8a41616a0323b1e47b856f9bbab12785ac3"
+    },
+    "three-plugins-hook-order": {
+      "diffCount": 6,
+      "fields": [
+        "requests[0].body.reasoning_effort",
+        "requests[1].body.messages[2].content",
+        "requests[1].body.reasoning_effort",
+        "rows.messages[1].tool_calls[0].call_id",
+        "rows.messages[1].tool_calls[0].response_item_id",
+        "rows.messages[2].content"
+      ],
+      "digest": "aca5bdef7617ce7a4bff1620378820beec1ff579d4ee30b13e1ebb8737e2f67f"
+    },
+    "tool-error-text": {
+      "diffCount": 22,
+      "fields": [
+        "requests[0].body.reasoning_effort",
+        "requests[1].body.messages[1].content",
+        "requests[1].body.messages[2].content",
+        "requests[1].body.messages[2].tool_call_id",
+        "requests[1].body.messages[3].content",
+        "requests[1].body.messages[3].tool_call_id",
+        "requests[1].body.messages[4].content",
+        "requests[1].body.reasoning_effort",
+        "rows.messages[1].content",
+        "rows.messages[1].tool_calls[0].call_id",
+        "rows.messages[1].tool_calls[0].response_item_id",
+        "rows.messages[1].tool_calls[1].call_id",
+        "rows.messages[1].tool_calls[1].response_item_id",
+        "rows.messages[1].tool_calls[2].call_id",
+        "rows.messages[1].tool_calls[2].response_item_id",
+        "rows.messages[2].content",
+        "rows.messages[2].tool_call_id",
+        "rows.messages[2].tool_name",
+        "rows.messages[3].content",
+        "rows.messages[3].tool_call_id",
+        "rows.messages[3].tool_name",
+        "rows.messages[4].content"
+      ],
+      "digest": "9417de8abc9b66f85762e5b682d3ff82104a8ea97cacf6fb017a5cff5a4b81ca"
+    }
+  }
+}

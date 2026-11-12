@@ -233,10 +233,12 @@ export class NodePlatform {
   }
 
   /** Run `name` on the actor every `everyMs` of virtual time. The schedule is durable. */
-  cron(key: string, name: string, everyMs: number): void {
+  cron(key: string, name: string, everyMs: number, schedule = true): void {
     const rec = this.#rec(key);
     const entry: CronEntry = { name, everyMs, cancel: () => {} };
     rec.crons.push(entry);
+    // Registered but not scheduled: only `runCron` dispatches the job.
+    if (!schedule) return;
     const arm = (at: number): void => {
       entry.cancel = this.clock.schedule(at, async () => {
         arm(at + everyMs);
@@ -244,6 +246,16 @@ export class NodePlatform {
       });
     };
     arm(this.clock.now() + everyMs);
+  }
+
+  /**
+   * Run one named cron job of an actor now, once, without moving the clock. Test-facing:
+   * the scheduled runs (`cron()`) stay as they are and no other alarm or job is touched.
+   */
+  async runCron(key: string, name: string): Promise<void> {
+    const rec = this.#rec(key);
+    if (!rec.crons.some((c) => c.name === name)) throw new Error(`no cron job ${name} on ${key}`);
+    await this.#deliverCron(rec, name);
   }
 
   // ---------------------------------------------------------------- clients
@@ -330,9 +342,17 @@ export class NodePlatform {
     return first ? { at: first.at, key: first.key } : null;
   }
 
+  #crashHooks: Array<(key: string) => void> = [];
+
+  /** Run `hook` whenever an actor is crashed, by `crash()` or by a fault rule, before its activations are killed. */
+  onCrash(hook: (key: string) => void): void {
+    this.#crashHooks.push(hook);
+  }
+
   /** Crash the actor now. JS state and running promises are gone. Uncommitted rows roll back. */
   crash(key: string): void {
     const rec = this.#rec(key);
+    for (const h of this.#crashHooks) h(key);
     for (const act of rec.acts) {
       act.alive = false;
       act.waiters = [];

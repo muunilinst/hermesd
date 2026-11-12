@@ -1,0 +1,13 @@
+[
+  {
+    "input": 0,
+    "cmd": [
+      "chat",
+      "-q",
+      "hi"
+    ],
+    "rc": 0,
+    "secs": 6.58,
+    "out": "Query: hi\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u2624 Hermes\nHello! How can I help?\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nResume this session with:\n  hermes --resume local-116eaf528f3fd16cc527ff15dfc0fd5fec2b4c32d08e6a8bee2f72907de4719d\n\nSession:        local-116eaf528f3fd16cc527ff15dfc0fd5fec2b4c32d08e6a8bee2f72907de4719d\nDuration:       5s\nMessages:       2 (1 user, 0 tool calls)\n"
+  }
+]

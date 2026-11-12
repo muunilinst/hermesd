@@ -1,0 +1,567 @@
+[
+ {
+  "kind": "plain",
+  "session_id": "api-9961b484f8a8b605",
+  "pragmas": {
+   "journal_mode": "wal",
+   "page_size": 4096
+  },
+  "rss_kib_after_start_and_warmup": 252000,
+  "rss_kib_after_20_turns": 294156,
+  "rss_after_20_per_process": {
+   "340": [
+    "hermes",
+    294156
+   ]
+  },
+  "clean_wall_s": [
+   0.1527,
+   0.1254,
+   0.0947,
+   0.0993,
+   0.0985,
+   0.0874,
+   0.1716,
+   0.1057,
+   0.0965,
+   0.1033,
+   0.0944,
+   0.1052,
+   0.0972,
+   0.0883,
+   0.0896,
+   0.0892,
+   0.0914,
+   0.0891,
+   0.0923,
+   0.0944
+  ],
+  "clean_median_s": 0.0956,
+  "clean_p95_s": 0.1536,
+  "traced_median_s": 0.21265,
+  "turns_traced": [
+   {
+    "turn": 0,
+    "wall_s": 0.2069,
+    "reply": "Hello 1!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": 84,
+    "wal_commit_frames": 15,
+    "syscalls": {
+     "wal_writes": 156,
+     "wal_fsyncs": 14,
+     "db_writes": 0,
+     "db_fsyncs": 0
+    }
+   },
+   {
+    "turn": 1,
+    "wall_s": 0.2116,
+    "reply": "Hello 2!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": null,
+    "wal_commit_frames": null,
+    "syscalls": {
+     "wal_writes": 149,
+     "wal_fsyncs": 16,
+     "db_writes": 105,
+     "db_fsyncs": 1
+    }
+   },
+   {
+    "turn": 2,
+    "wall_s": 0.1732,
+    "reply": "Hello 3!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": 76,
+    "wal_commit_frames": 14,
+    "syscalls": {
+     "wal_writes": 152,
+     "wal_fsyncs": 14,
+     "db_writes": 0,
+     "db_fsyncs": 0
+    }
+   },
+   {
+    "turn": 3,
+    "wall_s": 0.2766,
+    "reply": "Hello 4!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": 74,
+    "wal_commit_frames": 14,
+    "syscalls": {
+     "wal_writes": 148,
+     "wal_fsyncs": 14,
+     "db_writes": 0,
+     "db_fsyncs": 0
+    }
+   },
+   {
+    "turn": 4,
+    "wall_s": 0.222,
+    "reply": "Hello 5!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": null,
+    "wal_commit_frames": null,
+    "syscalls": {
+     "wal_writes": 153,
+     "wal_fsyncs": 16,
+     "db_writes": 42,
+     "db_fsyncs": 1
+    }
+   },
+   {
+    "turn": 5,
+    "wall_s": 0.1758,
+    "reply": "Hello 6!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": 77,
+    "wal_commit_frames": 14,
+    "syscalls": {
+     "wal_writes": 154,
+     "wal_fsyncs": 14,
+     "db_writes": 0,
+     "db_fsyncs": 0
+    }
+   },
+   {
+    "turn": 6,
+    "wall_s": 0.1666,
+    "reply": "Hello 7!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": -13,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": -13,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": -13,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": -13
+    },
+    "wal_frames": 76,
+    "wal_commit_frames": 14,
+    "syscalls": {
+     "wal_writes": 152,
+     "wal_fsyncs": 14,
+     "db_writes": 0,
+     "db_fsyncs": 0
+    }
+   },
+   {
+    "turn": 7,
+    "wall_s": 0.1633,
+    "reply": "Hello 8!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": null,
+    "wal_commit_frames": null,
+    "syscalls": {
+     "wal_writes": 155,
+     "wal_fsyncs": 16,
+     "db_writes": 46,
+     "db_fsyncs": 1
+    }
+   },
+   {
+    "turn": 8,
+    "wall_s": 0.2105,
+    "reply": "Hello 9!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "session_model_usage": 1,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": 80,
+    "wal_commit_frames": 15,
+    "syscalls": {
+     "wal_writes": 160,
+     "wal_fsyncs": 15,
+     "db_writes": 0,
+     "db_fsyncs": 0
+    }
+   },
+   {
+    "turn": 9,
+    "wall_s": 0.158,
+    "reply": "Hello 11!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": 74,
+    "wal_commit_frames": 14,
+    "syscalls": {
+     "wal_writes": 148,
+     "wal_fsyncs": 14,
+     "db_writes": 0,
+     "db_fsyncs": 0
+    }
+   },
+   {
+    "turn": 10,
+    "wall_s": 0.2246,
+    "reply": "Hello 12!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": null,
+    "wal_commit_frames": null,
+    "syscalls": {
+     "wal_writes": 153,
+     "wal_fsyncs": 16,
+     "db_writes": 45,
+     "db_fsyncs": 1
+    }
+   },
+   {
+    "turn": 11,
+    "wall_s": 0.2339,
+    "reply": "Hello 13!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": 76,
+    "wal_commit_frames": 14,
+    "syscalls": {
+     "wal_writes": 152,
+     "wal_fsyncs": 14,
+     "db_writes": 0,
+     "db_fsyncs": 0
+    }
+   },
+   {
+    "turn": 12,
+    "wall_s": 0.2137,
+    "reply": "Hello 14!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": 76,
+    "wal_commit_frames": 14,
+    "syscalls": {
+     "wal_writes": 152,
+     "wal_fsyncs": 14,
+     "db_writes": 0,
+     "db_fsyncs": 0
+    }
+   },
+   {
+    "turn": 13,
+    "wall_s": 0.2357,
+    "reply": "Hello 15!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": null,
+    "wal_commit_frames": null,
+    "syscalls": {
+     "wal_writes": 149,
+     "wal_fsyncs": 16,
+     "db_writes": 44,
+     "db_fsyncs": 1
+    }
+   },
+   {
+    "turn": 14,
+    "wall_s": 0.1886,
+    "reply": "Hello 16!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": -13,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": -13,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": -13,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": -13
+    },
+    "wal_frames": 76,
+    "wal_commit_frames": 14,
+    "syscalls": {
+     "wal_writes": 152,
+     "wal_fsyncs": 14,
+     "db_writes": 0,
+     "db_fsyncs": 0
+    }
+   },
+   {
+    "turn": 15,
+    "wall_s": 0.2393,
+    "reply": "Hello 17!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": 76,
+    "wal_commit_frames": 14,
+    "syscalls": {
+     "wal_writes": 152,
+     "wal_fsyncs": 14,
+     "db_writes": 0,
+     "db_fsyncs": 0
+    }
+   },
+   {
+    "turn": 16,
+    "wall_s": 0.2525,
+    "reply": "Hello 18!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": null,
+    "wal_commit_frames": null,
+    "syscalls": {
+     "wal_writes": 153,
+     "wal_fsyncs": 16,
+     "db_writes": 44,
+     "db_fsyncs": 1
+    }
+   },
+   {
+    "turn": 17,
+    "wall_s": 0.1629,
+    "reply": "Hello 19!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": 76,
+    "wal_commit_frames": 14,
+    "syscalls": {
+     "wal_writes": 152,
+     "wal_fsyncs": 14,
+     "db_writes": 0,
+     "db_fsyncs": 0
+    }
+   },
+   {
+    "turn": 18,
+    "wall_s": 0.2761,
+    "reply": "Hello 20!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": 77,
+    "wal_commit_frames": 15,
+    "syscalls": {
+     "wal_writes": 154,
+     "wal_fsyncs": 15,
+     "db_writes": 0,
+     "db_fsyncs": 0
+    }
+   },
+   {
+    "turn": 19,
+    "wall_s": 0.2473,
+    "reply": "Hello 22!",
+    "row_count_delta": {
+     "session_admissions": 1,
+     "messages_fts_docsize": 2,
+     "state_meta": 1,
+     "messages": 2,
+     "messages_fts_trigram_idx": 2,
+     "messages_fts_trigram_docsize": 2,
+     "messages_fts_data": 2,
+     "messages_fts_trigram": 2,
+     "messages_fts_idx": 2,
+     "messages_fts": 2,
+     "messages_fts_trigram_data": 2
+    },
+    "wal_frames": 74,
+    "wal_commit_frames": 14,
+    "syscalls": {
+     "wal_writes": 148,
+     "wal_fsyncs": 15,
+     "db_writes": 44,
+     "db_fsyncs": 1
+    }
+   }
+  ],
+  "model_requests": 45
+ }
+]

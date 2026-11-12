@@ -64,6 +64,15 @@ export interface Host {
    */
   disarm?(key: string): Promise<void>;
 
+  /**
+   * Keep the actor in memory until `work` settles, and return it. The runtime wraps the
+   * work it starts in the background (the turn loop, the outbox delivery), which no
+   * request or alarm is waiting for. Rivet needs it (`c.keepAwake`): without it the actor
+   * may sleep in the middle of a turn. On Durable Objects pending I/O already keeps the
+   * object in memory, so an adapter may leave it out.
+   */
+  keepAwake?<T>(work: Promise<T>): Promise<T>;
+
   /** Outbound HTTP. The signal aborts the request and drops partial output. */
   fetch(req: Request, signal?: AbortSignal): Promise<Response>;
 

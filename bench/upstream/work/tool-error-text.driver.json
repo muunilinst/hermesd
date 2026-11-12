@@ -1,0 +1,13 @@
+[
+  {
+    "input": 0,
+    "cmd": [
+      "chat",
+      "-q",
+      "try three things"
+    ],
+    "rc": 0,
+    "secs": 5.52,
+    "out": "Query: try three things\n\u2717 $ ls nope [exit 2]\n\u2717 $ [Invalid command: expected string, got NoneType]\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u2624 Hermes\nAll three failed.\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nResume this session with:\n  hermes --resume local-e2ff80edc2c0ce3ad6207a3680342ded2effaf5ac4ef48a2c002a0dfc3bab002\n\nSession:        local-e2ff80edc2c0ce3ad6207a3680342ded2effaf5ac4ef48a2c002a0dfc3bab002\nDuration:       4s\nMessages:       6 (1 user, 4 tool calls)\n"
+  }
+]

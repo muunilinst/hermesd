@@ -75,6 +75,11 @@ export interface RivetHostOptions {
   wakeAction?: string;
   /** Called when a background task throws. */
   onTaskError?: (name: string, error: unknown) => void;
+  /**
+   * Called for each write the adapter itself makes: `"row"` for a row of `host_meta` or
+   * `wake_timers`, `"timer"` for `schedule.at` and `schedule.cancel`. For metering.
+   */
+  onWrite?: (kind: "row" | "timer") => void;
 }
 
 /** Called when an obligation is due. */
@@ -120,6 +125,7 @@ export class RivetHost implements Host {
   readonly #tasks = new Map<string, Promise<void>>();
   #chain: Promise<void> = Promise.resolve();
   #broken: unknown;
+  #closed = false;
   #epoch: OwnerEpoch | undefined;
   #handler: WakeHandler | undefined;
 
@@ -137,6 +143,7 @@ export class RivetHost implements Host {
   static async activate(c: ActorLike, opts: RivetHostOptions = {}): Promise<RivetHost> {
     const host = new RivetHost(c, opts);
     await host.#load();
+    opts.onWrite?.("row");
     const epoch = await host.tx((sql) => {
       for (const stmt of SCHEMA) sql.exec(stmt);
       sql.exec(
@@ -147,6 +154,22 @@ export class RivetHost implements Host {
     host.#epoch = epoch;
     hosts.set(c.actorId, host);
     return host;
+  }
+
+  /**
+   * Call this when the activation stops (`onSleep`). It removes this host from the registry that `of`
+   * reads, but only if the registered host is this one (a replacement activation may have registered
+   * itself), and closes the in-memory mirror. Calls on this host after `close` fail.
+   */
+  close(): void {
+    if (hosts.get(this.#c.actorId) === this) hosts.delete(this.#c.actorId);
+    if (this.#closed) return;
+    this.#closed = true;
+    try {
+      this.#mirror.close();
+    } catch {
+      // Already closed.
+    }
   }
 
   /** The host of the running actor. Use it inside actions. */
@@ -244,7 +267,7 @@ export class RivetHost implements Host {
     const cols = Object.keys(row);
     this.#mirror
       .prepare(`INSERT INTO "${table}" (${cols.map((x) => `"${x}"`).join(",")}) VALUES (${cols.map(() => "?").join(",")})`)
-      .run(...(Object.values(row) as SqlValue[]));
+      .run(...(Object.values(row).map(blobOf) as SqlValue[]));
   }
 
   id(): string {
@@ -327,7 +350,9 @@ export class RivetHost implements Host {
    */
   async arm(at: Date, key: string): Promise<void> {
     const fireMs = Math.max(at.getTime(), this.#now());
+    this.#opts.onWrite?.("timer");
     const id = await this.#c.schedule.at(fireMs, this.#opts.wakeAction ?? "hostWake", key);
+    this.#opts.onWrite?.("row");
     const old = await this.tx((sql) => {
       const prev = sql.exec("SELECT schedule_id FROM wake_timers WHERE key = ?", key)[0]?.["schedule_id"];
       sql.exec(
@@ -341,7 +366,12 @@ export class RivetHost implements Host {
       );
       return prev;
     });
-    if (typeof old === "string") await this.#c.schedule.cancel(old);
+    if (typeof old === "string") await this.#cancel(old);
+  }
+
+  async #cancel(id: string): Promise<void> {
+    this.#opts.onWrite?.("timer");
+    await this.#c.schedule.cancel(id);
   }
 
   /** Remove an obligation after its work is done. Not part of Host. */
@@ -351,7 +381,8 @@ export class RivetHost implements Host {
       sql.exec("DELETE FROM wake_timers WHERE key = ?", key);
       return prev;
     });
-    if (typeof old === "string") await this.#c.schedule.cancel(old);
+    if (old !== undefined) this.#opts.onWrite?.("row");
+    if (typeof old === "string") await this.#cancel(old);
   }
 
   /** The runtime sets the function that runs when an obligation is due. */
@@ -373,13 +404,15 @@ export class RivetHost implements Host {
     if (!row) return [];
     const due = Number(row["due_ms"]) <= now;
     const fireMs = due ? now + (this.#opts.retryDelayMs ?? 60_000) : Number(row["due_ms"]);
+    this.#opts.onWrite?.("timer");
     const id = await this.#c.schedule.at(fireMs, this.#opts.wakeAction ?? "hostWake", key);
     const stale = await this.tx((sql) => {
       const cur = sql.exec("SELECT schedule_id FROM wake_timers WHERE key = ?", key)[0];
+      if (cur) this.#opts.onWrite?.("row");
       if (cur) sql.exec("UPDATE wake_timers SET fire_ms = ?, schedule_id = ? WHERE key = ?", fireMs, id, key);
       return cur ? cur["schedule_id"] : id;
     });
-    if (typeof stale === "string") await this.#c.schedule.cancel(stale);
+    if (typeof stale === "string") await this.#cancel(stale);
     if (!due) return [];
     if (this.#handler) await this.#handler([key]);
     return [key];
@@ -400,6 +433,11 @@ export class RivetHost implements Host {
     );
     this.#tasks.set(name, task);
     return task;
+  }
+
+  /** Keep the actor awake until `work` settles (`c.keepAwake`). The runtime's background work goes here. */
+  keepAwake<T>(work: Promise<T>): Promise<T> {
+    return this.#c.keepAwake(work);
   }
 
   /** Outbound HTTP. The signal aborts the request. */
@@ -431,6 +469,15 @@ export class RivetHost implements Host {
       },
     };
   }
+}
+
+/**
+ * rivetkit 3.0.7's native `c.db.execute` returns a BLOB column as a plain array of byte
+ * numbers (found on the FTS5 `_data.block` column), which `node:sqlite` cannot bind.
+ * A value that comes back as an array is a BLOB: turn it into bytes.
+ */
+function blobOf(v: unknown): unknown {
+  return Array.isArray(v) ? Uint8Array.from(v as number[]) : v;
 }
 
 /**

@@ -1,0 +1,168 @@
+{
+  "at": "2026-11-12T18:19:31.296Z",
+  "usage": {
+    "turnsPerMonth": 900,
+    "storageGb": 0.05
+  },
+  "prices": {
+    "doRequestUsd": 1.5e-7,
+    "doGbSecondUsd": 0.0000125,
+    "doMemoryGb": 0.128,
+    "doRowWrittenUsd": 0.000001,
+    "doStorageGbMonthUsd": 0.2,
+    "vmMonthUsd": 8.09
+  },
+  "results": [
+    {
+      "host": "node",
+      "turns": 20,
+      "modelCallsPerTurn": 1,
+      "modelDelayMs": 0,
+      "perTurn": {
+        "events": 6.6,
+        "tx": 50.8,
+        "statements": 159.3,
+        "rowsChanged": 61.05,
+        "commits": 22.4,
+        "arms": 5.45,
+        "sidecarCalls": 6,
+        "adapterRows": 0,
+        "timerCalls": 0,
+        "busyMs": 4.24,
+        "busyExclModelMs": 4.16
+      },
+      "session": {
+        "activations": 0,
+        "firstEvents": [],
+        "events": 1.6,
+        "tx": 45.8,
+        "statements": 135.3,
+        "rowsChanged": 46.05,
+        "commits": 17.4,
+        "arms": 5.45,
+        "disarms": 2,
+        "fetches": 1,
+        "sidecars": {
+          "actor:sweeper.open": 1,
+          "actor:profile.index": 2,
+          "gateway.deliver": 1,
+          "actor:profile.session_upsert": 1,
+          "actor:sweeper.close": 1
+        },
+        "adapterRows": 0,
+        "timerCalls": 0,
+        "busyMs": 3.56,
+        "busyExclModelMs": 3.47
+      },
+      "turnMs": {
+        "median": 3,
+        "p95": 6,
+        "n": 20
+      },
+      "overheadMs": {
+        "median": 3,
+        "p95": 6,
+        "n": 20
+      },
+      "warmToModelMs": {
+        "median": 2,
+        "p95": 4,
+        "n": 20
+      },
+      "coldToModelMs": {
+        "median": 2,
+        "p95": 5.4,
+        "n": 5
+      },
+      "costUsdPerUserMonth": {
+        "requests": 0.000891,
+        "duration": 0.000006,
+        "rowsWritten": 0.05985,
+        "storage": 0.01,
+        "total": 0.070747,
+        "partial": true,
+        "missing": [
+          "index entries: SQLite total_changes() counts table rows, Durable Objects also bill the rows written to indexes",
+          "rows read, which are billed but cheap, and storage is an assumption",
+          "requests: only events that reached the actor, not the gateway or sidecar requests that carry them",
+          "the node simulator has no adapter: alarm rows are estimated as one per arm"
+        ]
+      }
+    },
+    {
+      "host": "workerd",
+      "turns": 20,
+      "modelCallsPerTurn": 1,
+      "modelDelayMs": 0,
+      "perTurn": {
+        "events": 6,
+        "tx": 42,
+        "statements": 146,
+        "rowsChanged": 59,
+        "commits": 18,
+        "arms": 4,
+        "sidecarCalls": 6,
+        "adapterRows": 6,
+        "timerCalls": 6,
+        "busyMs": 22.1,
+        "busyExclModelMs": 21.55
+      },
+      "session": {
+        "activations": 0,
+        "firstEvents": [],
+        "events": 1,
+        "tx": 37,
+        "statements": 122,
+        "rowsChanged": 44,
+        "commits": 13,
+        "arms": 4,
+        "disarms": 2,
+        "fetches": 1,
+        "sidecars": {
+          "actor:sweeper.open": 1,
+          "actor:profile.index": 2,
+          "gateway.deliver": 1,
+          "actor:profile.session_upsert": 1,
+          "actor:sweeper.close": 1
+        },
+        "adapterRows": 6,
+        "timerCalls": 6,
+        "busyMs": 18.85,
+        "busyExclModelMs": 18.3
+      },
+      "turnMs": {
+        "median": 15,
+        "p95": 19.05,
+        "n": 20
+      },
+      "overheadMs": {
+        "median": 15,
+        "p95": 19.05,
+        "n": 20
+      },
+      "warmToModelMs": {
+        "median": 9,
+        "p95": 11,
+        "n": 20
+      },
+      "coldToModelMs": {
+        "median": 13,
+        "p95": 16.8,
+        "n": 5
+      },
+      "costUsdPerUserMonth": {
+        "requests": 0.00081,
+        "duration": 0.000032,
+        "rowsWritten": 0.0639,
+        "storage": 0.01,
+        "total": 0.074742,
+        "partial": true,
+        "missing": [
+          "index entries: SQLite total_changes() counts table rows, Durable Objects also bill the rows written to indexes",
+          "rows read, which are billed but cheap, and storage is an assumption",
+          "requests: only events that reached the actor, not the gateway or sidecar requests that carry them"
+        ]
+      }
+    }
+  ]
+}

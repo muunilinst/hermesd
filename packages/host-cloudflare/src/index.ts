@@ -55,6 +55,11 @@ export interface CloudflareHostOptions {
   now?: () => number;
   /** Delay for a retry alarm when due work is still open. Default 60000 ms. */
   retryDelayMs?: number;
+  /**
+   * Called for each write the adapter itself makes, outside `Host.tx`: `"row"` for a row of
+   * `host_meta` or `wake_timers`, `"timer"` for `setAlarm` and `deleteAlarm`. For metering.
+   */
+  onWrite?: (kind: "row" | "timer") => void;
 }
 
 /** Called when the alarm fires. `keys` are the due obligations. */
@@ -103,6 +108,7 @@ export class CloudflareHost implements Host {
     this.#opts = opts;
     this.#now = opts.now ?? Date.now;
     this.ready = ctx.blockConcurrencyWhile(async () => {
+      opts.onWrite?.("row");
       this.#epoch = ctx.storage.transactionSync(() => {
         for (const stmt of SCHEMA) ctx.storage.sql.exec(stmt);
         ctx.storage.sql.exec(
@@ -169,14 +175,16 @@ export class CloudflareHost implements Host {
         at.getTime(),
       );
     });
+    this.#opts.onWrite?.("row");
     await this.#setAlarmToEarliest(false);
   }
 
   /** Remove an obligation after its work is done. Not part of Host. */
   async disarm(key: string): Promise<void> {
-    this.#ctx.storage.transactionSync(() => {
-      this.#ctx.storage.sql.exec("DELETE FROM wake_timers WHERE key = ?", key);
-    });
+    const deleted = this.#ctx.storage.transactionSync(
+      () => this.#ctx.storage.sql.exec("DELETE FROM wake_timers WHERE key = ? RETURNING key", key).toArray().length,
+    );
+    if (deleted > 0) this.#opts.onWrite?.("row");
     await this.#setAlarmToEarliest(false);
   }
 
@@ -224,6 +232,7 @@ export class CloudflareHost implements Host {
       const min = storage.sql.exec("SELECT MIN(due_ms) AS m FROM wake_timers").toArray()[0]?.["m"];
       next = min === null || min === undefined ? null : Number(min);
     }
+    this.#opts.onWrite?.("timer");
     if (next === null) {
       await storage.deleteAlarm();
     } else {

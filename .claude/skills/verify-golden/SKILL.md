@@ -17,7 +17,7 @@ intended change; the diff tells you which.
 - **list**: the 20 script names and purposes (`packages/golden/scripts/*.json`).
 - **check**: play scripts on the Node simulator in both rule sets (`durable-objects` and `rivet`) and fail if a committed `transcripts/port/<name>.json` differs.
 - **record**: play scripts and overwrite the committed port transcripts.
-- **compare**: diff port and upstream transcripts; names the request index and the field. `--ignore <path>` and `--strict` change the ignore list.
+- **compare**: diff port and upstream transcripts; names the request index and the field. Default mode prints every difference, marks each script `[expected]` or `[UNEXPECTED]` against the baseline and exits by the policy; `--ignore <path>` hides fields from the print; `--strict` skips the script ignore list and the baseline file and fails on any difference.
 - **scripted-server/**: dependency-free Node scripts a person uses to record the upstream side (`packages/golden/UPSTREAM.md`).
 
 ## How to get to it (user POV)
@@ -26,7 +26,8 @@ intended change; the diff tells you which.
 bun packages/golden/src/cli.ts list
 bun packages/golden/src/cli.ts check [name...]
 bun packages/golden/src/cli.ts record [name...]
-bun packages/golden/src/cli.ts compare [name...] [--ignore path] [--strict]
+bun packages/golden/src/cli.ts compare [name...] [--ignore path] [--strict]   # default: policy vs transcripts/upstream/expected-differences.json; --strict: exact parity
+bun packages/golden/src/cli.ts baseline [name...]    # rewrite expected-differences.json
 ```
 
 `node` works in place of `bun`.

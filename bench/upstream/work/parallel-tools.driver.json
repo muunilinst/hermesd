@@ -1,0 +1,13 @@
+[
+  {
+    "input": 0,
+    "cmd": [
+      "chat",
+      "-q",
+      "run both"
+    ],
+    "rc": 0,
+    "secs": 5.61,
+    "out": "Query: run both\n\ud83d\udcbb $ echo one\n\ud83d\udcbb $ echo two\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u2624 Hermes\nBoth ran.\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nResume this session with:\n  hermes --resume local-4185dee78a4c32298aa7c96e90fb795f08d4c14fc3e5efeea8496f0f09f242e8\n\nSession:        local-4185dee78a4c32298aa7c96e90fb795f08d4c14fc3e5efeea8496f0f09f242e8\nDuration:       5s\nMessages:       5 (1 user, 3 tool calls)\n"
+  }
+]

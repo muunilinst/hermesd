@@ -857,7 +857,8 @@ export class SessionActor implements ActorBehavior {
 
   /** Work that no caller waits for. A failure is not lost: rows and obligations bring it back. */
   #background(fn: () => Promise<void>): void {
-    void fn().catch(() => {});
+    const work = fn().catch(() => {});
+    if (this.#host.keepAwake) void this.#host.keepAwake(work).catch(() => {});
   }
 }
 

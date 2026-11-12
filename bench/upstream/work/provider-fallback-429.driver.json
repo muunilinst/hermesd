@@ -1,0 +1,13 @@
+[
+  {
+    "input": 0,
+    "cmd": [
+      "chat",
+      "-q",
+      "hi"
+    ],
+    "rc": 0,
+    "secs": 6.06,
+    "out": "Query: hi\n\u26a0\ufe0f Model fallback: primary-model via custom unavailable (rate limit); using fallback-model via custom. Primary retry eligible in ~60 s; recovery is not guaranteed.\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u2624 Hermes\nAnswered by the fallback model.\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nResume this session with:\n  hermes --resume local-b57def0d4919c7e74a0601ede761aac9798d15ad115eb098682dff9d22022e08\n\nSession:        local-b57def0d4919c7e74a0601ede761aac9798d15ad115eb098682dff9d22022e08\nDuration:       5s\nMessages:       2 (1 user, 0 tool calls)\n"
+  }
+]

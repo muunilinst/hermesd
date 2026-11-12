@@ -1,0 +1,5 @@
+DIFFERS plain-reply
+request 0: requests[0].body.reasoning_effort
+  port:     "<absent>"
+  upstream: "medium"
+1 compared, 1 differ

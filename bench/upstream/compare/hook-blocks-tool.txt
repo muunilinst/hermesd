@@ -1,0 +1,14 @@
+DIFFERS hook-blocks-tool
+request 0: requests[0].body.reasoning_effort
+  port:     "<absent>"
+  upstream: "medium"
+request 1: requests[1].body.reasoning_effort
+  port:     "<absent>"
+  upstream: "medium"
+messages row 1: rows.messages[1].tool_calls[0].call_id
+  port:     "<absent>"
+  upstream: "call_1"
+messages row 1: rows.messages[1].tool_calls[0].response_item_id
+  port:     "<absent>"
+  upstream: "fc_1"
+1 compared, 1 differ

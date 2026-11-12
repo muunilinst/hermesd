@@ -201,6 +201,19 @@ describe("RivetHost with a fake context", () => {
     });
   }
 
+  it("reloads a BLOB that the platform returns as an array of byte numbers", async () => {
+    // rivetkit 3.0.7's native c.db.execute does this (seen on the FTS5 _data.block column).
+    const raw = new DatabaseSync(":memory:");
+    const real = fakeDb(raw);
+    const f = fakeActor({ ...real, execute: async (q, ...a) => (await real.execute(q, ...a)).map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v instanceof Uint8Array ? Array.from(v) : v]))) });
+    const h = await RivetHost.activate(f.c);
+    await h.tx((s) => s.exec("CREATE TABLE b (id INTEGER PRIMARY KEY, data BLOB)"));
+    await h.tx((s) => s.exec("INSERT INTO b VALUES (1, x'0203')"));
+    const again = await RivetHost.activate(f.c);
+    const row = (await again.tx((s) => s.exec("SELECT data FROM b")))[0]!["data"] as Uint8Array;
+    assert.deepEqual(Array.from(row), [2, 3]);
+  });
+
   it("rejects an async tx callback", async () => {
     const h = await RivetHost.activate(fakeActor().c);
     await assert.rejects(h.tx((async () => 1) as never), TypeError);
@@ -211,6 +224,19 @@ describe("RivetHost with a fake context", () => {
     const old = await RivetHost.activate(f.c);
     await RivetHost.activate(f.c);
     await assert.rejects(old.tx((s) => s.exec("CREATE TABLE z (n)")), FencedError);
+  });
+
+  it("close unregisters and closes the host, but only if it is the registered one", async () => {
+    const f = fakeActor();
+    const old = await RivetHost.activate(f.c);
+    const next = await RivetHost.activate(f.c);
+    old.close(); // the stopped activation: the replacement stays registered
+    assert.equal(RivetHost.of(f.c), next);
+    await assert.rejects(old.tx((s) => s.exec("SELECT 1")));
+    assert.equal((await next.tx((s) => s.exec("SELECT 1 AS n")))[0]!["n"], 1);
+    next.close();
+    next.close(); // idempotent
+    assert.throws(() => RivetHost.of(f.c), /has not run/);
   });
 
   it("handleWake re-arms before the handler runs", async () => {

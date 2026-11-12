@@ -1,0 +1,47 @@
+DIFFERS clarify-sequential
+admissions row count
+  port:     2
+  upstream: 1
+request 0: requests[0].body.reasoning_effort
+  port:     "<absent>"
+  upstream: "medium"
+request 1: requests[1].body.messages[1].content
+  port:     null
+  upstream: ""
+request 1: requests[1].body.messages[1].tool_calls[0].function.arguments
+  port:     "{\"questions\":[{\"question\":\"Which file?\",\"choices\":[\"a.txt\",\"b.txt\"]}]}"
+  upstream: "{\"questions\":[{\"choices\":[\"a.txt\",\"b.txt\"],\"question\":\"Which file?\"}]}"
+request 1: requests[1].body.messages[2].content
+  port:     "{\"responses\":[{\"question\":\"Which file?\",\"status\":\"answered\",\"user_response\":\"a.txt\"}],\"outcome\":\"submitted\"}"
+  upstream: "{\"responses\": [{\"question\": \"Which file?\", \"choices_offered\": [\"a.txt\", \"b.txt\"], \"status\": \"answered\", \"user_response\": \"a.txt\"}], \"ou...
+request 1: requests[1].body.messages[3].content
+  port:     "{\"output\":\"hello\\n\",\"exit_code\":0,\"error\":null}"
+  upstream: "{\"output\": \"hello\", \"exit_code\": 0, \"error\": null}"
+request 1: requests[1].body.reasoning_effort
+  port:     "<absent>"
+  upstream: "medium"
+messages row 1: rows.messages[1].content
+  port:     null
+  upstream: ""
+messages row 1: rows.messages[1].tool_calls[0].call_id
+  port:     "<absent>"
+  upstream: "call_1"
+messages row 1: rows.messages[1].tool_calls[0].response_item_id
+  port:     "<absent>"
+  upstream: "fc_1"
+messages row 1: rows.messages[1].tool_calls[1].call_id
+  port:     "<absent>"
+  upstream: "call_2"
+messages row 1: rows.messages[1].tool_calls[1].response_item_id
+  port:     "<absent>"
+  upstream: "fc_2"
+messages row 2: rows.messages[2].content
+  port:     "{\"responses\":[{\"question\":\"Which file?\",\"status\":\"answered\",\"user_response\":\"a.txt\"}],\"outcome\":\"submitted\"}"
+  upstream: "{\"responses\": [{\"question\": \"Which file?\", \"choices_offered\": [\"a.txt\", \"b.txt\"], \"status\": \"answered\", \"user_response\": \"a.txt\"}], \"ou...
+messages row 3: rows.messages[3].content
+  port:     "{\"output\":\"hello\\n\",\"exit_code\":0,\"error\":null}"
+  upstream: "{\"output\": \"hello\", \"exit_code\": 0, \"error\": null}"
+admissions row 1: rows.admissions[1]
+  port:     {"status":"terminal","input":"a.txt","outcome":"completed"}
+  upstream: "<absent>"
+1 compared, 1 differ

@@ -1,0 +1,98 @@
+{
+  "at": "2026-11-12T18:20:00.108Z",
+  "usage": {
+    "turnsPerMonth": 900,
+    "storageGb": 0.05
+  },
+  "prices": {
+    "doRequestUsd": 1.5e-7,
+    "doGbSecondUsd": 0.0000125,
+    "doMemoryGb": 0.128,
+    "doRowWrittenUsd": 0.000001,
+    "doStorageGbMonthUsd": 0.2,
+    "vmMonthUsd": 8.09
+  },
+  "results": [
+    {
+      "host": "rivet",
+      "turns": 20,
+      "modelCallsPerTurn": 2,
+      "modelDelayMs": 0,
+      "perTurn": {
+        "events": 7.05,
+        "tx": 61.5,
+        "statements": 231.55,
+        "rowsChanged": 91.35,
+        "commits": 24.35,
+        "arms": 6.35,
+        "sidecarCalls": 13.05,
+        "adapterRows": 8.35,
+        "timerCalls": 12.7,
+        "busyMs": 224.39,
+        "busyExclModelMs": 224.02
+      },
+      "session": {
+        "activations": 0,
+        "firstEvents": [],
+        "events": 1,
+        "tx": 55.45,
+        "statements": 201.5,
+        "rowsChanged": 71.35,
+        "commits": 18.35,
+        "arms": 6.35,
+        "disarms": 2,
+        "fetches": 2,
+        "sidecars": {
+          "actor:sweeper.open": 1,
+          "executor.fence": 0.05,
+          "executor.describe": 1,
+          "executor.status": 2,
+          "executor.prepare": 1,
+          "executor.start": 1,
+          "executor.ack": 1,
+          "actor:profile.index": 3,
+          "gateway.deliver": 1,
+          "actor:profile.session_upsert": 1,
+          "actor:sweeper.close": 1
+        },
+        "adapterRows": 8.35,
+        "timerCalls": 12.7,
+        "busyMs": 201.94,
+        "busyExclModelMs": 201.57
+      },
+      "turnMs": {
+        "median": 190.5,
+        "p95": 211.45,
+        "n": 20
+      },
+      "overheadMs": {
+        "median": 190.5,
+        "p95": 211.45,
+        "n": 20
+      },
+      "warmToModelMs": {
+        "median": 80,
+        "p95": 97.35,
+        "n": 20
+      },
+      "coldToModelMs": {
+        "median": 131,
+        "p95": 162,
+        "n": 5
+      },
+      "costUsdPerUserMonth": {
+        "requests": 0.000952,
+        "duration": 0.000323,
+        "rowsWritten": 0.10116,
+        "storage": 0.01,
+        "total": 0.112435,
+        "partial": true,
+        "missing": [
+          "index entries: SQLite total_changes() counts table rows, Durable Objects also bill the rows written to indexes",
+          "rows read, which are billed but cheap, and storage is an assumption",
+          "requests: only events that reached the actor, not the gateway or sidecar requests that carry them"
+        ]
+      }
+    }
+  ]
+}

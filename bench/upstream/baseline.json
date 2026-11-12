@@ -1,0 +1,1319 @@
+{
+ "status": "complete",
+ "status_note": "Historical samples, kept unchanged. They were collected by the drivers as they were before PR review (see collection_method) and have not been re-run with the fixed drivers or re-validated. Sections marked pending_rerun must be re-collected on the Mac before being relied on; sections marked unaffected_by_known_driver_flaws were not touched by the known flaws but share the same unvalidated run.",
+ "collection_method": {
+  "drivers": "bench/upstream/work/bench.py and bench-all.sh as of the original run, before the static fixes described in bench/upstream/baseline.md",
+  "kill_samples": "gateway killed after a fixed 60 s wait whether or not the intended trigger (held model request / running tool) had been observed; the retry sample reused one result dictionary after a 30 s join of the original request; an invalid retry still exited 0",
+  "clean_latency": "clean pass timed each POST /v1/chat/completions without checking the reply text, error envelope or model-request count",
+  "traced_turns": "replies of traced turns were not checked against the scripted text and the per-turn model-request delta was not checked (the tool run recorded 98 model requests where the workload expected 82)",
+  "wal_deltas": "frame counts of state.db-wal subtracted across snapshots without comparing WAL header salts, so checkpoint/restart generations could be mixed",
+  "cold_start": "first_reply_s ended at the first parsed HTTP 200 body (not required to be the scripted 'ok' reply) and the 120 s deadline was not passed to the HTTP client (600 s default)",
+  "recorded_by": "unchanged numbers; nothing in this file was recomputed after the driver fixes"
+ },
+ "environment": {
+  "where": "OrbStack Linux machine hermes-base (Ubuntu 26.04.1, kernel 7.0.14-orbstack, aarch64) on an Apple M3 Pro Mac (11 cores, 18 GiB), macOS 27.0",
+  "vm_cpus": 10,
+  "vm_ram_mib": 8998,
+  "hermes": "NousResearch/hermes-agent a9ff9799 (reports 0.23.0), source checkout, uv venv on CPython 3.14.10 (SQLite 3.53.1), extras anthropic+bedrock+messaging",
+  "mode": "`hermes gateway run` (foreground) with the API server platform (API_SERVER_ENABLED, port 8642), turns sent as POST /v1/chat/completions, X-Hermes-Session-Id to continue",
+  "model": "packages/golden/scripted-server/server.mjs under bun 1.4.2 on 127.0.0.1:8090 (answers instantly)"
+ },
+ "cold_start": {
+  "method": "launch `hermes gateway run`; health_s = until GET /health answers; first_reply_s = until the first POST /v1/chat/completions returns 200 with the scripted reply. 5 runs each.",
+  "reused_home": {
+   "runs": [
+    {
+     "run": 0,
+     "home": "fresh",
+     "health_s": 5.156,
+     "first_reply_s": 6.483,
+     "rss_kib_after_first": 256708
+    },
+    {
+     "run": 1,
+     "home": "warm(reused HERMES_HOME)",
+     "health_s": 3.305,
+     "first_reply_s": 4.085,
+     "rss_kib_after_first": 252284
+    },
+    {
+     "run": 2,
+     "home": "warm(reused HERMES_HOME)",
+     "health_s": 2.877,
+     "first_reply_s": 3.738,
+     "rss_kib_after_first": 251752
+    },
+    {
+     "run": 3,
+     "home": "warm(reused HERMES_HOME)",
+     "health_s": 2.772,
+     "first_reply_s": 3.546,
+     "rss_kib_after_first": 250904
+    },
+    {
+     "run": 4,
+     "home": "warm(reused HERMES_HOME)",
+     "health_s": 2.911,
+     "first_reply_s": 3.824,
+     "rss_kib_after_first": 251236
+    }
+   ],
+   "median_health_s": 2.911,
+   "median_first_reply_s": 3.824
+  },
+  "fresh_home": {
+   "runs": [
+    {
+     "run": 0,
+     "home": "fresh",
+     "health_s": 3.24,
+     "first_reply_s": 4.559,
+     "rss_kib_after_first": 258396
+    },
+    {
+     "run": 1,
+     "home": "fresh",
+     "health_s": 3.254,
+     "first_reply_s": 4.303,
+     "rss_kib_after_first": 251228
+    },
+    {
+     "run": 2,
+     "home": "fresh",
+     "health_s": 3.272,
+     "first_reply_s": 4.396,
+     "rss_kib_after_first": 252564
+    },
+    {
+     "run": 3,
+     "home": "fresh",
+     "health_s": 3.213,
+     "first_reply_s": 4.386,
+     "rss_kib_after_first": 254128
+    },
+    {
+     "run": 4,
+     "home": "fresh",
+     "health_s": 3.168,
+     "first_reply_s": 4.418,
+     "rss_kib_after_first": 259028
+    }
+   ],
+   "median_health_s": 3.24,
+   "median_first_reply_s": 4.396
+  },
+  "status": "pending_rerun",
+  "pending_rerun_reason": "first reply not required to be the scripted 'ok' reply; deadline not enforced per attempt"
+ },
+ "memory_rss_kib": {
+  "method": "sum of VmRSS over the gateway process tree (/proc/<pid>/status)",
+  "after_start_first_reply": [
+   256708,
+   252284,
+   251752,
+   250904,
+   251236,
+   258396,
+   251228,
+   252564,
+   254128,
+   259028
+  ],
+  "plain_after_start_and_warmup": 252000,
+  "plain_after_20_traced_plus_20_untraced_turns": 294156,
+  "tool_after_start_and_warmup": 286280,
+  "tool_after_40_turns": 309724,
+  "idle_start": 281460,
+  "after_5_min_idle": 260884,
+  "status": "unaffected_by_known_driver_flaws"
+ },
+ "turn_overhead_s": {
+  "method": "wall time of POST /v1/chat/completions (non-streaming) with X-Hermes-Session-Id, scripted model answers instantly; one warm-up turn first; 20 turns with strace attached, then 20 without; numbers below are the 20 without strace",
+  "plain_reply": {
+   "median": 0.0956,
+   "p95": 0.1536,
+   "raw": [
+    0.1527,
+    0.1254,
+    0.0947,
+    0.0993,
+    0.0985,
+    0.0874,
+    0.1716,
+    0.1057,
+    0.0965,
+    0.1033,
+    0.0944,
+    0.1052,
+    0.0972,
+    0.0883,
+    0.0896,
+    0.0892,
+    0.0914,
+    0.0891,
+    0.0923,
+    0.0944
+   ],
+   "median_with_strace": 0.21265
+  },
+  "one_tool_call": {
+   "median": 0.15575,
+   "p95": 0.2146,
+   "raw": [
+    0.209,
+    0.1461,
+    0.1615,
+    0.1622,
+    0.1767,
+    0.1476,
+    0.1531,
+    0.1522,
+    0.1571,
+    0.1692,
+    0.1432,
+    0.1429,
+    0.1485,
+    0.1605,
+    0.1664,
+    0.3201,
+    0.1544,
+    0.1486,
+    0.1521,
+    0.1708
+   ],
+   "median_with_strace": 0.35235,
+   "note": "2 model requests + 1 real `echo hello` per turn; an earlier run whose last 2 turns exhausted the scripted steps is kept in work/results/turns-tool.run1-steps-exhausted.json and not used"
+  },
+  "status": "pending_rerun",
+  "pending_rerun_reason": "clean-pass latency (median, p95, raw) came from a pass that did not validate replies or request counts"
+ },
+ "writes_per_turn": {
+  "method": "row counts of every state.db table before/after each turn (read-only connection), WAL commit frames parsed from state.db-wal (valid salt only; null when a checkpoint reset the WAL during the turn), and strace counts of syscalls on state.db-wal. Row counts show inserts, not in-place updates.",
+  "journal_mode": {
+   "journal_mode": "wal",
+   "page_size": 4096
+  },
+  "plain_reply": {
+   "wal_fsyncs_median": 14.0,
+   "wal_fsyncs_range": [
+    14,
+    16
+   ],
+   "wal_write_syscalls_median": 152.0,
+   "wal_commit_frames_when_no_checkpoint": [
+    14,
+    15
+   ],
+   "row_count_delta_per_turn": {
+    "session_admissions": 1,
+    "messages_fts_docsize": 2,
+    "state_meta": 1,
+    "messages": 2,
+    "messages_fts_trigram_idx": 2,
+    "messages_fts_trigram_docsize": 2,
+    "messages_fts_data": 2,
+    "messages_fts_trigram": 2,
+    "messages_fts_idx": 2,
+    "messages_fts": 2,
+    "messages_fts_trigram_data": 2
+   }
+  },
+  "one_tool_call": {
+   "wal_fsyncs_median": 20.0,
+   "wal_fsyncs_range": [
+    19,
+    22
+   ],
+   "wal_write_syscalls_median": 247.5,
+   "wal_commit_frames_when_no_checkpoint": [
+    19,
+    20
+   ],
+   "row_count_delta_per_turn": {
+    "messages_fts_idx": -11,
+    "messages_fts_trigram": 3,
+    "messages": 4,
+    "messages_fts_data": -11,
+    "messages_fts_trigram_data": 3,
+    "messages_fts_trigram_idx": 3,
+    "messages_fts_trigram_docsize": 3,
+    "messages_fts_docsize": 4,
+    "messages_fts": 4,
+    "state_meta": 1,
+    "session_admissions": 1
+   }
+  },
+  "status": "pending_rerun",
+  "pending_rerun_reason": "WAL commit/frame counts were subtracted without checking the WAL generation; traced turns did not check model-request counts"
+ },
+ "idle_cpu": {
+  "method": "utime+stime from /proc/<pid>/stat of the gateway tree over 300 s after one turn, as percent of one core",
+  "percent_of_one_core": 1.718,
+  "cpu_seconds": 5.16,
+  "secs": 300.3,
+  "samples": [
+   {
+    "t": 30,
+    "rss_kib": 288020,
+    "cpu_ticks": 46
+   },
+   {
+    "t": 60,
+    "rss_kib": 280108,
+    "cpu_ticks": 94
+   },
+   {
+    "t": 90,
+    "rss_kib": 280388,
+    "cpu_ticks": 126
+   },
+   {
+    "t": 120,
+    "rss_kib": 268564,
+    "cpu_ticks": 219
+   },
+   {
+    "t": 150,
+    "rss_kib": 260316,
+    "cpu_ticks": 267
+   },
+   {
+    "t": 180,
+    "rss_kib": 260188,
+    "cpu_ticks": 316
+   },
+   {
+    "t": 210,
+    "rss_kib": 259324,
+    "cpu_ticks": 360
+   },
+   {
+    "t": 240,
+    "rss_kib": 259112,
+    "cpu_ticks": 407
+   },
+   {
+    "t": 270,
+    "rss_kib": 259500,
+    "cpu_ticks": 450
+   },
+   {
+    "t": 300,
+    "rss_kib": 260884,
+    "cpu_ticks": 516
+   }
+  ],
+  "status": "unaffected_by_known_driver_flaws"
+ },
+ "shutdown_survival": {
+  "method": "kill -9 of the gateway pid (a) while the scripted model holds the answer, then restart, release the hold after the restart; (b) while the terminal tool runs `echo start >> m; sleep 30; echo end >> m`. Watch 75 s after restart, then retry the request with the same Idempotency-Key. 3 runs each.",
+  "model_call_held": [
+   {
+    "kind": "model",
+    "run": 1,
+    "events": [
+     {
+      "t": 1.22,
+      "event": "kill -9 gateway",
+      "model_requests": 2
+     },
+     {
+      "t": 1.23,
+      "event": "client result after kill",
+      "error": "RemoteDisconnected('Remote end closed connection without response')"
+     },
+     {
+      "event": "processes of old gateway tree still alive",
+      "pids": []
+     },
+     {
+      "t": 4.56,
+      "event": "gateway restarted"
+     },
+     {
+      "t": 7.57,
+      "event": "released hold",
+      "model_requests": 2
+     },
+     {
+      "t": 82.61,
+      "event": "after 75s watch",
+      "model_requests": 2
+     },
+     {
+      "t": 82.67,
+      "event": "client retry with same Idempotency-Key",
+      "error": "<HTTPError 409: 'Conflict'>",
+      "model_requests": 2
+     }
+    ],
+    "rows_at_kill": [
+     {
+      "role": "user",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "session_meta",
+      "content": "",
+      "tool_calls": ""
+     },
+     {
+      "role": "user",
+      "content": "the turn under test",
+      "tool_calls": ""
+     }
+    ],
+    "admissions_at_kill": [
+     {
+      "seq": 1,
+      "admission_id": "f588b75fb00541678856771e7df9e50b",
+      "request_id": "fd17d700c8684ec595987bce50f56f95",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+      "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+      "intent": "queue",
+      "status": "terminal",
+      "outcome": "completed",
+      "owner_epoch": 1,
+      "generation": 1
+     },
+     {
+      "seq": 2,
+      "admission_id": "2fd9e3963fac4604ae22113d3345a753",
+      "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-model-1",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+      "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+      "intent": "queue",
+      "status": "started",
+      "outcome": null,
+      "owner_epoch": 1,
+      "generation": 2
+     }
+    ],
+    "rows_final": [
+     {
+      "role": "user",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "session_meta",
+      "content": "",
+      "tool_calls": ""
+     },
+     {
+      "role": "user",
+      "content": "the turn under test",
+      "tool_calls": ""
+     }
+    ],
+    "admissions_final": [
+     {
+      "seq": 1,
+      "admission_id": "f588b75fb00541678856771e7df9e50b",
+      "request_id": "fd17d700c8684ec595987bce50f56f95",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+      "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+      "intent": "queue",
+      "status": "terminal",
+      "outcome": "completed",
+      "owner_epoch": 1,
+      "generation": 1
+     },
+     {
+      "seq": 2,
+      "admission_id": "2fd9e3963fac4604ae22113d3345a753",
+      "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-model-1",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+      "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+      "intent": "queue",
+      "status": "unknown",
+      "outcome": null,
+      "owner_epoch": 1,
+      "generation": 2
+     }
+    ],
+    "model_request_count": 2,
+    "model_requests_last_user": [
+     [
+      "warm"
+     ],
+     [
+      "the turn under test"
+     ]
+    ],
+    "marker": null
+   },
+   {
+    "kind": "model",
+    "run": 2,
+    "events": [
+     {
+      "t": 1.11,
+      "event": "kill -9 gateway",
+      "model_requests": 2
+     },
+     {
+      "t": 1.13,
+      "event": "client result after kill",
+      "error": "RemoteDisconnected('Remote end closed connection without response')"
+     },
+     {
+      "event": "processes of old gateway tree still alive",
+      "pids": []
+     },
+     {
+      "t": 4.18,
+      "event": "gateway restarted"
+     },
+     {
+      "t": 7.19,
+      "event": "released hold",
+      "model_requests": 2
+     },
+     {
+      "t": 82.21,
+      "event": "after 75s watch",
+      "model_requests": 2
+     },
+     {
+      "t": 82.24,
+      "event": "client retry with same Idempotency-Key",
+      "error": "<HTTPError 409: 'Conflict'>",
+      "model_requests": 2
+     }
+    ],
+    "rows_at_kill": [
+     {
+      "role": "user",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "session_meta",
+      "content": "",
+      "tool_calls": ""
+     },
+     {
+      "role": "user",
+      "content": "the turn under test",
+      "tool_calls": ""
+     }
+    ],
+    "admissions_at_kill": [
+     {
+      "seq": 1,
+      "admission_id": "837c5554cb864c0f8b718109f7bc1d6e",
+      "request_id": "65f287c0fac146a3ae948e00c604fcd6",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+      "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+      "intent": "queue",
+      "status": "terminal",
+      "outcome": "completed",
+      "owner_epoch": 1,
+      "generation": 1
+     },
+     {
+      "seq": 2,
+      "admission_id": "49501c2bd877497f9a58c0f4ac6b975e",
+      "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-model-2",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+      "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+      "intent": "queue",
+      "status": "started",
+      "outcome": null,
+      "owner_epoch": 1,
+      "generation": 2
+     }
+    ],
+    "rows_final": [
+     {
+      "role": "user",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "session_meta",
+      "content": "",
+      "tool_calls": ""
+     },
+     {
+      "role": "user",
+      "content": "the turn under test",
+      "tool_calls": ""
+     }
+    ],
+    "admissions_final": [
+     {
+      "seq": 1,
+      "admission_id": "837c5554cb864c0f8b718109f7bc1d6e",
+      "request_id": "65f287c0fac146a3ae948e00c604fcd6",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+      "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+      "intent": "queue",
+      "status": "terminal",
+      "outcome": "completed",
+      "owner_epoch": 1,
+      "generation": 1
+     },
+     {
+      "seq": 2,
+      "admission_id": "49501c2bd877497f9a58c0f4ac6b975e",
+      "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-model-2",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+      "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+      "intent": "queue",
+      "status": "unknown",
+      "outcome": null,
+      "owner_epoch": 1,
+      "generation": 2
+     }
+    ],
+    "model_request_count": 2,
+    "model_requests_last_user": [
+     [
+      "warm"
+     ],
+     [
+      "the turn under test"
+     ]
+    ],
+    "marker": null
+   },
+   {
+    "kind": "model",
+    "run": 3,
+    "events": [
+     {
+      "t": 1.12,
+      "event": "kill -9 gateway",
+      "model_requests": 2
+     },
+     {
+      "t": 1.13,
+      "event": "client result after kill",
+      "error": "RemoteDisconnected('Remote end closed connection without response')"
+     },
+     {
+      "event": "processes of old gateway tree still alive",
+      "pids": []
+     },
+     {
+      "t": 4.5,
+      "event": "gateway restarted"
+     },
+     {
+      "t": 7.51,
+      "event": "released hold",
+      "model_requests": 2
+     },
+     {
+      "t": 82.54,
+      "event": "after 75s watch",
+      "model_requests": 2
+     },
+     {
+      "t": 82.59,
+      "event": "client retry with same Idempotency-Key",
+      "error": "<HTTPError 409: 'Conflict'>",
+      "model_requests": 2
+     }
+    ],
+    "rows_at_kill": [
+     {
+      "role": "user",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "session_meta",
+      "content": "",
+      "tool_calls": ""
+     },
+     {
+      "role": "user",
+      "content": "the turn under test",
+      "tool_calls": ""
+     }
+    ],
+    "admissions_at_kill": [
+     {
+      "seq": 1,
+      "admission_id": "04919f974860477dafa4f643c74209ef",
+      "request_id": "d30b80a051bf43c29b55bee631ec7fb4",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+      "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+      "intent": "queue",
+      "status": "terminal",
+      "outcome": "completed",
+      "owner_epoch": 1,
+      "generation": 1
+     },
+     {
+      "seq": 2,
+      "admission_id": "a7bd2b42a97a41fd85eb946f3159798e",
+      "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-model-3",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+      "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+      "intent": "queue",
+      "status": "started",
+      "outcome": null,
+      "owner_epoch": 1,
+      "generation": 2
+     }
+    ],
+    "rows_final": [
+     {
+      "role": "user",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "session_meta",
+      "content": "",
+      "tool_calls": ""
+     },
+     {
+      "role": "user",
+      "content": "the turn under test",
+      "tool_calls": ""
+     }
+    ],
+    "admissions_final": [
+     {
+      "seq": 1,
+      "admission_id": "04919f974860477dafa4f643c74209ef",
+      "request_id": "d30b80a051bf43c29b55bee631ec7fb4",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+      "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+      "intent": "queue",
+      "status": "terminal",
+      "outcome": "completed",
+      "owner_epoch": 1,
+      "generation": 1
+     },
+     {
+      "seq": 2,
+      "admission_id": "a7bd2b42a97a41fd85eb946f3159798e",
+      "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-model-3",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+      "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+      "intent": "queue",
+      "status": "unknown",
+      "outcome": null,
+      "owner_epoch": 1,
+      "generation": 2
+     }
+    ],
+    "model_request_count": 2,
+    "model_requests_last_user": [
+     [
+      "warm"
+     ],
+     [
+      "the turn under test"
+     ]
+    ],
+    "marker": null
+   }
+  ],
+  "sleep_30_running": [
+   {
+    "kind": "tool",
+    "run": 1,
+    "events": [
+     {
+      "t": 1.31,
+      "event": "kill -9 gateway",
+      "model_requests": 2
+     },
+     {
+      "t": 1.33,
+      "event": "client result after kill",
+      "error": "RemoteDisconnected('Remote end closed connection without response')"
+     },
+     {
+      "event": "processes of old gateway tree still alive",
+      "pids": [
+       [
+        3082,
+        ""
+       ],
+       [
+        3084,
+        ""
+       ],
+       [
+        3066,
+        "/bin/sh /Users/vhawk19/Documents/code/hermes-agent-pin/hermes_cli/process_supervisor.sh 2945 "
+       ]
+      ]
+     },
+     {
+      "t": 4.51,
+      "event": "gateway restarted"
+     },
+     {
+      "t": 79.55,
+      "event": "after 75s watch",
+      "model_requests": 2
+     },
+     {
+      "t": 79.6,
+      "event": "client retry with same Idempotency-Key",
+      "error": "<HTTPError 409: 'Conflict'>",
+      "model_requests": 2
+     }
+    ],
+    "rows_at_kill": [
+     {
+      "role": "user",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "session_meta",
+      "content": "",
+      "tool_calls": ""
+     },
+     {
+      "role": "user",
+      "content": "the turn under test",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "running",
+      "tool_calls": "[{\"id\": \"call_s\", \"call_id\": \"call_s\", \"response_item_id\": \"fc_s\", \"type\": \"function\", \"function\": {\"name\": \"terminal\", \"arguments\": \"{\\\"command\\\":\\\"echo start >> /home/vhawk19/hb/kill-tool-1.marker; "
+     }
+    ],
+    "admissions_at_kill": [
+     {
+      "seq": 1,
+      "admission_id": "a279978524a7403d9c35e51da2a58873",
+      "request_id": "485d5252bd6f48f39f65eb1f1e0bee41",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+      "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+      "intent": "queue",
+      "status": "terminal",
+      "outcome": "completed",
+      "owner_epoch": 1,
+      "generation": 1
+     },
+     {
+      "seq": 2,
+      "admission_id": "f9ed27ab82744c628042dadb887206e0",
+      "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-tool-1",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+      "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+      "intent": "queue",
+      "status": "started",
+      "outcome": null,
+      "owner_epoch": 1,
+      "generation": 2
+     }
+    ],
+    "rows_final": [
+     {
+      "role": "user",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "session_meta",
+      "content": "",
+      "tool_calls": ""
+     },
+     {
+      "role": "user",
+      "content": "the turn under test",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "running",
+      "tool_calls": "[{\"id\": \"call_s\", \"call_id\": \"call_s\", \"response_item_id\": \"fc_s\", \"type\": \"function\", \"function\": {\"name\": \"terminal\", \"arguments\": \"{\\\"command\\\":\\\"echo start >> /home/vhawk19/hb/kill-tool-1.marker; "
+     }
+    ],
+    "admissions_final": [
+     {
+      "seq": 1,
+      "admission_id": "a279978524a7403d9c35e51da2a58873",
+      "request_id": "485d5252bd6f48f39f65eb1f1e0bee41",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+      "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+      "intent": "queue",
+      "status": "terminal",
+      "outcome": "completed",
+      "owner_epoch": 1,
+      "generation": 1
+     },
+     {
+      "seq": 2,
+      "admission_id": "f9ed27ab82744c628042dadb887206e0",
+      "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-tool-1",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+      "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+      "intent": "queue",
+      "status": "unknown",
+      "outcome": null,
+      "owner_epoch": 1,
+      "generation": 2
+     }
+    ],
+    "model_request_count": 2,
+    "model_requests_last_user": [
+     [
+      "warm"
+     ],
+     [
+      "the turn under test"
+     ]
+    ],
+    "marker": "start\n"
+   },
+   {
+    "kind": "tool",
+    "run": 2,
+    "events": [
+     {
+      "t": 1.52,
+      "event": "kill -9 gateway",
+      "model_requests": 2
+     },
+     {
+      "t": 1.54,
+      "event": "client result after kill",
+      "error": "RemoteDisconnected('Remote end closed connection without response')"
+     },
+     {
+      "event": "processes of old gateway tree still alive",
+      "pids": [
+       [
+        3370,
+        ""
+       ],
+       [
+        3372,
+        ""
+       ],
+       [
+        3354,
+        "/bin/sh /Users/vhawk19/Documents/code/hermes-agent-pin/hermes_cli/process_supervisor.sh 3233 "
+       ]
+      ]
+     },
+     {
+      "t": 4.94,
+      "event": "gateway restarted"
+     },
+     {
+      "t": 79.96,
+      "event": "after 75s watch",
+      "model_requests": 2
+     },
+     {
+      "t": 80.0,
+      "event": "client retry with same Idempotency-Key",
+      "error": "<HTTPError 409: 'Conflict'>",
+      "model_requests": 2
+     }
+    ],
+    "rows_at_kill": [
+     {
+      "role": "user",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "session_meta",
+      "content": "",
+      "tool_calls": ""
+     },
+     {
+      "role": "user",
+      "content": "the turn under test",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "running",
+      "tool_calls": "[{\"id\": \"call_s\", \"call_id\": \"call_s\", \"response_item_id\": \"fc_s\", \"type\": \"function\", \"function\": {\"name\": \"terminal\", \"arguments\": \"{\\\"command\\\":\\\"echo start >> /home/vhawk19/hb/kill-tool-2.marker; "
+     }
+    ],
+    "admissions_at_kill": [
+     {
+      "seq": 1,
+      "admission_id": "37438299e8824d42b78ffa8b8ad50719",
+      "request_id": "c69ad2e9ec9b414cb8423128828a54c9",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+      "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+      "intent": "queue",
+      "status": "terminal",
+      "outcome": "completed",
+      "owner_epoch": 1,
+      "generation": 1
+     },
+     {
+      "seq": 2,
+      "admission_id": "9d8008f4681e4977875a81492c8da51e",
+      "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-tool-2",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+      "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+      "intent": "queue",
+      "status": "started",
+      "outcome": null,
+      "owner_epoch": 1,
+      "generation": 2
+     }
+    ],
+    "rows_final": [
+     {
+      "role": "user",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "session_meta",
+      "content": "",
+      "tool_calls": ""
+     },
+     {
+      "role": "user",
+      "content": "the turn under test",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "running",
+      "tool_calls": "[{\"id\": \"call_s\", \"call_id\": \"call_s\", \"response_item_id\": \"fc_s\", \"type\": \"function\", \"function\": {\"name\": \"terminal\", \"arguments\": \"{\\\"command\\\":\\\"echo start >> /home/vhawk19/hb/kill-tool-2.marker; "
+     }
+    ],
+    "admissions_final": [
+     {
+      "seq": 1,
+      "admission_id": "37438299e8824d42b78ffa8b8ad50719",
+      "request_id": "c69ad2e9ec9b414cb8423128828a54c9",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+      "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+      "intent": "queue",
+      "status": "terminal",
+      "outcome": "completed",
+      "owner_epoch": 1,
+      "generation": 1
+     },
+     {
+      "seq": 2,
+      "admission_id": "9d8008f4681e4977875a81492c8da51e",
+      "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-tool-2",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+      "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+      "intent": "queue",
+      "status": "unknown",
+      "outcome": null,
+      "owner_epoch": 1,
+      "generation": 2
+     }
+    ],
+    "model_request_count": 2,
+    "model_requests_last_user": [
+     [
+      "warm"
+     ],
+     [
+      "the turn under test"
+     ]
+    ],
+    "marker": "start\n"
+   },
+   {
+    "kind": "tool",
+    "run": 3,
+    "events": [
+     {
+      "t": 1.52,
+      "event": "kill -9 gateway",
+      "model_requests": 2
+     },
+     {
+      "t": 1.53,
+      "event": "client result after kill",
+      "error": "RemoteDisconnected('Remote end closed connection without response')"
+     },
+     {
+      "event": "processes of old gateway tree still alive",
+      "pids": [
+       [
+        3662,
+        ""
+       ],
+       [
+        3664,
+        ""
+       ],
+       [
+        3648,
+        "/bin/sh /Users/vhawk19/Documents/code/hermes-agent-pin/hermes_cli/process_supervisor.sh 3525 "
+       ]
+      ]
+     },
+     {
+      "t": 4.94,
+      "event": "gateway restarted"
+     },
+     {
+      "t": 79.98,
+      "event": "after 75s watch",
+      "model_requests": 2
+     },
+     {
+      "t": 80.03,
+      "event": "client retry with same Idempotency-Key",
+      "error": "<HTTPError 409: 'Conflict'>",
+      "model_requests": 2
+     }
+    ],
+    "rows_at_kill": [
+     {
+      "role": "user",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "session_meta",
+      "content": "",
+      "tool_calls": ""
+     },
+     {
+      "role": "user",
+      "content": "the turn under test",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "running",
+      "tool_calls": "[{\"id\": \"call_s\", \"call_id\": \"call_s\", \"response_item_id\": \"fc_s\", \"type\": \"function\", \"function\": {\"name\": \"terminal\", \"arguments\": \"{\\\"command\\\":\\\"echo start >> /home/vhawk19/hb/kill-tool-3.marker; "
+     }
+    ],
+    "admissions_at_kill": [
+     {
+      "seq": 1,
+      "admission_id": "a82b3f86b57448448597577f96ba7dec",
+      "request_id": "8b55b3cada2443e8aac6173575f71ff3",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+      "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+      "intent": "queue",
+      "status": "terminal",
+      "outcome": "completed",
+      "owner_epoch": 1,
+      "generation": 1
+     },
+     {
+      "seq": 2,
+      "admission_id": "c51497272d8548b4924389205f118e42",
+      "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-tool-3",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+      "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+      "intent": "queue",
+      "status": "started",
+      "outcome": null,
+      "owner_epoch": 1,
+      "generation": 2
+     }
+    ],
+    "rows_final": [
+     {
+      "role": "user",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "warm",
+      "tool_calls": ""
+     },
+     {
+      "role": "session_meta",
+      "content": "",
+      "tool_calls": ""
+     },
+     {
+      "role": "user",
+      "content": "the turn under test",
+      "tool_calls": ""
+     },
+     {
+      "role": "assistant",
+      "content": "running",
+      "tool_calls": "[{\"id\": \"call_s\", \"call_id\": \"call_s\", \"response_item_id\": \"fc_s\", \"type\": \"function\", \"function\": {\"name\": \"terminal\", \"arguments\": \"{\\\"command\\\":\\\"echo start >> /home/vhawk19/hb/kill-tool-3.marker; "
+     }
+    ],
+    "admissions_final": [
+     {
+      "seq": 1,
+      "admission_id": "a82b3f86b57448448597577f96ba7dec",
+      "request_id": "8b55b3cada2443e8aac6173575f71ff3",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+      "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+      "intent": "queue",
+      "status": "terminal",
+      "outcome": "completed",
+      "owner_epoch": 1,
+      "generation": 1
+     },
+     {
+      "seq": 2,
+      "admission_id": "c51497272d8548b4924389205f118e42",
+      "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-tool-3",
+      "principal_id": "api",
+      "target_session_id": "api-97a2cd5e71bcc2f4",
+      "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+      "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+      "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+      "intent": "queue",
+      "status": "unknown",
+      "outcome": null,
+      "owner_epoch": 1,
+      "generation": 2
+     }
+    ],
+    "model_request_count": 2,
+    "model_requests_last_user": [
+     [
+      "warm"
+     ],
+     [
+      "the turn under test"
+     ]
+    ],
+    "marker": "start\n"
+   }
+  ],
+  "status": "pending_rerun",
+  "pending_rerun_reason": "kill -9 samples were taken without observing the trigger; the retry shared a result holder with the original request; invalid retries exited 0"
+ }
+}

@@ -1,0 +1,13 @@
+[
+  {
+    "input": 0,
+    "cmd": [
+      "chat",
+      "-q",
+      "say hello in the shell"
+    ],
+    "rc": 0,
+    "secs": 6.13,
+    "out": "Query: say hello in the shell\n\ud83d\udcbb $ echo hello\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u2624 Hermes\nIt printed hello.\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nResume this session with:\n  hermes --resume local-c7ecec1e943ebde055139b03ff09a1c523cd0561f7981f659d2bc5737d445d2f\n\nSession:        local-c7ecec1e943ebde055139b03ff09a1c523cd0561f7981f659d2bc5737d445d2f\nDuration:       5s\nMessages:       4 (1 user, 2 tool calls)\n"
+  }
+]
