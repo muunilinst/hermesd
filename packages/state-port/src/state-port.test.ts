@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -203,6 +203,19 @@ describe("export", () => {
       { source: "telegram", generation: 3 },
     ]);
     assert.equal(rows(out, "SELECT COUNT(*) AS n FROM messages")[0]!.n, 8);
+  });
+
+  it("never deletes or overwrites an export that another writer finished first", () => {
+    const actors = loadPlainActors(readStateDb(source).image, 2);
+    const image = readActors(actors.sources);
+    actors.close();
+    const out = join(dir, "raced.db");
+    const sessions = image.sessions;
+    // The other writer finishes while this one is building.
+    Object.defineProperty(image, "sessions", { get: () => (writeFileSync(out, "theirs"), sessions) });
+    assert.throws(() => writeStateDb(out, image, { mode: "full", now: NOW }), /exists/);
+    assert.equal(readFileSync(out, "utf8"), "theirs");
+    assert.deepEqual(readdirSync(dir).filter((f) => f.startsWith("raced.db.")), [], "no temp file is left");
   });
 
   it("writes the epoch floor: at least the highest epoch of the actors, of the rows and of the file", () => {

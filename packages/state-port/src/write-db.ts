@@ -1,4 +1,5 @@
-import { existsSync, rmSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { existsSync, linkSync, rmSync } from "node:fs";
 import type { DatabaseSync } from "node:sqlite";
 import type { SqlValue } from "@hermesd/host";
 import { epochFloor } from "./apply.ts";
@@ -88,7 +89,11 @@ export function writeStateDb(path: string, image: StateImage, options: ExportOpt
   if (existsSync(path)) throw new Error(`${path} exists; an export never overwrites`);
   const full = options.mode === "full";
   const nowSec = options.now / 1000;
-  const db = createUpstreamDb(path);
+  // Build in a file of our own, then link it into place: the link fails if another export got
+  // there first, and a failure only ever removes our own file.
+  const tmp = `${path}.${randomUUID()}.tmp`;
+  const db = createUpstreamDb(tmp);
+  let open = true;
   const report: ExportReport = {
     mode: options.mode,
     epoch: null,
@@ -194,12 +199,20 @@ export function writeStateDb(path: string, image: StateImage, options: ExportOpt
     const ok = db.prepare("PRAGMA integrity_check").get() as { integrity_check: string };
     if (ok.integrity_check !== "ok") throw new Error(`integrity check: ${ok.integrity_check}`);
     db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
-  } catch (err) {
     db.close();
-    // Leave no half-made file behind.
-    for (const suffix of ["", "-wal", "-shm"]) rmSync(path + suffix, { force: true });
+    open = false;
+    try {
+      linkSync(tmp, path);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "EEXIST") throw new Error(`${path} exists; an export never overwrites`);
+      throw err;
+    }
+  } catch (err) {
+    if (open) db.close();
     throw err;
+  } finally {
+    // Leave no half-made file behind.
+    for (const suffix of ["", "-wal", "-shm"]) rmSync(tmp + suffix, { force: true });
   }
-  db.close();
   return report;
 }
