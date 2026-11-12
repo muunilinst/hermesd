@@ -37,7 +37,7 @@ Read the numbers as "same order of magnitude, same shape", not as production fig
 Medians, with p95 in brackets. Each row is 20 turns. A "tool turn" is one terminal call and then a
 reply. Upstream's values were recomputed with the interpolated percentiles and did not change.
 
-| | Upstream, always-on VM | Port on workerd (local) | Port on rivetkit (local) |
+| | Upstream, always-on VM (historical, pending re-run) | Port on workerd (local) | Port on rivetkit (local) |
 | --- | --- | --- | --- |
 | Plain turn, send to delivery | 96 ms (154) | 16 ms (23) | 144 ms (165) |
 | Tool turn, send to delivery | 156 ms (215) | 28 ms (35) | 207 ms (223) |
@@ -73,7 +73,7 @@ These columns count different operations, so the table does not say which side c
 
 Each side was put through a different fault. The rows below say which.
 
-| Fault | Upstream (3 runs) | Port (D1 and D2, on node, workerd and rivetkit) |
+| Fault | Upstream (3 runs, historical, pending re-run) | Port (D1 and D2, on node, workerd and rivetkit) |
 | --- | --- | --- |
 | What dies | the whole `hermes gateway run` process, by `kill -9`. The gateway, the agent loop and the command's process group all go. | one session actor, evicted by the platform. The gateway, the executor model and the model service keep running. |
 | During a model call | the reply never arrives and no new model request is made. Admission stays `unknown`, and a retry gets 409. | the new activation sends the call again under the same nonempty call id. The model sees a second request, and one reply is delivered (D1). |
@@ -122,18 +122,23 @@ left out.
 
 ## What the numbers say
 
+Only the cost comparison stands now. The speed and reliability comparisons wait for validated
+upstream runs (next section). The upstream latency and kill figures in this file are historical:
+they came from a driver that accepted replies without checking them, and that could kill the
+gateway before the intended trigger. They are kept, labelled, and not used for a conclusion.
+
 1. **Cheaper.** Even if the missing items doubled the estimate, the port would cost about 45
-   times less to host than the always-on VM, before the workspace VM. Rows written decide the
-   port's bill, so fewer rows per turn is the lever.
-2. **Faster.** On workerd a turn adds about 16 to 28 ms, against upstream's 96 to 156 ms. An
-   evicted session reactivates in under 20 ms. Upstream has no comparable case: a cold Hermes
-   is a process start of about 3 s. rivetkit on its local engine adds about 145 to 210 ms a turn.
-   The time goes to actor-to-actor calls through the engine, which is worth a look before
-   Rivet is called "as fast".
-3. **More reliable, for the failure tested.** The port finishes the turn when its session actor
-   is lost mid-model-call or mid-command, on all three hosts. Upstream loses the turn when its
-   process dies. These are different faults (see above). Gateway and executor loss on the port
-   have not been measured.
+   times less to host than the always-on VM, before the workspace VM. This rests on upstream's
+   memory footprint and on list prices, not on the figures that need a re-run. Rows written
+   decide the port's bill, so fewer rows per turn is the lever.
+2. **Faster: not yet concluded.** The port's own figures are validated: on workerd a turn adds
+   about 16 to 28 ms, and an evicted session reactivates in under 20 ms. rivetkit on its local
+   engine adds about 145 to 210 ms a turn, which goes to actor-to-actor calls through the
+   engine. The upstream side of the comparison is pending a validated run.
+3. **More reliable: not yet concluded.** The port finishes the turn when its session actor is
+   lost mid-model-call or mid-command, on all three hosts, and that result is validated. The
+   upstream kill samples are pending a validated run, and they test a different fault (the whole
+   gateway process). Gateway and executor loss on the port have not been measured.
 
 ## Needs a re-run on the Mac
 
