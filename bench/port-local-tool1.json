@@ -1,0 +1,157 @@
+{
+  "at": "2026-11-12T11:29:28.739Z",
+  "usage": {
+    "turnsPerMonth": 900,
+    "storageGb": 0.05
+  },
+  "prices": {
+    "doRequestUsd": 1.5e-7,
+    "doGbSecondUsd": 0.0000125,
+    "doMemoryGb": 0.128,
+    "doRowWrittenUsd": 0.000001,
+    "doStorageGbMonthUsd": 0.2,
+    "vmMonthUsd": 8.09
+  },
+  "results": [
+    {
+      "host": "node",
+      "turns": 20,
+      "modelCallsPerTurn": 2,
+      "modelDelayMs": 0,
+      "perTurn": {
+        "events": 8.4,
+        "tx": 82.75,
+        "statements": 261.5,
+        "rowsChanged": 98.85,
+        "commits": 34.4,
+        "arms": 8.7,
+        "sidecarCalls": 13.05,
+        "busyMs": 6.34,
+        "busyExclModelMs": 6.13
+      },
+      "session": {
+        "activations": 0,
+        "events": 2.4,
+        "tx": 76.75,
+        "statements": 231.5,
+        "rowsChanged": 78.85,
+        "commits": 28.4,
+        "arms": 8.7,
+        "disarms": 2,
+        "fetches": 2,
+        "sidecars": {
+          "actor:sweeper.open": 1,
+          "executor.fence": 0.05,
+          "executor.describe": 1,
+          "actor:profile.index": 3,
+          "executor.status": 2,
+          "executor.prepare": 1,
+          "executor.start": 1,
+          "executor.ack": 1,
+          "gateway.deliver": 1,
+          "actor:profile.session_upsert": 1,
+          "actor:sweeper.close": 1
+        },
+        "busyMs": 5.26,
+        "busyExclModelMs": 5.05
+      },
+      "turnMs": {
+        "median": 9,
+        "p95": 16,
+        "n": 20
+      },
+      "overheadMs": {
+        "median": 9,
+        "p95": 16,
+        "n": 20
+      },
+      "warmToModelMs": {
+        "median": 3,
+        "p95": 3,
+        "n": 20
+      },
+      "coldToModelMs": {
+        "median": 2,
+        "p95": 4,
+        "n": 5
+      },
+      "costUsdPerUserMonth": {
+        "requests": 0.001134,
+        "duration": 0.000009,
+        "rowsWritten": 0.096795,
+        "storage": 0.01,
+        "total": 0.107938
+      }
+    },
+    {
+      "host": "workerd",
+      "turns": 20,
+      "modelCallsPerTurn": 2,
+      "modelDelayMs": 0,
+      "perTurn": {
+        "events": 7,
+        "tx": 60,
+        "statements": 230,
+        "rowsChanged": 91,
+        "commits": 24,
+        "arms": 6,
+        "sidecarCalls": 13.05,
+        "busyMs": 25.95,
+        "busyExclModelMs": 25.1
+      },
+      "session": {
+        "activations": 0,
+        "events": 1,
+        "tx": 54,
+        "statements": 200,
+        "rowsChanged": 71,
+        "commits": 18,
+        "arms": 6,
+        "disarms": 2,
+        "fetches": 2,
+        "sidecars": {
+          "actor:sweeper.open": 1,
+          "executor.fence": 0.05,
+          "executor.describe": 1,
+          "executor.status": 2,
+          "executor.prepare": 1,
+          "executor.start": 1,
+          "executor.ack": 1,
+          "actor:profile.index": 3,
+          "gateway.deliver": 1,
+          "actor:profile.session_upsert": 1,
+          "actor:sweeper.close": 1
+        },
+        "busyMs": 22.2,
+        "busyExclModelMs": 21.35
+      },
+      "turnMs": {
+        "median": 31,
+        "p95": 55,
+        "n": 20
+      },
+      "overheadMs": {
+        "median": 31,
+        "p95": 55,
+        "n": 20
+      },
+      "warmToModelMs": {
+        "median": 9,
+        "p95": 14,
+        "n": 20
+      },
+      "coldToModelMs": {
+        "median": 14,
+        "p95": 18,
+        "n": 5
+      },
+      "costUsdPerUserMonth": {
+        "requests": 0.000945,
+        "duration": 0.000037,
+        "rowsWritten": 0.0873,
+        "storage": 0.01,
+        "total": 0.098282
+      }
+    }
+  ]
+}

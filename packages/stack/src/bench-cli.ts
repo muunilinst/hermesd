@@ -1,5 +1,6 @@
 /**
- * bun packages/stack/src/bench-cli.ts [node|workerd|rivet ...] [--turns N] [--model-ms M] [--out file]
+ * bun packages/stack/src/bench-cli.ts [node|workerd|rivet ...] [--turns N] [--model-ms M] [--tool-every K] [--cold N] [--out file]
+ * --tool-every 0: plain replies only; 1: one terminal call in every turn; 2 (default): every second turn.
  * Prints one JSON object per host, with the Durable Objects cost per user-month.
  */
 import { writeFileSync } from "node:fs";
@@ -30,7 +31,7 @@ async function factory(host: string): Promise<StackFactory> {
 
 const results: Array<BenchResult & { costUsdPerUserMonth: ReturnType<typeof durableObjectsCost> }> = [];
 for (const h of hosts.length > 0 ? hosts : ["node"]) {
-  const r = await runBench(await factory(h), { turns: flag("--turns", 20), modelDelayMs: flag("--model-ms", 0), coldSamples: flag("--cold", 5) });
+  const r = await runBench(await factory(h), { turns: flag("--turns", 20), modelDelayMs: flag("--model-ms", 0), coldSamples: flag("--cold", 5), toolEvery: flag("--tool-every", 2) });
   results.push({ ...r, costUsdPerUserMonth: durableObjectsCost(r) });
   console.log(JSON.stringify(results.at(-1), null, 2));
 }
