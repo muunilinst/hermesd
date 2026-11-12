@@ -7,12 +7,12 @@
  *   bun .claude/skills/verify/verify.ts run <subsystem|all> [--rt bun|node] [--linux]
  *   bun .claude/skills/verify/verify.ts clean
  *
- * `run` writes its evidence to .verify/evidence/<stamp>-<subsystem>-<rt>/ and
+ * `run` writes its evidence to .verify/evidence/<stamp>-<subsystem>-<rt>-<random>/ and
  * its scratch files to .verify/tmp/. `clean` removes the scratch files only.
  */
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -27,7 +27,10 @@ type Runtime = "bun" | "node";
 /** One real command a person would type, and what it must leave behind. */
 interface Drive {
   name: string;
-  /** Arguments after the runtime, relative to the repository root. `$TMP` is the scratch directory. */
+  /**
+   * Arguments after the runtime, relative to the repository root. `$TMP` is the scratch directory.
+   * `$QTMP` is the same path quoted for a shell, for an argument that a shell runs.
+   */
   args: string[];
   env?: Record<string, string>;
   linuxOnly?: boolean;
@@ -75,7 +78,9 @@ function contentHash(path: string): string {
 const answer = (out: string): Record<string, unknown> => JSON.parse(out.trim().split("\n").at(-1) ?? "");
 const sleep = (seconds: number): void => void spawnSync("sleep", [String(seconds)]);
 /** A command that counts its own runs: each run appends one line (as testkit.countingCommand). */
-const COUNTED = "echo run >> $TMP/ws-runs.txt";
+const COUNTED = "echo run >> $QTMP/ws-runs.txt";
+/** A path as one shell word, whatever it holds (spaces, quotes). */
+const shellQuote = (s: string): string => `'${s.replaceAll("'", "'\\''")}'`;
 const runsOf = (tmp: string): number =>
   existsSync(join(tmp, "ws-runs.txt")) ? readFileSync(join(tmp, "ws-runs.txt"), "utf8").split("\n").filter(Boolean).length : 0;
 
@@ -256,7 +261,8 @@ function gitState(): SourceState {
   const dirty = sh("git", ["status", "--porcelain"]).out.trim() !== "";
   if (!dirty) return { sha, dirty };
   const h = createHash("sha256").update(sh("git", ["diff", "HEAD", "--binary"]).stdout);
-  for (const f of sh("git", ["ls-files", "--others", "--exclude-standard"]).stdout.split("\n").filter(Boolean).sort()) {
+  // NUL-separated, so git does not quote a name such as café.md.
+  for (const f of sh("git", ["ls-files", "-z", "--others", "--exclude-standard"]).stdout.split("\0").filter(Boolean).sort()) {
     h.update(`\0${f}\0`);
     h.update(readFileSync(join(ROOT, f)));
   }
@@ -292,9 +298,10 @@ function doctor(): number {
 function runOne(name: string, rt: Runtime): boolean {
   const sub = SUBSYSTEMS[name]!;
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\..*/, "Z");
-  const dir = join(EVIDENCE, `${stamp}-${name}-${rt}`);
+  // Two runs in the same second must not share a directory: mkdtemp makes a new one atomically.
+  mkdirSync(EVIDENCE, { recursive: true });
+  const dir = mkdtempSync(join(EVIDENCE, `${stamp}-${name}-${rt}-`));
   const tmp = join(TMP, `${stamp}-${name}-${rt}-${process.pid}`);
-  mkdirSync(dir, { recursive: true });
   mkdirSync(tmp, { recursive: true });
   const linux = process.platform === "linux";
   const all = testFiles(sub.tests);
@@ -318,7 +325,7 @@ function runOne(name: string, rt: Runtime): boolean {
         skipped.push(`drive ${d.name} (needs Linux)`);
         continue;
       }
-      const args = d.args.map((a) => a.replaceAll("$TMP", tmp));
+      const args = d.args.map((a) => a.replaceAll("$QTMP", shellQuote(tmp)).replaceAll("$TMP", tmp));
       const before = (d.unchanged ?? []).map(contentHash);
       const deadline = Date.now() + (d.retry?.timeoutMs ?? 0);
       let r: ReturnType<typeof sh>;
