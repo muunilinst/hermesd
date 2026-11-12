@@ -75,7 +75,21 @@ export function defineWorldActor(name: ActorName, w: RivetWorld, rivet: { actor:
     if (!b) throw new Error(`actor ${name} is not activated`);
     return b;
   };
+  const isOurs = (c: Any): boolean => {
+    const key: unknown = c.key;
+    const mine = w.keys[name];
+    return Array.isArray(key) && key.length === mine.length && key.every((k, i) => k === mine[i]);
+  };
   const wake = async (c: Any): Promise<void> => {
+    // The engine keeps its store across stacks and processes, and an actor of an earlier stack
+    // with a timer still armed is woken by the engine of this one, under this registry (it has
+    // this world's closures, the logical id "s1" and the new sweeper's key). Such a ghost raises its
+    // own owner epoch and fences the live session at the sweeper. It is not ours: destroy it, which
+    // also removes its schedules.
+    if (!isOurs(c)) {
+      c.destroy();
+      return;
+    }
     // Rule 1: activate first. It loads the mirror and raises the owner epoch durably.
     const raw = await RivetHost.activate(c, {
       sidecars: sidecarsFor(w),

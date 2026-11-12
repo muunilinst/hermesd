@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import type { Stack, StackFactory } from "./types.ts";
-import { terminalCall } from "./world.ts";
+import { benchScript, terminalCall } from "./world.ts";
 
 /**
  * Scenarios that run unchanged on every host. Each one builds a fresh stack, drives
@@ -55,6 +55,21 @@ export const SCENARIOS: Scenario[] = [
         await s.send("run echo hello");
         assert.equal(await oneReply(s), "it said hello");
         assert.equal(await s.executorRuns(), 1);
+        await settledTurns(s);
+      });
+    },
+  },
+  {
+    name: "terminal-call turns back to back, each sent as soon as the last reply arrives",
+    async run(make) {
+      const turns = 8;
+      await withStack(make, { script: benchScript(turns, 1) }, async (s) => {
+        for (let i = 0; i < turns; i++) {
+          await s.send(`turn ${i}`);
+          const replies = await s.waitReplies(i + 1, 30_000);
+          assert.equal(replies[i]!.text, `done ${i}`);
+        }
+        assert.equal(await s.executorRuns(), turns, "each command ran once");
         await settledTurns(s);
       });
     },
