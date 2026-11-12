@@ -402,6 +402,11 @@ export class RivetHost implements Host {
     return task;
   }
 
+  /** Keep the actor awake until `work` settles (`c.keepAwake`). The runtime's background work goes here. */
+  keepAwake<T>(work: Promise<T>): Promise<T> {
+    return this.#c.keepAwake(work);
+  }
+
   /** Outbound HTTP. The signal aborts the request. */
   async fetch(req: Request, signal?: AbortSignal): Promise<Response> {
     signal?.throwIfAborted();

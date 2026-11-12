@@ -13,12 +13,10 @@ type Any = any;
  *
  * Choices, each with its reason:
  *
- * - The turn. The runtime starts its turns as detached promises from `activate`
- *   (called in `onWake`) and from `receive`/`wake`, not as a `keepAwake` task. The
- *   glue cannot see them, so it does not wrap them: it sets `sleepTimeout` to 2 min
- *   so that no test turn is cut off by an idle sleep. On a real deployment the runtime
- *   would have to hand its background promises to `host.startTask`. This is a gap
- *   of the runtime/adapter pairing, not of the harness (see the report).
+ * - The turn. The runtime hands the work it starts in the background (the turn
+ *   loop, outbox delivery, adoption) to `Host.keepAwake`, which RivetHost maps to
+ *   `c.keepAwake`. `sleepTimeout` is 1 s, shorter than a held model call in the
+ *   scenarios, so a turn that was not kept awake would be cut off by an idle sleep.
  * - Crons. `Stack.cron(name)` calls `behavior.cron(name)` through an action. In
  *   addition, the harness runs "tick" every 3 s and "sweep" every 15 s from a timer
  *   in the test process (a stand-in for a platform cron), so outbox catch-up and

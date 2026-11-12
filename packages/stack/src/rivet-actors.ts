@@ -34,7 +34,7 @@ const clock: Clock = { now: () => Date.now() };
  * promises (`void fn()` in the runtime), which are not under `keepAwake`, so the
  * timeout must be longer than any turn of a test. See rivet.ts.
  */
-export const SLEEP_TIMEOUT_MS = 120_000;
+export const SLEEP_TIMEOUT_MS = 1_000;
 /** How long the platform waits for a graceful sleep. Short, so `c.sleep()` is close to a crash. */
 export const SLEEP_GRACE_MS = 100;
 
@@ -93,6 +93,7 @@ export function defineWorldActor(name: ActorName, w: RivetWorld, rivet: { actor:
       commit: () => raw.commit(),
       arm: (at, key) => raw.arm(at, key),
       disarm: (key) => raw.disarm(key),
+      keepAwake: (work) => raw.keepAwake(work),
       fetch: (req, signal) => raw.fetch(req, signal),
       sidecar: (n) => raw.sidecar(n),
     };

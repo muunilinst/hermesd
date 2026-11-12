@@ -129,12 +129,14 @@ export class MeteredHost implements Host {
   readonly inner: Host;
   readonly #o: MeteredHostOptions;
   readonly disarm?: (key: string) => Promise<void>;
+  readonly keepAwake?: <T>(work: Promise<T>) => Promise<T>;
   #changes: "unknown" | "yes" | "no" = "unknown";
 
   constructor(inner: Host, opts: MeteredHostOptions) {
     this.inner = inner;
     this.#o = opts;
     opts.meter.counts.activations += 1;
+    if (inner.keepAwake) this.keepAwake = (w) => inner.keepAwake!(w);
     if (inner.disarm) {
       this.disarm = async (key) => {
         this.#o.meter.counts.disarms += 1;

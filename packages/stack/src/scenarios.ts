@@ -60,6 +60,17 @@ export const SCENARIOS: Scenario[] = [
     },
   },
   {
+    name: "a model call longer than the idle sleep timeout finishes without a re-send",
+    async run(make) {
+      await withStack(make, { script: [{ reply: "slow answer" }], modelDelayMs: 2_500 }, async (s) => {
+        await s.send("hello");
+        assert.equal(await oneReply(s), "slow answer");
+        assert.equal((await s.modelArrivals()).length, 1, "the actor stayed awake: one model request");
+        await settledTurns(s);
+      });
+    },
+  },
+  {
     name: "the same message delivered twice makes one turn",
     fault: "D3",
     async run(make) {

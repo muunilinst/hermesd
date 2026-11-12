@@ -63,7 +63,8 @@ export class PortSessionActor implements ActorBehavior {
     await this.#host.commit();
     await this.#inner.activate();
     // Adopt what the last owner left. Failures are not lost: the obligations and the sweeper bring the wake.
-    void this.#adopt().catch(() => {});
+    const adopt = this.#adopt().catch(() => {});
+    if (this.#host.keepAwake) void this.#host.keepAwake(adopt).catch(() => {});
   }
 
   alarm(): Promise<void> {
