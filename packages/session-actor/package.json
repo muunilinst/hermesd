@@ -1,0 +1,16 @@
+{
+  "name": "@hermesd/session-actor",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@hermesd/contracts": "*",
+    "@hermesd/executor-protocol": "*",
+    "@hermesd/host": "*",
+    "@hermesd/prompt": "*",
+    "@hermesd/runtime": "*"
+  }
+}

@@ -21,3 +21,50 @@ the plan is to port hermes incrementally, starting with the core agentic convers
 after each step we verify the new component with the existing hermes code.
 
 this project will rely heavily AI assistance and I wonder how else I would be able to do it.
+
+## where we are
+
+the design is the porting guide (rev 5.1). we start with its milestone 1:
+prove crash recovery at every handoff on the smallest slice, before any
+estimate. nothing is demonstrated yet; [STATUS.md](STATUS.md) tracks each
+mechanism and each fault test (D1 to D17).
+
+## layout
+
+| path | what it holds |
+| --- | --- |
+| `packages/host` | the `Host` interface (guide 4.6). agent code imports only this, never a platform SDK |
+| `packages/host-node` | in-memory platform simulator with Durable Objects and Rivet rule sets, crash and timer fault hooks |
+| `packages/host-cloudflare` | the Durable Objects adapter (also the TeenyTiny v2 adapter); tests run on local workerd |
+| `packages/host-rivet` | the Rivet Actors adapter on the 3.0 APIs; tests run on real rivetkit |
+| `packages/runtime` | adapter-independent rules: wake obligations, outbox, `session_admissions` inbox, sweeper |
+| `packages/executor-protocol` | the executor contract (guide 3.4), `deriveOpId`, and the guest launch reconciliation table |
+| `packages/executor-model` | in-memory reference executor cell, simulated VM lifecycle and guest |
+| `packages/guest-helper` | prototype guest helper: launch journal, `O_EXCL` claim shim, reconciliation |
+| `packages/session-actor` | the session actor: upstream tables at schema 32, pending rows, the async loop, scripted model, clarify/todo/terminal |
+| `packages/prompt` | the system prompt builder and context compressor, ported from upstream (50% and 85% thresholds) |
+| `packages/golden` | the 20 golden-transcript scripts, runner, comparator, and a scripted model server for recording upstream |
+| `packages/providers` | provider formats (chat_completions, anthropic_messages, codex_responses, bedrock_converse), 429 fallback, key rotation, error text, a scripted model per mode |
+| `packages/profile-actor` | the profile actor: config, cross-session search index, `conversation_generations`, session list |
+| `packages/state-port` | export and import between the actors and an upstream-shaped `state.db` (schema 32) |
+| `packages/plugin-host` | manifest loader, hook dispatch with upstream semantics, per-call-site python/shadow/ts flags |
+| `packages/faults` | the D1 to D17 catalogue (guide 7.3) and backend-agnostic fault tests |
+| `packages/contracts` | weekly-diff guards over the upstream contract surfaces (guide 7.1) |
+| `contracts/` | static extractors, extracted upstream surfaces, and per-table port decisions |
+| `upstream/pin.json` | the upstream hermes-agent commit we test against |
+| `docs/adr` | the decisions of the porting guide, one record each |
+| `.claude/skills/verify*` | one verification skill per subsystem; `bun .claude/skills/verify/verify.ts list` |
+
+each package with design choices has a `NOTES.md` that records how we read
+the guide where it was ambiguous.
+
+## develop
+
+needs bun, at the version in `.bun-version` (bun runs the `.ts` files directly; the tests use `node:test` and `node:sqlite`, which bun provides).
+
+```sh
+bun install
+bun run check   # typecheck + tests
+```
+
+`bun install` gives each package its own `node_modules` with only the packages it declares, so an import that is not in a package's `package.json` fails. To check a change the way a user would, see `.claude/skills/verify`.

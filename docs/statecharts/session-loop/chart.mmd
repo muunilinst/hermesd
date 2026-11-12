@@ -1,0 +1,68 @@
+---
+title: "hermesd session actor: one session, its turns, compaction and restarts"
+---
+stateDiagram-v2
+  direction LR
+  state "Legend" as legend {
+    lg0: No turn running
+    lg1: Turn running
+    lg2: Held
+  }
+  class lg0 teal
+  class lg1 blue
+  class lg2 orange
+  state "At the same time" as all {
+    state "Turn" as r0 {
+      s0: Idle
+      s1: Model call written
+      s2: Waiting for the model
+      s3: Stopping
+      s4: Running tools
+      s5: Waiting for your answer
+      s6: Held: a tool outcome is unknown
+      [*] --> s0
+      s0 --> s1: your next input starts a turn [when Owner is not Crashed]
+      s1 --> s2: the model call goes out [when Owner is not Crashed]
+      s1 --> s3: you press stop [when Owner is not Crashed]
+      s2 --> s0: the model replies with text or the model call fails
+      s2 --> s1: the owner crashes
+      s2 --> s3: you press stop
+      s2 --> s4: the model asks for tools
+      s2 --> s5: the model asks you a question
+      s3 --> s0: the stop ends the turn [when Owner is not Crashed]
+      s4 --> s1: the tools finish [when Owner is not Crashed]
+      s4 --> s6: a tool outcome is unknown [when Owner is not Crashed]
+      s4 --> s3: you press stop [when Owner is not Crashed]
+      s6 --> s0: you resolve the unknown outcome [when Owner is not Crashed]
+      s5 --> s1: your next input starts a turn [when Owner is not Crashed]
+      s3 --> s6: a tool outcome is unknown [when Owner is not Crashed]
+    }
+    --
+    state "Compaction" as r1 {
+      s7: Not compacted
+      s8: Child written, parent not retired
+      s9: Compacted
+      [*] --> s7
+      s7 --> s8: you compact (commit 1) [when Owner is not Crashed]
+      s8 --> s9: commit 2 retires the parent [when Owner is not Crashed]
+      s8 --> s9: the new owner adopts (repair, fence, sweep) [when Owner is Restarted, not adopted yet]
+    }
+    --
+    state "Owner" as r2 {
+      s10: Running
+      s11: Crashed
+      s12: Restarted, not adopted yet
+      [*] --> s10
+      s10 --> s11: the owner crashes
+      s11 --> s12: a wake starts a new owner
+      s12 --> s10: the new owner adopts (repair, fence, sweep)
+      s12 --> s11: the owner crashes
+    }
+  }
+  class s0 teal
+  class s1 blue
+  class s2 blue
+  class s3 blue
+  class s4 blue
+  class s5 teal
+  class s6 orange

@@ -1,0 +1,17 @@
+{
+  "name": "@hermesd/state-port",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@hermesd/contracts": "*",
+    "@hermesd/faults": "*",
+    "@hermesd/host": "*",
+    "@hermesd/profile-actor": "*",
+    "@hermesd/runtime": "*",
+    "@hermesd/session-actor": "*"
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "name": "hook-blocks-tool",
+  "purpose": "A pre_tool_call hook returns a block; the tool does not run and the model gets the message as the result.",
+  "guide": "7.2: a hook that blocks a tool",
+  "mode": "chat_completions",
+  "steps": [
+    {
+      "reply": "I will run it.",
+      "toolCalls": [
+        {
+          "id": "call_1",
+          "name": "terminal",
+          "arguments": {
+            "command": "echo hello"
+          }
+        }
+      ]
+    },
+    {
+      "reply": "That did not run."
+    }
+  ],
+  "commands": {
+    "echo hello": {
+      "stdout": "hello\n"
+    }
+  },
+  "hooks": {
+    "plugins": [
+      {
+        "name": "guard",
+        "dir": "guard",
+        "hook": "pre_tool_call",
+        "callback": "guard",
+        "behavior": {
+          "kind": "block",
+          "message": "terminal is not allowed here"
+        }
+      }
+    ]
+  },
+  "inputs": [
+    {
+      "send": "say hello in the shell"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "That did not run."
+    ],
+    "requests": 2,
+    "toolRuns": 0,
+    "hookLog": []
+  },
+  "upstream": {
+    "procedure": "Generate the Python plugin with scripted-server/make-plugins.mjs and enable it.",
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

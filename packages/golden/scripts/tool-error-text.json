@@ -1,0 +1,56 @@
+{
+  "name": "tool-error-text",
+  "purpose": "Three failing calls in one answer: a command that exits 2, an unknown tool, and a terminal call with no command.",
+  "guide": "7.4: error behavior, tool error text",
+  "mode": "chat_completions",
+  "steps": [
+    {
+      "toolCalls": [
+        {
+          "id": "call_1",
+          "name": "terminal",
+          "arguments": {
+            "command": "ls nope"
+          }
+        },
+        {
+          "id": "call_2",
+          "name": "frobnicate",
+          "arguments": {}
+        },
+        {
+          "id": "call_3",
+          "name": "terminal",
+          "arguments": {}
+        }
+      ]
+    },
+    {
+      "reply": "All three failed."
+    }
+  ],
+  "commands": {
+    "ls nope": {
+      "stdout": "ls: cannot access 'nope': No such file or directory\n",
+      "exitCode": 2
+    }
+  },
+  "inputs": [
+    {
+      "send": "try three things"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "All three failed."
+    ],
+    "requests": 2,
+    "toolRuns": 1
+  },
+  "upstream": {
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

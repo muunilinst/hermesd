@@ -1,0 +1,48 @@
+{
+  "name": "format-bedrock-converse",
+  "purpose": "A tool call and a final answer in the bedrock_converse wire format.",
+  "guide": "7.2: bedrock_converse format",
+  "mode": "bedrock_converse",
+  "steps": [
+    {
+      "reply": "I will run it.",
+      "toolCalls": [
+        {
+          "id": "call_1",
+          "name": "terminal",
+          "arguments": {
+            "command": "echo hello"
+          }
+        }
+      ]
+    },
+    {
+      "reply": "It printed hello."
+    }
+  ],
+  "commands": {
+    "echo hello": {
+      "stdout": "hello\n"
+    }
+  },
+  "inputs": [
+    {
+      "send": "say hello in the shell"
+    }
+  ],
+  "expect": {
+    "replies": [
+      "It printed hello."
+    ],
+    "requests": 2,
+    "toolRuns": 1
+  },
+  "upstream": {
+    "procedure": "Point Hermes at the scripted server with the bedrock endpoint override and turn streaming off.",
+    "manual": true,
+    "ignore": [
+      "@system",
+      "@tools"
+    ]
+  }
+}

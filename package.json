@@ -1,0 +1,18 @@
+{
+  "name": "hermesd",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.2",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "bun --bun tsc -p tsconfig.json",
+    "test": "bun test --timeout 60000 ./packages",
+    "check": "bun run typecheck && bun run test"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "typescript": "5.9.3"
+  }
+}

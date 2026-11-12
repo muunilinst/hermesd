@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/NousResearch/hermes-agent",
+  "commit": "a9ff9799e273f525b82718cdc69fdec71b1dca5a",
+  "commitDate": "2026-11-07",
+  "stateSchemaVersion": 32,
+  "note": "Porting guide rev 5.1 measured every count at this commit. The contract extractors in contracts/extract read this commit; see contracts/README.md to move the pin."
+}
