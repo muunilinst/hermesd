@@ -16,7 +16,7 @@ Status: first written from a static reading of upstream at the pin (`a9ff9799`, 
   ```
 
   The extras are needed: `anthropic` for `anthropic_messages` and Bedrock (without it the auto-started gateway exits mid-turn with "restart Hermes to activate it" and the turn ends "Gateway disconnected; turn outcome is unknown"), `bedrock` for boto3, `messaging` for aiohttp (the API server platform). Use a Python whose SQLite is 3.51.3 or newer: with an older one (the Ubuntu 26.04 system Python 3.14.4 has 3.46.1) Hermes turns WAL off and uses `journal_mode=DELETE`, which changes what it writes.
-- Bun (the version in `.bun-version`), for the scripts in `scripted-server/`. Bun 1.4.2 runs all four, `assemble.mjs` (`node:sqlite`) included, so Node is not needed.
+- Bun (the version in `.bun-version`), for the scripts in `scripted-server/`. Bun 1.4.2 runs all four, `assemble.mjs` (`node:sqlite`) included, so Node is not needed. Every command in this file uses `bun`.
 - This repository.
 
 ## The idea
@@ -34,7 +34,7 @@ G=packages/golden/scripted-server
 export HERMES_HOME=$(mktemp -d)
 
 # 1. Hook plugins (only the four scripts that have "hooks"; for the others this writes nothing).
-node $G/make-plugins.mjs $S "$HERMES_HOME/plugins"      # prints the config lines to add in step 2
+bun $G/make-plugins.mjs $S "$HERMES_HOME/plugins"      # prints the config lines to add in step 2
 
 # 2. Config: see "Config for each API mode" below. Write "$HERMES_HOME/config.yaml".
 #    Every config needs these two top-level keys as well:
@@ -42,20 +42,20 @@ node $G/make-plugins.mjs $S "$HERMES_HOME/plugins"      # prints the config line
 #      auxiliary: {title_generation: {enabled: false}}   # else a title request (plus 2 retries) is sent to the scripted server and takes its steps
 
 # 3. The scripted server. It prints one JSON line with its address, then waits.
-node $G/server.mjs $S --port 8089 --log "$HERMES_HOME/requests.jsonl" &
+bun $G/server.mjs $S --port 8089 --log "$HERMES_HOME/requests.jsonl" &
 
 # 4. The inputs. Print them, then give each one to Hermes, in order.
-node $G/inputs.mjs $S
+bun $G/inputs.mjs $S
 hermes chat -q "<first input>"                          # on a non-TTY -q answers and exits (--oneshot is implied)
 hermes chat -c -q "<second input>"                      # -c continues the most recent session (checked at the pin)
 
 # 5. Stop the server and the gateway, and build the transcript.
 kill %1
 hermes gateway stop                                     # `hermes chat` auto-starts a gateway for this HERMES_HOME (`gateway run --idle-exit`, 600 s idle exit); a stale one makes the next home's gateway start "beside it" and can break the next scenario
-node $G/assemble.mjs $S --log "$HERMES_HOME/requests.jsonl" --db "$HERMES_HOME/state.db" \
+bun $G/assemble.mjs $S --log "$HERMES_HOME/requests.jsonl" --db "$HERMES_HOME/state.db" \
   --out packages/golden/transcripts/upstream/$NAME.json
 
-# 6. Compare.
+# 6. Compare (the policy of "Expected differences" below; add --strict for exact parity).
 bun packages/golden/src/cli.ts compare $NAME
 ```
 
@@ -129,7 +129,7 @@ Hook scripts: step 1 prints `plugins:` lines with `enabled` and `hook_callback_t
 ## What the server does
 
 ```
-node scripted-server/server.mjs <script.json> [--port 8089] [--log requests.jsonl]
+bun scripted-server/server.mjs <script.json> [--port 8089] [--log requests.jsonl]
 ```
 
 - `POST .../chat/completions`, `.../messages`, `.../responses`, `.../model/<id>/converse`: it logs the request and answers with the next step. A body with `"stream": true` gets a server-sent-event stream (not for Bedrock).
@@ -155,6 +155,15 @@ node scripted-server/server.mjs <script.json> [--port 8089] [--log requests.json
 All other scripts run without a person once the config is in place.
 
 Commands in the scripts are plain: `echo hello`, `echo one`, `echo two`, `ls nope`, `sleep 60`. Hermes runs them for real. The port runs a simulated executor that returns the output given in `commands`. For `sleep 60` the port holds the command until the user stops the turn.
+
+## Expected differences (the policy)
+
+Recorded upstream transcripts differ from the port in every script today. These differences are listed in `transcripts/upstream/expected-differences.json`: for each script the number of differences, the sorted field paths, and a sha256 digest of the full difference list (fields and both values). `src/baseline.ts` applies it, and both `golden.test.ts` and the verification command use it.
+
+- `bun packages/golden/src/cli.ts compare [name...]` (what `verify.ts run golden` runs) applies the policy. It fails when an upstream fixture is invalid (wrong `script`, `side` or `format`, or no requests, `messages` rows or `admissions` rows), when a script without an entry differs, when a script with an entry has a difference that vanished (entry for a script that now agrees), a new difference, or a changed value, and when an entry names a script with no upstream transcript.
+- `compare --strict` is exact parity: no ignore list of the script, no baseline, any difference exits 1. Use it to see everything, and as the goal once the differences are triaged.
+- After you have read a diff and decided it is expected (see below), run `bun packages/golden/src/cli.ts baseline [name...]` to rewrite the entries, and commit the file with the reason.
+- Do not accept a changed digest without reading the new diff. Fixing a difference makes its entry stale: the policy fails until the entry is removed (`baseline` does that).
 
 ## Reading a difference
 

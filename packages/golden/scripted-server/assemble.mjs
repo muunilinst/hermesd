@@ -2,7 +2,7 @@
 // Build an upstream transcript from the request log of the scripted server and the state.db that
 // Hermes wrote. The output has the same format as the port transcripts (hermesd-golden/1).
 //
-//   node assemble.mjs <script.json> --log requests.jsonl --db $HERMES_HOME/state.db --out transcripts/upstream/<name>.json
+//   bun assemble.mjs <script.json> --log requests.jsonl --db $HERMES_HOME/state.db --out transcripts/upstream/<name>.json
 //
 // It reads the db read-only with node:sqlite (bun, or Node 22.5 or newer). Use one fresh HERMES_HOME for each
 // scenario, so the db holds the rows of this scenario only. Plain Node, no dependencies.
@@ -17,7 +17,7 @@ const logFile = arg(process.argv, "log", "requests.jsonl");
 const dbFile = arg(process.argv, "db", `${process.env.HERMES_HOME ?? `${process.env.HOME}/.hermes`}/state.db`);
 const out = arg(process.argv, "out", "");
 if (!file || !out) {
-  console.error("usage: node assemble.mjs <script.json> --log requests.jsonl --db <state.db> --out <file>");
+  console.error("usage: bun assemble.mjs <script.json> --log requests.jsonl --db <state.db> --out <file>");
   process.exit(2);
 }
 const script = loadScript(file);
