@@ -178,18 +178,29 @@ export class RivetHost implements Host {
         "ORDER BY CASE type WHEN 'table' THEN 0 ELSE 1 END, name",
     );
     const isVirtual = (o: Record<string, unknown>): boolean => /^\s*CREATE\s+VIRTUAL\s+TABLE/i.test(String(o["sql"]));
-    // The virtual tables go first. The tables that creating them made are their shadow tables: a name
-    // check would also match an ordinary table such as an external content table named `notes_segments`.
-    const tablesNow = (): Set<string> =>
-      new Set(this.#mirror.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((r) => String(r["name"])));
-    const before = tablesNow();
-    for (const o of objects) if (o["type"] === "table" && isVirtual(o)) this.#mirror.exec(String(o["sql"]));
-    const made = tablesNow();
-    const virtualNames = new Set(objects.filter((o) => o["type"] === "table" && isVirtual(o)).map((o) => String(o["name"])));
-    const shadowNames = new Set([...made].filter((n) => !before.has(n) && !virtualNames.has(n)));
+    // `PRAGMA table_list` names the shadow tables (a name check would also match an ordinary table
+    // such as an external content table named `notes_segments`). The ordinary tables go first: an
+    // FTS4 external content table must exist before its virtual table is created.
+    let listed: Record<string, unknown>[] | null = null;
+    try {
+      listed = await this.#c.db.execute("PRAGMA table_list");
+    } catch {
+      listed = null;
+    }
+    const shadowNames = new Set((listed ?? []).filter((r) => r["type"] === "shadow" && r["schema"] === "main").map((r) => String(r["name"])));
     const isShadow = (name: string): boolean => shadowNames.has(name);
-    for (const o of objects) {
-      if (o["type"] === "table" && (isVirtual(o) || isShadow(String(o["name"])))) continue;
+    if (!listed) {
+      // An SQLite before 3.37 has no table_list: the tables that creating the virtual tables makes are its shadows.
+      const tablesNow = (): Set<string> =>
+        new Set(this.#mirror.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((r) => String(r["name"])));
+      const before = tablesNow();
+      for (const o of objects) if (o["type"] === "table" && isVirtual(o)) this.#mirror.exec(String(o["sql"]));
+      const virtualNames = new Set(objects.filter((o) => o["type"] === "table" && isVirtual(o)).map((o) => String(o["name"])));
+      for (const n of tablesNow()) if (!before.has(n) && !virtualNames.has(n)) shadowNames.add(n);
+    }
+    const tables = objects.filter((o) => o["type"] === "table");
+    for (const o of [...tables.filter((x) => !isVirtual(x)), ...(listed ? tables.filter(isVirtual) : []), ...objects.filter((o) => o["type"] !== "table")]) {
+      if (o["type"] === "table" && isShadow(String(o["name"]))) continue;
       this.#mirror.exec(String(o["sql"]));
     }
     // The tables are copied by name, so a row can arrive before the row its foreign key points at.

@@ -175,6 +175,19 @@ describe("RivetHost with a fake context", () => {
     assert.deepEqual(await again.tx((s) => s.exec("SELECT rowid FROM notes WHERE notes MATCH 'durable'").map((r) => r["rowid"])), [1]);
   });
 
+  it("reloads an FTS4 external content table, which needs its content table first", async () => {
+    const f = fakeActor();
+    const h = await RivetHost.activate(f.c);
+    await h.tx((s) => {
+      s.exec("CREATE TABLE zdocs (id INTEGER PRIMARY KEY, body TEXT)"); // named to sort after its virtual table
+      s.exec("CREATE VIRTUAL TABLE adocs USING fts4(content='zdocs') /* the columns come from zdocs */");
+      s.exec("INSERT INTO zdocs (id, body) VALUES (1, 'durable note')");
+      s.exec("INSERT INTO adocs (docid, body) VALUES (1, 'durable note')");
+    });
+    const again = await RivetHost.activate(f.c);
+    assert.deepEqual(await again.tx((s) => s.exec("SELECT docid FROM adocs WHERE adocs MATCH 'durable'").map((r) => r["docid"])), [1]);
+  });
+
   it("rejects an async tx callback", async () => {
     const h = await RivetHost.activate(fakeActor().c);
     await assert.rejects(h.tx((async () => 1) as never), TypeError);
