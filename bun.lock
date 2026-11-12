@@ -140,10 +140,14 @@
         "@hermesd/executor-model": "*",
         "@hermesd/executor-protocol": "*",
         "@hermesd/host": "*",
+        "@hermesd/host-cloudflare": "*",
         "@hermesd/host-node": "*",
         "@hermesd/profile-actor": "*",
         "@hermesd/runtime": "*",
         "@hermesd/session-actor": "*",
+      },
+      "devDependencies": {
+        "miniflare": "4.20260730.0",
       },
     },
     "packages/state-port": {
