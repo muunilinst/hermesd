@@ -22,6 +22,20 @@ eachLoopWorld("loop basics", (use) => {
   );
 
   it(
+    "leaves no timer once the turn is done and the outbox is sent",
+    use({ script: [{ reply: "hello there" }] }, async (w) => {
+      await w.send("hi");
+      await w.until(() => w.replies.length === 1, "the reply");
+      await w.until(() => w.rows("outbox").length === 0, "the outbox is empty");
+      await w.b.settle();
+      // No wake has fired: the closed obligation's timer was removed, not left to fire (and, on
+      // Cloudflare or Rivet, to be re-armed by the adapter until someone disarms it).
+      assert.equal(w.b.alarmOf("s1"), null, "a finished session stops waking");
+      assert.deepEqual(w.rows("wake_obligations", "state = 'open'"), []);
+    }),
+  );
+
+  it(
     "runs a terminal call through the executor and goes on",
     use(
       {

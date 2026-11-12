@@ -529,6 +529,12 @@ export class NodePlatform {
     );
   }
 
+  /** Remove the timer of a key. With one alarm per actor, only when that alarm is for this key. */
+  #disarm(rec: ActorRecord, key: string): void {
+    const id = this.#multi ? key : "$";
+    if (rec.alarms.get(id)?.key === key) this.#removeAlarm(rec, id);
+  }
+
   #removeAlarm(rec: ActorRecord, id: string): void {
     rec.cancel.get(id)?.();
     rec.cancel.delete(id);
@@ -670,6 +676,11 @@ export class NodePlatform {
           act.inflight--;
           platform.#scheduleRelease(act);
         }
+      },
+
+      async disarm(key: string): Promise<void> {
+        if (!act.alive) return forever<void>();
+        platform.#disarm(rec, key);
       },
 
       async fetch(req: Request, signal?: AbortSignal): Promise<Response> {

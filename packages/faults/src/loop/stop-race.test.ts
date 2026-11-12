@@ -13,9 +13,9 @@ eachLoopWorld("a stop between reading and saving the answer", (use) => {
       const subtle = crypto.subtle;
       const digest = subtle.digest.bind(subtle);
       let stopped: unknown;
-      const patched = async (alg: AlgorithmIdentifier, data: BufferSource): Promise<ArrayBuffer> => {
-        if (stopped === undefined && new TextDecoder().decode(data as Uint8Array).includes("the answer")) stopped = await w.stop();
-        return digest(alg, data);
+      const patched = async (...args: Parameters<typeof digest>): Promise<ArrayBuffer> => {
+        if (stopped === undefined && new TextDecoder().decode(args[1] as Uint8Array).includes("the answer")) stopped = await w.stop();
+        return digest(...args);
       };
       Object.defineProperty(subtle, "digest", { value: patched, configurable: true, writable: true });
       try {

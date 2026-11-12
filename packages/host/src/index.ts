@@ -57,6 +57,13 @@ export interface Host {
    */
   arm(at: Date, key: string): Promise<void>;
 
+  /**
+   * Remove the timer of `key`: its obligation is closed. A host whose timers stay until
+   * removed (a Durable Object alarm row, a Rivet schedule) must have it, or a closed
+   * obligation keeps waking the actor. A key with no timer is not an error.
+   */
+  disarm?(key: string): Promise<void>;
+
   /** Outbound HTTP. The signal aborts the request and drops partial output. */
   fetch(req: Request, signal?: AbortSignal): Promise<Response>;
 

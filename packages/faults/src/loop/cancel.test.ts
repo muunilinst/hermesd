@@ -19,7 +19,8 @@ function assertStopped(w: LoopWorld): void {
   assert.equal(w.rows("rt_admission_port")[0]!.result, "interrupted");
   assert.equal(w.replies.at(-1)!.text, "Stopped.");
   assert.equal(w.rows("pending_call", "status = 'pending'").length, 0);
-  assert.equal(w.rows("wake_obligations", "state = 'open'").length, 0);
+  // An "outbox" obligation may still be open until the reply's outbox row is cleared.
+  assert.equal(w.rows("wake_obligations", "state = 'open' AND kind != 'outbox'").length, 0);
   w.assertConsistent();
 }
 
