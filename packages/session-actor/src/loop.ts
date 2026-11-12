@@ -34,11 +34,12 @@ import {
   type NewMessage,
 } from "./messages.ts";
 import { DEFAULT_MIGRATIONS, readPortRow, readPortRows, type MigrationSet, type RowData } from "./migrate.ts";
-import { chatBody, chatRequest, estimateTokens, parseChatResponse, type ChatRequestBody, type ParsedResponse, type ToolCallWire, type Usage } from "./model/openai.ts";
+import { chatBody, chatRequest, type ChatMessage, estimateTokens, parseChatResponse, type ChatRequestBody, type ParsedResponse, type ToolCallWire, type Usage } from "./model/openai.ts";
 import { answerResult, parseClarify, renderQuestions, type ClarifyQuestion } from "./tools/clarify.ts";
 import { SUPPORTED_TOOLS, toolDefinitions, type ToolName } from "./tools/schemas.ts";
 import { inputHash, parseTerminal, shellCommand, terminalResult, type BuildCommand } from "./tools/terminal.ts";
 import { applyTodo, type TodoItem } from "./tools/todo.ts";
+import { CANCELLED_CALL_RESULT, INTERRUPTED_COMMAND_RESULT, failedTurnRow, interruptPlaceholderRow, stripInterruptedToolTails } from "./replay.ts";
 
 /**
  * The async loop (porting rule 1, guide 6.3) as a turn driver.
@@ -91,6 +92,14 @@ export interface LoopConfig {
   compression?: Partial<CompressionConfig>;
   /** The model for the summary call. The default is `model`. */
   summaryModel?: string;
+  /**
+   * The stable tier of the system prompt (`@hermesd/prompt` `buildSystemPromptParts().stable`).
+   * When `systemPrompt` starts with it, the prompt cache gets a breakpoint at its end, as
+   * upstream's `_cached_system_prompt_static`. Without it the cache uses the system-and-3 layout.
+   */
+  systemPromptStatic?: string;
+  /** Anthropic prompt caching (upstream `prompt_caching.cache_ttl`). On with a 5m TTL by default. */
+  promptCaching?: false | { ttl?: "5m" | "1h" };
 }
 
 export function defaultLoopConfig(partial: Partial<LoopConfig> = {}): LoopConfig {
@@ -123,11 +132,17 @@ export function defaultLoopConfig(partial: Partial<LoopConfig> = {}): LoopConfig
  * other status end the turn. An abort is an interrupt.
  */
 export interface LoopModelClient {
-  buildBody(input: { model?: string; messages: unknown[]; tools: unknown[] }): string;
+  buildBody(input: { model?: string; messages: unknown[]; tools: unknown[]; options?: ModelBodyOptions }): string;
   send(
     body: string,
     ctx: { callId: string; fetch: (req: Request, signal?: AbortSignal) => Promise<Response>; signal?: AbortSignal; apiKey?: string },
   ): Promise<{ response: ParsedResponse; raw: string }>;
+}
+
+/** Request options the loop passes to `LoopModelClient.buildBody` (a subset of the providers' `RequestOptions`). */
+export interface ModelBodyOptions {
+  staticSystemPrefix?: string | null;
+  promptCaching?: false | { ttl?: "5m" | "1h" };
 }
 
 /**
@@ -424,7 +439,7 @@ export class LoopDriver implements TurnDriver {
   async #begin(ctx: TurnContext): Promise<boolean> {
     const snap = await ctx.host.tx((sql) => this.#snapshot(sql, ctx));
     if (snap.interrupted) {
-      await this.#finishEmpty(ctx, "done", "interrupted");
+      await this.#finishEmpty(ctx, "done", "interrupted", true);
       return false;
     }
     if (snap.question) {
@@ -452,13 +467,13 @@ export class LoopDriver implements TurnDriver {
     return true;
   }
 
-  async #finishEmpty(ctx: TurnContext, status: "done" | "failed", text: string): Promise<void> {
+  async #finishEmpty(ctx: TurnContext, status: "done" | "failed", text: string, interrupted = false): Promise<void> {
     await ctx.step({
       write: (sql, outbox) => {
         if (!turnIsOpen(sql, ctx.turnId)) throw new StepRaced();
         this.#reply(outbox, ctx.turnId, status === "done" ? text : `error: ${text}`);
       },
-      finish: { status, text },
+      finish: { status, text, ...(interrupted ? { interrupted: true } : {}) },
     });
   }
 
@@ -697,10 +712,10 @@ export class LoopDriver implements TurnDriver {
     const snap = await ctx.host.tx((sql) => this.#snapshot(sql, ctx));
     const body: ChatRequestBody = {
       model: fb.model,
-      messages: [{ role: "system", content: this.#cfg.systemPrompt }, ...snap.messages.map(toApiMessage)],
+      messages: this.#apiMessages(snap.messages),
       tools: toolDefinitions(this.#cfg.tools),
     };
-    const request = fb.client.buildBody(body);
+    const request = fb.client.buildBody({ ...body, options: this.#bodyOptions() });
     const now = this.#deps.clock.now();
     await ctx.step({
       write: (sql) => {
@@ -1074,14 +1089,27 @@ export class LoopDriver implements TurnDriver {
     };
   }
 
+  /** The lines of a request: the system prompt, then the rows as the model reads them (`canonicalize_replay_history`). */
+  #apiMessages(rows: NewMessage[]): ChatMessage[] {
+    return [{ role: "system", content: this.#cfg.systemPrompt }, ...stripInterruptedToolTails(rows).map(toApiMessage)];
+  }
+
+  #bodyOptions(): ModelBodyOptions {
+    return {
+      ...(this.#cfg.systemPromptStatic ? { staticSystemPrefix: this.#cfg.systemPromptStatic } : {}),
+      ...(this.#cfg.promptCaching !== undefined ? { promptCaching: this.#cfg.promptCaching } : {}),
+    };
+  }
+
   async #buildCall(ctx: TurnContext, snap: Snapshot, all: NewMessage[]): Promise<NonNullable<Plan["modelCall"]>> {
     const fb = snap.fallbackActive && this.#deps.modelClient ? this.#deps.fallback : undefined;
     const body: ChatRequestBody = {
       model: fb ? fb.model : this.#cfg.model,
-      messages: [{ role: "system", content: this.#cfg.systemPrompt }, ...all.map(toApiMessage)],
+      messages: this.#apiMessages(all),
       tools: toolDefinitions(this.#cfg.tools),
     };
-    const request = fb ? fb.client.buildBody(body) : this.#deps.modelClient ? this.#deps.modelClient.buildBody(body) : chatBody(body);
+    const options = this.#bodyOptions();
+    const request = fb ? fb.client.buildBody({ ...body, options }) : this.#deps.modelClient ? this.#deps.modelClient.buildBody({ ...body, options }) : chatBody(body);
     const tokens = this.#deps.modelClient ? Math.ceil(request.length / 4) : estimateTokens(body);
     const threshold = this.#cfg.compress ? Math.floor(this.#cfg.contextWindow * 0.5) : thresholdTokens(this.#cfg.contextWindow, compressionConfig(this.#cfg.compression));
     const seq = snap.modelCalls + 1;
@@ -1217,9 +1245,14 @@ export class LoopDriver implements TurnDriver {
 
   // ------------------------------------------------------------ interrupt, unknown
 
-  /** A stop request: abort, drop the partial output, cancel the running operations (guide 6.3, D5). */
+  /**
+   * A stop request: abort, drop the partial output, cancel the running operations (guide 6.3, D5).
+   * As upstream: a cut-off command gets the executor's interrupt result (its effect is UNKNOWN to
+   * the model, see `replay.ts`), the turn is closed by an assistant row, and the admission ends
+   * with outcome `interrupted`.
+   */
   async #interrupt(ctx: TurnContext, snap: Snapshot): Promise<void> {
-    await this.#abandon(ctx, snap, { finish: { status: "done", text: "interrupted" }, recorded: [], ask: false });
+    await this.#abandon(ctx, snap, { finish: { status: "done", text: "interrupted", interrupted: true }, recorded: [], ask: false });
   }
 
   /**
@@ -1232,7 +1265,7 @@ export class LoopDriver implements TurnDriver {
     ctx: TurnContext,
     snap: Snapshot,
     o: {
-      finish: { status: "done" | "failed" | "unknown"; text: string };
+      finish: { status: "done" | "failed" | "unknown"; text: string; interrupted?: boolean };
       recorded: Array<{ op: OpRow; out: Extract<OpOutcome, { k: "terminal" }> }>;
       ask: boolean;
     },
@@ -1242,17 +1275,27 @@ export class LoopDriver implements TurnDriver {
     const all = [...snap.messages, ...messages];
     const a = analyze(all);
     const reason = o.finish.status === "unknown" ? "the outcome of an earlier command is unknown" : "the turn was interrupted";
+    const stopped = o.finish.interrupted === true;
+    const running = new Set(snap.ops.filter((op) => !recorded.has(op.uid)).map((op) => op.uid));
     if (a.kind === "tools") {
       for (const { call, uid } of a.unresolved) {
         messages.push({
           role: "tool",
-          content: JSON.stringify({ error: reason, status: "cancelled" }),
+          content: stopped ? (running.has(uid) ? INTERRUPTED_COMMAND_RESULT : CANCELLED_CALL_RESULT) : JSON.stringify({ error: reason, status: "cancelled" }),
           toolCallId: call.id,
           toolCallUid: uid,
           toolName: call.function.name,
           messageUid: `${uid}:r`,
         });
       }
+    }
+    if (stopped) {
+      // Close the turn with an assistant row, so the next input does not follow a bare user or tool row.
+      const rows = [...all, ...messages.slice(o.recorded.length)];
+      const tail = rows[rows.length - 1];
+      const uid = `${ctx.turnId}:stop`;
+      if (tail?.role === "tool") messages.push(interruptPlaceholderRow(uid));
+      else if (tail?.role === "user") messages.push(failedTurnRow(rows.slice(rows.map((m) => m.role).lastIndexOf("user")), uid));
     }
     const open = snap.ops.filter((op) => !recorded.has(op.uid));
     const settle = [

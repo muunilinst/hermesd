@@ -96,8 +96,11 @@ export interface StepSpec {
   write?: (sql: Sql, outbox: OutboxWriter) => void;
   /** The next pending rows. Each one gets a wake obligation. Not allowed together with `finish`. */
   pend?: Array<{ kind: string; payload: unknown }>;
-  /** End the turn in the same transaction. */
-  finish?: { status: "done" | "failed" | "unknown"; text: string };
+  /**
+   * End the turn in the same transaction. `interrupted` (with `done`): the user stopped the
+   * turn, so the admission ends `terminal` with outcome `interrupted`, as upstream records it.
+   */
+  finish?: { status: "done" | "failed" | "unknown"; text: string; interrupted?: boolean };
 }
 
 export interface AppendResult {

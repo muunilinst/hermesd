@@ -1,4 +1,5 @@
 import { hostMatches, hostOf } from "./chat.ts";
+import { planPromptCache } from "./prompt-caching.ts";
 import { StreamDroppedError, guardedEvents } from "./sse.ts";
 import { type Dict, type Message, type ModelCallInput, type NormalizedResponse, type ToolCallWire, type ToolDefinition, type Usage, asList, clone, isDict, truthy } from "./types.ts";
 
@@ -631,7 +632,8 @@ const TOOL_CHOICE_MAP: Record<string, Dict> = { auto: { type: "auto" }, required
  */
 export function buildAnthropicBody(input: ModelCallInput): string {
   const o = input.options ?? {};
-  const [system, msgs] = convertMessagesToAnthropic(clone(input.messages), o.baseUrl, input.model);
+  const planned = planPromptCache(input.messages, input.tools, { mode: "anthropic_messages", model: input.model, baseUrl: o.baseUrl, promptCaching: o.promptCaching, staticSystemPrefix: o.staticSystemPrefix });
+  const [system, msgs] = convertMessagesToAnthropic(clone(planned), o.baseUrl, input.model);
   const tools = input.tools.length > 0 ? convertToolsToAnthropic(input.tools) : [];
   const model = isNousPortal(o.baseUrl) ? input.model : normalizeModelName(input.model);
   const effective = resolvePositiveMaxTokens(o.maxTokens) ?? maxOutput(model);

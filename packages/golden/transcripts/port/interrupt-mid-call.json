@@ -171,6 +171,10 @@
             "content": "hi"
           },
           {
+            "role": "assistant",
+            "content": "Your request was not processed. Send it again if you still want me to carry it out."
+          },
+          {
             "role": "user",
             "content": "again"
           }
@@ -325,6 +329,16 @@
         "compacted": 0
       },
       {
+        "role": "assistant",
+        "content": "Your request was not processed. Send it again if you still want me to carry it out.",
+        "tool_calls": null,
+        "tool_call_id": null,
+        "tool_name": null,
+        "finish_reason": null,
+        "active": 1,
+        "compacted": 0
+      },
+      {
         "role": "user",
         "content": "again",
         "tool_calls": null,
@@ -349,7 +363,7 @@
       {
         "status": "terminal",
         "input": "hi",
-        "outcome": "completed"
+        "outcome": "interrupted"
       },
       {
         "status": "terminal",

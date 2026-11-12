@@ -75,6 +75,8 @@ export interface Script {
     compression?: CompressionKnobs;
     tools?: string[];
     systemPrompt?: string;
+    /** The stable tier of `systemPrompt`: the prompt cache puts a breakpoint at its end (upstream's static prefix). */
+    systemPromptStatic?: string;
   };
   /** A shell command string as the model writes it, to the result the simulated command gives. */
   commands?: Record<string, { stdout?: string; exitCode?: number; hold?: string }>;

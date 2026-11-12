@@ -193,8 +193,16 @@ Differences:
   `decide()` on a failure, and when the decision is `fallback` rebuild the request with the
   new target's `buildBody` and write it back in the same commit.
 - No live test against a real provider. All tests use the scripted models.
-- Prompt-cache layout (`cache_control` placement for Anthropic) follows upstream's
-  "system and last 3 messages" rule only where it was read; other placements are not ported.
+- Prompt caching (`src/prompt-caching.ts`) ports `apply_anthropic_cache_control` and
+  `anthropic_prompt_cache_policy`: at most 4 `cache_control` markers, the static system
+  prefix and the full system prompt plus the last 2 messages when `staticSystemPrefix`
+  is given and the prompt starts with it, else the system prompt plus the last 3. Native
+  layout (inner blocks) on the Messages wire for native Anthropic, Claude on a third-party
+  gateway and MiniMax M2; envelope layout on the OpenAI wire for OpenRouter and Nous Portal
+  Claude/Kimi. One-shot requests (compaction summaries) get none. `promptCaching: false`
+  turns it off; `{ ttl: "1h" }` picks the 1h tier. Not ported: skill-scaffold splits, the
+  direct native tool-array marker, MoA and LiteLLM routes, per-model custom-provider
+  capabilities. Bedrock keeps its own `cachePoint` markers.
 - `bun.lock` is updated by `bun install`; CI installs with `bun install --frozen-lockfile`.
 
 ## Tests

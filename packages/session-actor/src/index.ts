@@ -1,7 +1,17 @@
 export { PortSessionActor, createSessionActor } from "./actor.ts";
 export type { SessionActorDeps } from "./actor.ts";
 export { LoopDriver, SupersededError, analyze, defaultLoopConfig } from "./loop.ts";
-export type { CompressionInfo, LoopConfig, LoopDeps, LoopFallback, LoopHooks, LoopModelClient } from "./loop.ts";
+export type { CompressionInfo, LoopConfig, LoopDeps, LoopFallback, LoopHooks, LoopModelClient, ModelBodyOptions } from "./loop.ts";
+export {
+  CANCELLED_CALL_RESULT,
+  FAILED_TURN_NOTICE,
+  INTERRUPTED_COMMAND_RESULT,
+  INTERRUPTED_PLACEHOLDER,
+  PARTIAL_FAILED_TURN_NOTICE,
+  isInterruptedToolResult,
+  stripInterruptedToolTails,
+  toolMayHaveSideEffect,
+} from "./replay.ts";
 export { PORT_DDL, applySessionSchema } from "./schema.ts";
 export { SESSION_UPSTREAM_DDL, PROFILE_UPSTREAM_DDL, UPSTREAM_SCHEMA_VERSION, UPSTREAM_COMMIT } from "./upstream-ddl.ts";
 export { PRESERVED_TABLES, renderUpstreamDdl } from "./generate-ddl.ts";

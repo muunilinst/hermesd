@@ -2,29 +2,17 @@
   "note": "Expected differences between the port and upstream Hermes (recorded 2026-11-12, hermes-agent a9ff979), not yet sorted into port bug, upstream change or stand-in (UPSTREAM.md, 'Reading a difference'). Per script: the number of differences, their field paths and a digest of the full list (fields and both values). The unit test and `cli.ts compare` fail on a difference not listed here, on an entry whose difference vanished or changed. Regenerate with `bun packages/golden/src/cli.ts baseline [name...]` after reading the diff. `compare --strict` ignores this file.",
   "scripts": {
     "cancellation-during-tool": {
-      "diffCount": 19,
+      "diffCount": 7,
       "fields": [
-        "messages row count",
         "requests[0].body.reasoning_effort",
         "requests[1].body.messages[1].content",
-        "requests[1].body.messages[2].content",
-        "requests[1].body.messages[3].content",
-        "requests[1].body.messages[3].role",
-        "requests[1].body.messages[4]",
         "requests[1].body.reasoning_effort",
-        "rows.admissions[0].outcome",
         "rows.messages[1].content",
         "rows.messages[1].tool_calls[0].call_id",
         "rows.messages[1].tool_calls[0].response_item_id",
-        "rows.messages[2].content",
-        "rows.messages[3].content",
-        "rows.messages[3].role",
-        "rows.messages[4].content",
-        "rows.messages[4].finish_reason",
-        "rows.messages[4].role",
-        "rows.messages[5]"
+        "rows.messages[2].content"
       ],
-      "digest": "727c22848374b37e749099cfa471eadcfc3f0631962ea8f8698a8f663aa266a4"
+      "digest": "5e17007e17496e023753c630ed1cd969ba2a5a5c00576b2d8fb1de8a45c22b6b"
     },
     "clarify-sequential": {
       "diffCount": 15,
@@ -56,18 +44,15 @@
       "digest": "9a308b30fe47c41efebb132db207b8a41616a0323b1e47b856f9bbab12785ac3"
     },
     "format-anthropic-messages": {
-      "diffCount": 8,
+      "diffCount": 5,
       "fields": [
-        "requests[0].body.messages[0].content",
-        "requests[1].body.messages[1].content[0].cache_control",
-        "requests[1].body.messages[2].content[0].cache_control",
         "requests[1].body.messages[2].content[0].content",
         "rows.messages[1].tool_calls[0].call_id",
         "rows.messages[1].tool_calls[0].function.arguments",
         "rows.messages[1].tool_calls[0].response_item_id",
         "rows.messages[2].content"
       ],
-      "digest": "74800b20b50ec9ec2eb084cf5de7b3de4466fa773148a061325f0d9d276a252b"
+      "digest": "52f1c403c8576fdc8ce9d96ab706dd7e9405903c18091712d85f019bffd35857"
     },
     "format-bedrock-converse": {
       "diffCount": 7,
@@ -137,23 +122,12 @@
       "digest": "e4ad4fa0408e4f44c272d867289df92cf33eb4a1697508f7e5525fe341820c3a"
     },
     "interrupt-mid-call": {
-      "diffCount": 13,
+      "diffCount": 2,
       "fields": [
-        "messages row count",
         "requests[0].body.reasoning_effort",
-        "requests[1].body.messages[1].content",
-        "requests[1].body.messages[1].role",
-        "requests[1].body.messages[2]",
-        "requests[1].body.reasoning_effort",
-        "rows.admissions[0].outcome",
-        "rows.messages[1].content",
-        "rows.messages[1].role",
-        "rows.messages[2].content",
-        "rows.messages[2].finish_reason",
-        "rows.messages[2].role",
-        "rows.messages[3]"
+        "requests[1].body.reasoning_effort"
       ],
-      "digest": "2fd03dd0640bf6282d3cca9ed4b64174a680aae24bac0c0da6dc0ad63da86405"
+      "digest": "9a308b30fe47c41efebb132db207b8a41616a0323b1e47b856f9bbab12785ac3"
     },
     "one-tool-call": {
       "diffCount": 6,

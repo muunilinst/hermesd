@@ -27,7 +27,7 @@ eachLoopWorld("a stop between reading and saving the answer", (use, cfg) => {
       }
       assert.deepEqual(stopped, { stopped: true, turn: (stopped as { turn: string }).turn });
       assert.deepEqual(w.replies.map((r) => r.text), ["Stopped."]);
-      assert.equal(w.rows("messages", "role = 'assistant'").length, 0);
+      assert.equal(w.rows("messages", "role = 'assistant' AND display_kind IS NULL").length, 0, "no model row; only the failed-turn notice");
       w.assertConsistent();
     }),
   );

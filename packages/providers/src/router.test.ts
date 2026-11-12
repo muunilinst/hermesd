@@ -139,7 +139,7 @@ describe("429 fallback", () => {
     const fb = r.events.find((e) => e.type === "fallback");
     assert.deepEqual(fb && fb.type === "fallback" ? [fb.from, fb.to, fb.status, fb.label] : null, ["openai", "anthropic", "⚠️ Rate limited — switching to fallback provider...", "rate limit"]);
     // The fallback gets its own body, in its own format.
-    assert.equal((f.requests[0]!.body as { system?: string }).system, "You are helpful.");
+    assert.deepEqual((f.requests[0]!.body as { system?: unknown }).system, [{ type: "text", text: "You are helpful.", cache_control: { type: "ephemeral" } }]);
   });
 
   it("sends the same call id to the fallback", async () => {

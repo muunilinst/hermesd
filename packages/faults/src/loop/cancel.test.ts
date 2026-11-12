@@ -12,10 +12,16 @@ import { admissionState } from "../actor/admission.ts";
 
 const sentBy = (w: LoopWorld, method: string) => w.link.sent.filter((m) => m.method === method);
 
+/** Assistant rows that the model wrote, not the rows Hermes writes to close a stopped turn. */
+const MODEL_ROWS = "role = 'assistant' AND display_kind IS NULL";
+
 /** After a stop: the turn is over, nothing is pending, the transcript is valid. */
 function assertStopped(w: LoopWorld): void {
+  // As upstream: the stopped turn ends with an assistant row, a failed-turn notice or the hidden placeholder.
+  const last = w.rows("messages").sort((a, b) => Number(a.id) - Number(b.id)).at(-1);
+  if (last) assert.deepEqual([last.role, ["failed_turn", "hidden"].includes(String(last.display_kind))], ["assistant", true], "the stopped turn is closed");
   assert.equal(w.rows("turns")[0]!.status, "done");
-  assert.equal(admissionState(w.rows("session_admissions")[0]!), "terminal:completed");
+  assert.equal(admissionState(w.rows("session_admissions")[0]!), "terminal:interrupted", "a stopped turn is recorded as interrupted, as upstream");
   assert.equal(w.rows("rt_admission_port")[0]!.result, "interrupted");
   assert.equal(w.replies.at(-1)!.text, "Stopped.");
   assert.equal(w.rows("pending_call", "status = 'pending'").length, 0);
@@ -45,7 +51,7 @@ eachLoopWorld("cancellation at each point of a turn", (use) => {
       await w.b.settle();
       assert.equal(w.model.recorder.requests.length, 0);
       assert.equal(w.rows("pending_call")[0]!.status, "cancelled");
-      assert.equal(w.rows("messages", "role = 'assistant'").length, 0);
+      assert.equal(w.rows("messages", MODEL_ROWS).length, 0);
       assertStopped(w);
       await assertNextInputWorks(w, "unused");
     }),
@@ -60,7 +66,7 @@ eachLoopWorld("cancellation at each point of a turn", (use) => {
       assert.equal(r.stopped, true);
       await w.until(() => w.replies.length === 1, "the stop reply");
       assert.equal(w.model.aborted, 1, "the request was aborted");
-      assert.equal(w.rows("messages", "role = 'assistant'").length, 0, "no partial output");
+      assert.equal(w.rows("messages", MODEL_ROWS).length, 0, "no partial output");
       assert.equal(w.rows("pending_call")[0]!.status, "cancelled");
       assertStopped(w);
       w.model.release("g1"); // the late answer has nobody to go to
@@ -77,7 +83,7 @@ eachLoopWorld("cancellation at each point of a turn", (use) => {
       await w.send("hi");
       await w.until(() => w.replies.length === 1, "the stop reply");
       assert.equal(w.model.recorder.requests.length, 1, "the model did answer");
-      assert.equal(w.rows("messages", "role = 'assistant'").length, 0, "the answer was not written");
+      assert.equal(w.rows("messages", MODEL_ROWS).length, 0, "the answer was not written");
       assertStopped(w);
       await assertNextInputWorks(w, "second");
     }),

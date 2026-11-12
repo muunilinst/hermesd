@@ -20,6 +20,10 @@
       "reply": "It printed hello."
     }
   ],
+  "config": {
+    "systemPrompt": "You are a helpful agent.\n\nConversation started: a scripted day.",
+    "systemPromptStatic": "You are a helpful agent."
+  },
   "commands": {
     "echo hello": {
       "stdout": "hello\n"

@@ -81,6 +81,13 @@ export interface RequestOptions {
   guardrailConfig?: Dict | null;
   /** codex_responses: the issuer kind (`codex_backend`, `xai_responses`, or null). */
   issuerKind?: string | null;
+  /**
+   * Anthropic prompt caching (`prompt_caching.cache_ttl`). On by default with a 5m TTL on
+   * the routes that honor it (`prompt-caching.ts`); `false` turns it off.
+   */
+  promptCaching?: false | { ttl?: "5m" | "1h" };
+  /** The stable tier of the system prompt. It gets a breakpoint of its own when the prompt starts with it. */
+  staticSystemPrefix?: string | null;
 }
 
 export interface ModelCallInput {

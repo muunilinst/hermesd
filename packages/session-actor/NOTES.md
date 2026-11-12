@@ -38,7 +38,16 @@ decisions made and every change to an existing contract.
   the admission is marked unknown, the user is asked, and later inputs wait.
 - `/stop` writes `loop_turn.interrupted`, aborts the fetch, drops partial
   output, and calls `cancel(op_id)` on running ops. A late result is accepted
-  and discarded.
+  and discarded. As upstream (`src/replay.ts`): the admission ends `terminal` with
+  outcome `interrupted`; a cut-off command's row gets the executor's interrupt result
+  (`[Command interrupted]`, exit 130), a call that had no operation gets a cancelled
+  result; the turn is closed by an assistant row, the hidden placeholder
+  (`api_content` = `[interrupt: no assistant output for this turn]`) after a tool row or
+  the failed-turn notice after the user row. Every request rewrites an interrupted result
+  of a side-effecting tool into the orphan-recovery notice that its effect is UNKNOWN,
+  and drops an all read-only interrupted block. Differences kept on purpose: a partial
+  streamed answer is still dropped (upstream keeps it as a visible row), and an open
+  operation counts as cut off even if the executor had not started it.
 - clarify writes a question row and ends the turn. The answer is the next
   admission. The wait survives a restart (7.4 upgrade test).
 - Tool schemas: clarify and todo are the literal upstream schemas.

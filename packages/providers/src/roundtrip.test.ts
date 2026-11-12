@@ -39,7 +39,8 @@ describe("request body per mode", () => {
   it("anthropic_messages moves the system prompt out and merges parallel results into one user turn", () => {
     const body = bodyOf("anthropic_messages", PARALLEL_CONVERSATION);
     assert.deepEqual(Object.keys(body), ["model", "messages", "max_tokens", "system", "tools", "tool_choice"]);
-    assert.equal(body.system, "You are helpful.");
+    // A Claude model on the Messages wire caches: the system prompt is one marked block (prompt-caching.ts).
+    assert.deepEqual(body.system, [{ type: "text", text: "You are helpful.", cache_control: { type: "ephemeral" } }]);
     assert.deepEqual(body.messages.map((m: Dict) => m.role), ["user", "assistant", "user"]);
     const results = body.messages[2].content;
     assert.deepEqual(results.map((b: Dict) => [b.type, b.tool_use_id]), [["tool_result", "call_1"], ["tool_result", "call_2"]]);

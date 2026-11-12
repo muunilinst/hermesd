@@ -44,6 +44,13 @@ export interface NewMessage {
    * `pending_call` (key `replay`), not in a `messages` column.
    */
   orderedBlocks?: { anthropic_content_blocks?: unknown[]; bedrock_content_blocks?: unknown[] };
+  /**
+   * Upstream `api_content`: what the model reads in place of `content` (for example the
+   * interrupt placeholder of an empty assistant row). The stored `content` is what people see.
+   */
+  apiContent?: string;
+  /** Upstream `display_kind`: `hidden` or `failed_turn` for rows that Hermes wrote, not the model. */
+  displayKind?: string;
   /** Set when the row comes from the database. */
   id?: number;
 }
@@ -109,8 +116,8 @@ export function insertMessage(sql: Sql, sessionId: string, m: NewMessage, nowMs:
   const r = sql.exec(
     `INSERT INTO messages (session_id, role, content, tool_call_id, tool_calls, tool_name, timestamp, token_count, finish_reason,
        message_uid, tool_call_uids, tool_call_uid, _compressed_summary, reasoning, reasoning_content, reasoning_details,
-       codex_reasoning_items, codex_message_items)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+       codex_reasoning_items, codex_message_items, api_content, display_kind)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
     sessionId,
     m.role,
     m.content,
@@ -129,6 +136,8 @@ export function insertMessage(sql: Sql, sessionId: string, m: NewMessage, nowMs:
     jsonList(m.reasoningDetails),
     jsonList(m.codexReasoningItems),
     jsonList(m.codexMessageItems),
+    m.apiContent ?? null,
+    m.displayKind ?? null,
   );
   sql.exec(
     "UPDATE sessions SET message_count = COALESCE(message_count, 0) + 1, tool_call_count = COALESCE(tool_call_count, 0) + ?, last_activity_at = ? WHERE id = ?",
@@ -147,6 +156,8 @@ function fromRow(r: SqlRow): NewMessage {
   if (typeof r.tool_call_uid === "string") m.toolCallUid = r.tool_call_uid;
   if (typeof r.tool_name === "string") m.toolName = r.tool_name;
   if (num(r._compressed_summary) === 1) m.compressedSummary = true;
+  if (typeof r.api_content === "string") m.apiContent = r.api_content;
+  if (typeof r.display_kind === "string") m.displayKind = r.display_kind;
   if (m.role === "assistant") {
     if (typeof r.reasoning === "string" && r.reasoning) m.reasoning = r.reasoning;
     if (typeof r.reasoning_content === "string") m.reasoningContent = r.reasoning_content;
@@ -172,7 +183,7 @@ export function loadActiveMessages(sql: Sql, sessionId: string): NewMessage[] {
   const rows = sql
     .exec(
       `SELECT id, role, content, tool_call_id, tool_calls, tool_name, tool_call_uids, tool_call_uid, message_uid, _compressed_summary,
-         reasoning, reasoning_content, reasoning_details, codex_reasoning_items, codex_message_items
+         reasoning, reasoning_content, reasoning_details, codex_reasoning_items, codex_message_items, api_content, display_kind
        FROM messages WHERE session_id = ? AND active = 1 ORDER BY id`,
       sessionId,
     )
@@ -187,12 +198,13 @@ export function loadActiveMessages(sql: Sql, sessionId: string): NewMessage[] {
   return rows;
 }
 
-/** One message in the OpenAI shape. */
+/** One message in the OpenAI shape. `api_content`, when set, is what the model reads (`substitute_api_content`). */
 export function toApiMessage(m: NewMessage): ChatMessage {
+  const content = m.apiContent ?? m.content;
   if (m.role === "assistant") {
     return {
       role: "assistant",
-      content: m.content,
+      content,
       ...(m.toolCalls && m.toolCalls.length > 0 ? { tool_calls: m.toolCalls } : {}),
       ...(m.reasoning ? { reasoning: m.reasoning } : {}),
       ...(m.reasoningContent !== undefined ? { reasoning_content: m.reasoningContent } : {}),
@@ -202,8 +214,8 @@ export function toApiMessage(m: NewMessage): ChatMessage {
       ...m.orderedBlocks,
     };
   }
-  if (m.role === "tool") return { role: "tool", tool_call_id: m.toolCallId ?? "", content: m.content ?? "" };
-  return { role: "user", content: m.content ?? "" };
+  if (m.role === "tool") return { role: "tool", tool_call_id: m.toolCallId ?? "", content: content ?? "" };
+  return { role: "user", content: content ?? "" };
 }
 
 /** Add one model call to the counters of the session and to `session_model_usage`. */
