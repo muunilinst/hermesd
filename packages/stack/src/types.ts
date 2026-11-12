@@ -69,6 +69,11 @@ export interface StackFaultRule {
 export interface MeterSnapshot {
   /** Activations (owner epochs raised) since the meter was reset. */
   activations: number;
+  /**
+   * The first event each activation received since the reset, in order: `call:<method>` (with `:<request>` for
+   * `receive`), `alarm` or `cron:<name>`. It names what woke the actor, as far as the actor's own events go.
+   */
+  firstEvents: string[];
   /** Events that reached the actor: calls, alarms, crons. */
   events: number;
   /** Transactions. */

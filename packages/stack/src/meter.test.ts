@@ -12,6 +12,41 @@ function clock() {
 }
 
 describe("Meter spans", () => {
+  it("abandon ends open spans, and a late settle leaves the replacement's spans alone", async () => {
+    const c = clock();
+    const m = new Meter(c.now);
+    m.reset();
+    let never!: () => void;
+    const dead = m.span(() => new Promise<void>((r) => (never = r)), true);
+    c.set(10);
+    m.abandon(); // the activation died with 10 ms open
+    c.set(100);
+    assert.equal(m.snapshot().busyMs, 10, "no time accrues after the abandon");
+    let open!: () => void;
+    const live = m.span(() => new Promise<void>((r) => (open = r)));
+    c.set(110);
+    never(); // the dead promise settles late
+    await dead;
+    c.set(120);
+    open();
+    await live;
+    c.set(200);
+    const s = m.snapshot();
+    assert.equal(s.busyMs, 30, "10 ms before the crash, 20 ms of the new span");
+    assert.equal(s.busyExclModelMs, 20, "the first 10 ms were a model wait");
+  });
+
+  it("records the first event of each activation", async () => {
+    const m = new Meter(clock().now);
+    m.reset();
+    m.activated();
+    await m.event(async () => {}, "call:receive:r1");
+    await m.event(async () => {}, "alarm");
+    m.activated();
+    await m.event(async () => {}, "cron:tick");
+    assert.deepEqual(m.snapshot().firstEvents, ["call:receive:r1", "cron:tick"]);
+  });
+
   it("subtracts a model wait nested inside an event, as intervals", async () => {
     const c = clock();
     const m = new Meter(c.now);
@@ -161,7 +196,16 @@ describe("bench sample validity", () => {
       const s = await createNodeStack(o);
       return { ...s, evict: async () => {}, epochOf: async () => 1 };
     };
-    await assert.rejects(runBench(make, { turns: 1, coldSamples: 1 }), /did not wake/);
+    await assert.rejects(runBench(make, { turns: 1, coldSamples: 1 }), /woken by something other than the timed send/);
+  });
+  it("rejects a cold sample that another event woke before the timed send", async () => {
+    const make: StackFactory = async (o) => {
+      const { createNodeStack } = await import("./node.ts");
+      const s = await createNodeStack(o);
+      // An event of s1 other than the timed receive wakes it first.
+      return { ...s, evict: async (a) => { await s.evict(a); await s.call(a, "no_such_method").catch(() => {}); } };
+    };
+    await assert.rejects(runBench(make, { turns: 1, coldSamples: 1 }), /first event of the activation was/);
   });
   it("reports an empty cold distribution explicitly", async () => {
     const { createNodeStack } = await import("./node.ts");

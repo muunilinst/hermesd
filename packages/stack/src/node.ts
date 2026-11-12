@@ -25,10 +25,12 @@ export async function createNodeStack(opts: StackOptions, mode: PlatformMode = "
     const make = actorFactory(name, opts, platform.clock);
     platform.defineActor(name, (h) => meteredBehavior(make(new MeteredHost(h, { actor: name, meter })), meter));
   }
-  if (opts.autoSweep !== false) {
-    platform.cron("sweeper", "tick", 60_000);
-    platform.cron("sweeper", "sweep", 600_000);
-  }
+  // The jobs exist whatever autoSweep says, so `Stack.cron` always works; autoSweep only schedules them.
+  const auto = opts.autoSweep !== false;
+  platform.cron("sweeper", "tick", 60_000, auto);
+  platform.cron("sweeper", "sweep", 600_000, auto);
+  // A dead activation's open spans would otherwise stay open for good: its promises never settle.
+  platform.onCrash((key) => meters.get(key as ActorName)?.abandon());
   await platform.call("profile", "register_session", { session: NAMES.session });
   let crashes = 0;
   const minDelay = opts.minDelayMs ?? 1_000;
@@ -40,11 +42,17 @@ export async function createNodeStack(opts: StackOptions, mode: PlatformMode = "
     },
     replies: async () => [...gateway.replies],
     async waitReplies(n, timeoutMs = 30_000) {
+      // The deadline is real time and is checked here, in a loop that never awaits the clock: a held
+      // model call keeps the platform busy, so `advance` (which waits for it to be idle) may not return.
+      // Virtual time is pumped by an advance that runs on its own, one at a time.
       const end = Date.now() + timeoutMs;
+      let pumping: Promise<void> | undefined;
       for (let i = 0; gateway.replies.length < n; i++) {
         if (Date.now() > end) throw new Error(`timed out waiting for ${n} replies (have ${gateway.replies.length})`);
         await tick();
-        if (i % 50 === 49) await platform.clock.advance(minDelay + 100);
+        if (i % 50 === 49 && !pumping) {
+          pumping = platform.clock.advance(minDelay + 100).catch(() => {}).finally(() => void (pumping = undefined));
+        }
       }
       return [...gateway.replies];
     },

@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import { RivetUnavailable, createRivetStack } from "./rivet.ts";
@@ -45,14 +48,17 @@ describe("stack scenarios on rivetkit 3.0.7", { timeout: 120_000 }, () => {
   // turn that never opened.
   it("an actor left armed by an earlier process does not disturb the next stack", { timeout: 120_000 }, (t) =>
     guarded(t, async () => {
-      const child = spawnSync(process.execPath, [fileURLToPath(new URL("./rivet-leave-armed.ts", import.meta.url))], { encoding: "utf8", timeout: 60_000 });
+      // The one place a store is shared on purpose: both processes get this directory, nothing else does.
+      const shared = mkdtempSync(join(tmpdir(), "hermesd-rivet-shared-"));
+      try {
+      const child = spawnSync(process.execPath, [fileURLToPath(new URL("./rivet-leave-armed.ts", import.meta.url)), shared], { encoding: "utf8", timeout: 60_000 });
       if (!child.stdout.includes("ARMED")) {
         const err = child.stderr;
         if (/registry is not ready|could not start/.test(err)) return t.skip("rivetkit could not start in the helper process");
         throw new Error(`the helper did not arm a timer: ${err.slice(-500)}`);
       }
 
-      const s = await createRivetStack({ script: benchScript(3, 1) });
+      const s = await createRivetStack({ storagePath: shared, script: benchScript(3, 1) });
       try {
         // Observe the stale wake: the engine wakes the old actors under this registry and the guard destroys them.
         // Wait for it while this stack is active, then run turns. Without the guard the ghost has raised its own
@@ -71,6 +77,26 @@ describe("stack scenarios on rivetkit 3.0.7", { timeout: 120_000 }, () => {
       } finally {
         await s.close();
       }
+      } finally {
+        rmSync(shared, { recursive: true, force: true });
+      }
+    }),
+  );
+
+  it("a stack keeps its data in a private store that close removes", { timeout: 120_000 }, (t) =>
+    guarded(t, async () => {
+      const prior = process.env["RIVETKIT_STORAGE_PATH"];
+      const s = await createRivetStack({ script: [{ reply: "x" }] });
+      const used = process.env["RIVETKIT_STORAGE_PATH"]!;
+      try {
+        assert.ok(used.includes("hermesd-rivet-"), `a temporary store, not ~/.rivetkit: ${used}`);
+        await s.send("hi");
+        await s.waitReplies(1);
+      } finally {
+        await s.close();
+      }
+      assert.equal(existsSync(used), false, "the store is removed on close");
+      assert.equal(process.env["RIVETKIT_STORAGE_PATH"], prior, "the environment is restored");
     }),
   );
 });

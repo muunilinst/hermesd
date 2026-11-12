@@ -29,6 +29,46 @@ describe("Stack.cron on node", () => {
   });
 });
 
+describe("Stack on node, held model call", () => {
+  it("waitReplies honors its deadline while the model call is held", async () => {
+    const s = await createNodeStack({ script: [{ reply: "x", hold: "g1" }] });
+    try {
+      await s.send("hello");
+      const t0 = Date.now();
+      await assert.rejects(s.waitReplies(1, 400), /timed out/);
+      assert.ok(Date.now() - t0 < 5_000, "it returned near its deadline");
+      await s.release("g1");
+      assert.equal((await s.waitReplies(1, 10_000))[0]!.text, "x");
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("an eviction during the held call stops the busy time", async () => {
+    const s = await createNodeStack({ script: [{ reply: "x", hold: "g1" }] });
+    try {
+      await s.send("hello");
+      await s.evict("s1");
+      const a = (await s.meter("s1")).busyMs;
+      await new Promise((r) => setTimeout(r, 150));
+      assert.ok((await s.meter("s1")).busyMs - a < 50, "the dead activation's spans no longer accrue");
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("Stack.cron works with autoSweep off", async () => {
+    const s = await createNodeStack({ script: [{ reply: "x" }], autoSweep: false });
+    try {
+      await s.cron("tick");
+      await s.cron("sweep");
+      assert.equal((await s.meter("sweeper")).events, 2);
+    } finally {
+      await s.close();
+    }
+  });
+});
+
 describe("assertReadOnlySql", () => {
   it("accepts one SELECT or WITH ... SELECT and refuses the rest", () => {
     assert.equal(assertReadOnlySql("SELECT 1;"), "SELECT 1");

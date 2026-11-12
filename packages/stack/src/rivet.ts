@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { SqlRow } from "@hermesd/host";
 import { FaultRules, Meter } from "./meter.ts";
 import { ACTOR_NAMES, defineWorldActor, type RivetWorld } from "./rivet-actors.ts";
@@ -40,10 +43,31 @@ export class RivetUnavailable extends Error {}
 /** The rivet stack, with what only it can show: ghost actors of an earlier process that the engine woke and the guard destroyed. */
 export type RivetStack = Stack & { ghostsDestroyed(): number };
 
-export async function createRivetStack(opts: StackOptions): Promise<RivetStack> {
+export interface RivetStackOptions extends StackOptions {
+  /**
+   * Where the engine keeps its data. The default is a new temporary directory for this stack, removed on
+   * `close`, so no run meets the actors, rows or timers of another. Give a directory only to share a store
+   * on purpose (the two-process regression test); it is then left in place.
+   */
+  storagePath?: string;
+}
+
+export async function createRivetStack(options: RivetStackOptions): Promise<RivetStack> {
+  const { storagePath, ...opts } = options;
   const { actor, setup } = (await import("rivetkit")) as Any;
   const { db } = (await import("rivetkit/db")) as Any;
   const { setupTest } = (await import("rivetkit/test")) as Any;
+
+  // rivetkit's engine reads RIVETKIT_STORAGE_PATH when the registry starts; unset, it uses ~/.rivetkit.
+  const ownedStore = storagePath === undefined ? mkdtempSync(join(tmpdir(), "hermesd-rivet-")) : undefined;
+  const store = storagePath ?? ownedStore!;
+  const priorStore = process.env["RIVETKIT_STORAGE_PATH"];
+  process.env["RIVETKIT_STORAGE_PATH"] = store;
+  const releaseStore = (): void => {
+    if (priorStore === undefined) delete process.env["RIVETKIT_STORAGE_PATH"];
+    else process.env["RIVETKIT_STORAGE_PATH"] = priorStore;
+    if (ownedStore) rmSync(ownedStore, { recursive: true, force: true });
+  };
 
   const model = new ModelService(opts.script, opts.modelDelayMs ?? 0);
   const exec = new ExecutorService();
@@ -61,8 +85,8 @@ export async function createRivetStack(opts: StackOptions): Promise<RivetStack> 
     crashes: { fired: 0 },
     sleeps: { s1: 0, sweeper: 0, profile: 0 },
     client: () => client,
-    // The engine keeps its data under ~/.rivetkit and an actor id follows from its key, so a key
-    // that repeats would meet the rows of an earlier stack or run. Each stack gets new keys;
+    // The store is private to the stack (see `storagePath`), and keys are new per stack as well, so a
+    // shared store still never hands a stack the rows of an earlier one;
     // the actor still answers to its logical name through `Host.id()` (see rivet-actors.ts).
     keys: { s1: [`${run}-s1`], sweeper: [`${run}-sweeper`], profile: [`${run}-profile`] },
   };
@@ -85,6 +109,11 @@ export async function createRivetStack(opts: StackOptions): Promise<RivetStack> 
     }
     try {
       await registry.shutdown();
+    } catch (e) {
+      errors.push(e);
+    }
+    try {
+      releaseStore();
     } catch (e) {
       errors.push(e);
     }

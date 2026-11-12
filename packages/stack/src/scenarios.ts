@@ -134,6 +134,13 @@ export const SCENARIOS: Scenario[] = [
         await s.send("hello");
         assert.equal(await oneReply(s), "seen once");
         assert.equal((await s.replies()).length, 1, "no duplicate reply");
+        // The fault must have fired, and the retry must be the same call sent again: a second arrival
+        // at the model under the first one's (nonempty) call id.
+        assert.equal(await s.crashesFired(), 1, "the injected crash fired once");
+        await waitFor(async () => (await s.modelArrivals()).length >= 2, "a second model arrival after the crash");
+        const arrivals = await s.modelArrivals();
+        assert.ok(arrivals[0]!.callId, "the first request carries a call id");
+        assert.equal(arrivals[1]!.callId, arrivals[0]!.callId, "the retry carries the original call id");
         await settledTurns(s);
       });
     },
@@ -192,6 +199,21 @@ export const SCENARIOS: Scenario[] = [
           await waitFor(found, "the user message in the profile index after a sweeper tick");
         });
         assert.equal(await s.crashesFired(), 1, "the injected crash fired");
+      });
+    },
+  },
+  {
+    name: "rows returns a BLOB as bytes, the same on every host",
+    async run(make) {
+      await withStack(make, { script: [{ reply: "x" }] }, async (s) => {
+        const rows = await s.rows("s1", "SELECT X'0203' AS data, 7 AS n, 'a' AS t, NULL AS z");
+        assert.equal(rows.length, 1);
+        const data = rows[0]!["data"];
+        assert.ok(data instanceof Uint8Array, `data is a Uint8Array, got ${Object.prototype.toString.call(data)}`);
+        assert.deepEqual([...(data as Uint8Array)], [2, 3]);
+        assert.equal(rows[0]!["n"], 7);
+        assert.equal(rows[0]!["t"], "a");
+        assert.equal(rows[0]!["z"], null);
       });
     },
   },

@@ -171,10 +171,15 @@ export function benchScript(turns: number, toolEvery = 2): ModelStep[] {
 }
 
 /** Wrap an actor so that the meter sees each event the platform gives it. */
-export function meteredBehavior(b: ActorBehavior, meter: { event<T>(fn: () => Promise<T>): Promise<T> }): ActorBehavior {
-  const out: ActorBehavior = { call: (m, p) => meter.event(() => b.call(m, p)) };
+export function meteredBehavior(b: ActorBehavior, meter: { event<T>(fn: () => Promise<T>, label?: string): Promise<T> }): ActorBehavior {
+  const out: ActorBehavior = {
+    call: (m, p) => {
+      const request = m === "receive" ? (p as { request?: unknown } | null)?.request : undefined;
+      return meter.event(() => b.call(m, p), `call:${m}${typeof request === "string" ? `:${request}` : ""}`);
+    },
+  };
   if (b.activate) out.activate = () => b.activate!();
-  if (b.alarm) out.alarm = () => meter.event(() => b.alarm!());
-  if (b.cron) out.cron = (n) => meter.event(() => b.cron!(n));
+  if (b.alarm) out.alarm = () => meter.event(() => b.alarm!(), "alarm");
+  if (b.cron) out.cron = (n) => meter.event(() => b.cron!(n), `cron:${n}`);
   return out;
 }

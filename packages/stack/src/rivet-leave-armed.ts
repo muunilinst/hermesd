@@ -6,7 +6,9 @@
 import { createRivetStack } from "./rivet.ts";
 import { terminalCall } from "./world.ts";
 
-const s = await createRivetStack({ script: [{ toolCalls: [terminalCall({ stdout: "x\n", hold: "c1" })] }, { reply: "never" }] });
+const storagePath = process.argv[2];
+if (!storagePath) throw new Error("usage: rivet-leave-armed.ts <shared storage dir>");
+const s = await createRivetStack({ storagePath, script: [{ toolCalls: [terminalCall({ stdout: "x\n", hold: "c1" })] }, { reply: "never" }] });
 await s.send("start a turn and leave it open");
 const end = Date.now() + 20_000;
 while ((await s.rows("s1", "SELECT 1 FROM wake_timers")).length === 0) {

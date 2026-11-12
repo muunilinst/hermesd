@@ -42,6 +42,17 @@ const json = (v: unknown, status = 200) => Response.json(v ?? null, { status });
 const optsOf = (env: Env): StackOptions => JSON.parse(env.OPTS) as StackOptions;
 const fail = (e: unknown) => json({ error: e instanceof Error ? `${e.name}: ${e.message}` : String(e) }, 500);
 
+/** A SQLite BLOB crosses JSON as {"$blob": base64}; workerd.ts decodes it. */
+const encodeValue = (v: unknown): unknown => {
+  if (v instanceof Uint8Array || v instanceof ArrayBuffer) {
+    const bytes = v instanceof Uint8Array ? v : new Uint8Array(v);
+    let bin = "";
+    for (const b of bytes) bin += String.fromCharCode(b);
+    return { $blob: btoa(bin) };
+  }
+  return v;
+};
+
 const BINDING = { s1: "SESSION", sweeper: "SWEEPER", profile: "PROFILE" } as const;
 const actorStub = (env: Env, a: ActorName): FetcherLike => env[BINDING[a]].get(env[BINDING[a]].idFromName(a));
 const servicesStub = (env: Env): FetcherLike => env.SERVICES.get(env.SERVICES.idFromName("services"));
@@ -52,10 +63,12 @@ const viaServices = (env: Env, path: string): FetcherLike => ({
 class ActorDO extends DurableObject<Env> {
   readonly #host: CloudflareHost;
   readonly #behavior: ActorBehavior;
+  readonly #name: ActorName;
   #active: Promise<void> | undefined;
 
   constructor(ctx: DurableObjectState, env: Env, name: ActorName) {
     super(ctx, env);
+    this.#name = name;
     const sidecars: Record<string, FetcherLike> = {
       [NAMES.executor]: viaServices(env, "/executor/rpc"),
       [NAMES.gateway]: viaServices(env, "/gateway/rpc"),
@@ -105,10 +118,15 @@ class ActorDO extends DurableObject<Env> {
         } catch (e) {
           return json({ error: (e as Error).message }, 400);
         }
-        return json(await this.#host.tx((s) => s.exec(text)));
+        // JSON has no bytes: a BLOB goes as {"$blob": base64} and workerd.ts turns it back into a Uint8Array.
+        const rows = await this.#host.tx((s) => s.exec(text));
+        return json(rows.map((row) => Object.fromEntries(Object.entries(row).map(([k, v]) => [k, encodeValue(v)]))));
       }
       if (path === "/ctl/epoch") return json(this.#host.epoch());
-      if (path === "/ctl/abort") this.ctx.abort("evicted by the test");
+      if (path === "/ctl/abort") {
+        meterOf(this.#name).abandon();
+        this.ctx.abort("evicted by the test");
+      }
       return json({ error: `no route ${path}` }, 404);
     } catch (e) {
       return fail(e);

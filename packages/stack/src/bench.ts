@@ -7,8 +7,11 @@ import { benchScript } from "./world.ts";
  * The workload is `turns` turns against the scripted model, every `toolEvery`-th one
  * with a terminal call. A warm-up turn is not counted. Then `coldSamples` cold wakes:
  * the session is evicted (which does not wake it) and the send that wakes it is timed;
- * the wake latency is the time from that send to the model request. The epoch must have
- * risen after the send, or the sample is not a cold wake and the bench fails.
+ * the wake latency is the time from that send to the model request. A sample counts only if
+ * the timed send caused the activation: after the eviction `s1` was activated exactly once, its
+ * first event was the `receive` of the timed request (named by its request id), and the epoch
+ * rose. An activation by anything else first (an alarm, a sweeper call, a cron) rejects the sample
+ * and it is taken again, up to `COLD_ATTEMPTS` times per sample.
  *
  * Definitions:
  * - Turn latency: the gateway stamps each reply when it receives it (`StackReply.at`).
@@ -113,6 +116,7 @@ function per(m: MeterSnapshot, n: number): MeterSnapshot {
   for (const [k, v] of Object.entries(m.sidecars)) sidecars[k] = round(v / n);
   return {
     activations: m.activations,
+    firstEvents: [],
     events: round(m.events / n),
     tx: round(m.tx / n),
     statements: round(m.statements / n),
@@ -156,10 +160,10 @@ interface Sample {
 }
 
 /** Send one input and measure it. The timer starts just before the send, the first event of the turn. */
-async function timedTurn(s: Stack, input: string, idx: number, exp: Expect): Promise<Sample> {
+async function timedTurn(s: Stack, input: string, idx: number, exp: Expect, request?: string): Promise<Sample> {
   const before = (await s.modelArrivals()).length;
   const t0 = Date.now();
-  await s.send(input);
+  await s.send(input, request);
   const replies = await s.waitReplies(idx + 1, 60_000);
   const arrivals = await s.modelArrivals();
   const label = `turn ${idx} (${input})`;
@@ -209,10 +213,14 @@ export async function drain(s: Stack, timeoutMs = 30_000): Promise<void> {
   }
 }
 
+/** How many times a cold sample is taken again when something else woke the actor before the timed send. */
+const COLD_ATTEMPTS = 3;
+
 export async function runBench(make: StackFactory, options: BenchOptions = {}): Promise<BenchResult> {
   const { turns, toolEvery, modelDelayMs, coldSamples } = validateOptions(options);
-  const total = 1 + turns + coldSamples * 2;
-  const script = benchScript(total, 0).slice(0, 1).concat(benchScript(turns, toolEvery), benchScript(coldSamples * 2, 0));
+  // Each cold attempt takes two scripted turns (prime and timed); rejected attempts use up theirs.
+  const total = 1 + turns + coldSamples * 2 * COLD_ATTEMPTS;
+  const script = benchScript(total, 0).slice(0, 1).concat(benchScript(turns, toolEvery), benchScript(coldSamples * 2 * COLD_ATTEMPTS, 0));
   const exp = expectations(script);
   if (exp.length !== total) throw new Error(`bench: the script has ${exp.length} turns, expected ${total}`);
   const s = await make({ script, modelDelayMs });
@@ -242,18 +250,36 @@ export async function runBench(make: StackFactory, options: BenchOptions = {}): 
     const ran = (await s.executorRuns()) - runs0;
     if (ran !== toolTurns) throw new Error(`bench: the executor ran ${ran} commands in ${toolTurns} tool turns`);
     const cold: number[] = [];
+    const rejected: string[] = [];
     for (let i = 0; i < coldSamples; i++) {
-      await timedTurn(s, `prime ${i}`, seen, exp[seen]!);
-      seen++;
-      await drain(s);
-      const epoch0 = await s.epochOf("s1");
-      await s.evict("s1");
-      // The timer starts at the send that wakes the evicted session, so activation is in it.
-      const r = await timedTurn(s, `cold ${i}`, seen, exp[seen]!);
-      seen++;
-      const epoch1 = await s.epochOf("s1");
-      if (epoch1 <= epoch0) throw new Error(`bench: cold sample ${i}: s1 epoch ${epoch0} -> ${epoch1}, so the send did not wake an evicted actor`);
-      cold.push(r.toModelMs);
+      for (let attempt = 0; ; attempt++) {
+        if (attempt >= COLD_ATTEMPTS) throw new Error(`bench: cold sample ${i}: ${COLD_ATTEMPTS} attempts, each woken by something other than the timed send: ${rejected.join("; ")}`);
+        await timedTurn(s, `prime ${i}.${attempt}`, seen, exp[seen]!);
+        seen++;
+        await drain(s);
+        const epoch0 = await s.epochOf("s1");
+        // From here the meter shows only what happens after the eviction.
+        await s.resetMeters();
+        await s.evict("s1");
+        // The timer starts at the send that wakes the evicted session, so activation is in it.
+        const request = `cold-${i}-${attempt}-${Math.random().toString(36).slice(2, 8)}`;
+        const r = await timedTurn(s, `cold ${i}.${attempt}`, seen, exp[seen]!, request);
+        seen++;
+        const m = await s.meter("s1");
+        const first = m.firstEvents[0];
+        const why =
+          m.activations !== 1 ? `${m.activations} activations after the eviction` :
+          first !== `call:receive:${request}` ? `the first event of the activation was ${JSON.stringify(first)}, not the timed send` :
+          undefined;
+        const epoch1 = await s.epochOf("s1");
+        if (!why && epoch1 <= epoch0) throw new Error(`bench: cold sample ${i}: s1 epoch ${epoch0} -> ${epoch1}, so the send did not wake an evicted actor`);
+        if (why) {
+          rejected.push(`attempt ${attempt}: ${why}`);
+          continue;
+        }
+        cold.push(r.toModelMs);
+        break;
+      }
     }
     const sum = (f: (m: MeterSnapshot) => number) => round(meters.reduce((acc, m) => acc + f(m), 0) / turns);
     return {

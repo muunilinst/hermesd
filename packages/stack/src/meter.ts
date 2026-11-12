@@ -19,6 +19,10 @@ export class Meter {
   #open = 0;
   #openModel = 0;
   #last = 0;
+  /** Bumped by `abandon`; a span that began in an earlier generation does not touch the counts. */
+  #gen = 0;
+  /** True from an activation until its first event; `#m.firstEvents` takes that event's label. */
+  #fresh = false;
   readonly #now: () => number;
 
   constructor(now: () => number = () => performance.now()) {
@@ -28,6 +32,7 @@ export class Meter {
   static empty(): MeterSnapshot {
     return {
       activations: 0,
+      firstEvents: [],
       events: 0,
       tx: 0,
       statements: 0,
@@ -49,6 +54,12 @@ export class Meter {
     return this.#m;
   }
 
+  /** A new activation of the actor began: its first event is recorded. */
+  activated(): void {
+    this.#m.activations += 1;
+    this.#fresh = true;
+  }
+
   /** The adapters report their own writes here (`onWrite` of CloudflareHost and RivetHost). */
   adapterWrite(kind: "row" | "timer", n = 1): void {
     if (kind === "row") this.#m.adapterRows += n;
@@ -67,7 +78,7 @@ export class Meter {
 
   snapshot(): MeterSnapshot {
     this.#accrue();
-    return { ...this.#m, sidecars: { ...this.#m.sidecars } };
+    return { ...this.#m, sidecars: { ...this.#m.sidecars }, firstEvents: [...this.#m.firstEvents] };
   }
 
   reset(): void {
@@ -75,23 +86,43 @@ export class Meter {
     this.#last = this.#now();
   }
 
+  /**
+   * End every open span now: the activation that opened them died (a crash or an eviction), and
+   * the promises they wrap may never settle. The spans stop accruing time here; when a wrapped
+   * promise does settle later, it leaves the counts alone, so the activation that replaces the
+   * dead one (which shares this meter) is not disturbed.
+   */
+  abandon(): void {
+    this.#accrue();
+    this.#open = 0;
+    this.#openModel = 0;
+    this.#gen++;
+  }
+
   /** Count a span of wall time in `busyMs`. A `model` span is left out of `busyExclModelMs`. */
   async span<T>(fn: () => Promise<T>, model = false): Promise<T> {
     this.#accrue();
+    const gen = this.#gen;
     this.#open++;
     if (model) this.#openModel++;
     try {
       return await fn();
     } finally {
-      this.#accrue();
-      this.#open--;
-      if (model) this.#openModel--;
+      if (gen === this.#gen) {
+        this.#accrue();
+        this.#open--;
+        if (model) this.#openModel--;
+      }
     }
   }
 
   /** The platform glue wraps each event it gives the actor. */
-  event<T>(fn: () => Promise<T>): Promise<T> {
+  event<T>(fn: () => Promise<T>, label = "event"): Promise<T> {
     this.#m.events += 1;
+    if (this.#fresh) {
+      this.#fresh = false;
+      this.#m.firstEvents.push(label);
+    }
     return this.span(fn);
   }
 }
@@ -154,7 +185,7 @@ export class MeteredHost implements Host {
   constructor(inner: Host, opts: MeteredHostOptions) {
     this.inner = inner;
     this.#o = opts;
-    opts.meter.counts.activations += 1;
+    opts.meter.activated();
     if (inner.keepAwake) this.keepAwake = (w) => inner.keepAwake!(w);
     if (inner.disarm) {
       this.disarm = async (key) => {
@@ -166,6 +197,7 @@ export class MeteredHost implements Host {
 
   #point(point: StackFaultPoint, detail?: string): void {
     if (this.#o.rules?.hit(this.#o.actor, point, detail)) {
+      this.#o.meter.abandon();
       this.#o.crash?.();
       throw new CrashedError(point);
     }

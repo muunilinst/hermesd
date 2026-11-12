@@ -11,8 +11,8 @@ import type { SqlRow } from "@hermesd/host";
  * scenarios.
  *
  * Crons: the platform's cron triggers are not run by Miniflare here. The harness
- * calls the sweeper's `tick` itself every `tickEveryMs` (default 5 s) from the test
- * side, so catch-up works without help; `Stack.cron` runs a job at once.
+ * calls the sweeper's `tick` every `tickEveryMs` (default 5 s) and `sweep` every
+ * `sweepEveryMs` (default five ticks) from the test side, so catch-up and stuck-turn recovery work without help; `Stack.cron` runs a job at once.
  */
 interface Mf {
   dispatchFetch(url: string, init?: RequestInit): Promise<{ status: number; json(): Promise<unknown>; text(): Promise<string> }>;
@@ -23,6 +23,16 @@ interface Mf {
 export interface WorkerdStackOptions extends StackOptions {
   /** Period of the harness-driven sweeper tick, in ms. 0 turns it off. Default 5000. */
   tickEveryMs?: number;
+  /** Period of the harness-driven sweeper sweep (stuck-turn recovery), in ms. Default five ticks. 0 turns it off. */
+  sweepEveryMs?: number;
+}
+
+/** Undo the worker's encoding of BLOB values (`{"$blob": base64}`) so `rows()` matches the other hosts. */
+function decodeValue(v: unknown): unknown {
+  if (v && typeof v === "object" && !Array.isArray(v) && typeof (v as { $blob?: unknown }).$blob === "string") {
+    return new Uint8Array(Buffer.from((v as { $blob: string }).$blob, "base64"));
+  }
+  return v;
 }
 
 // Bun is the runtime of the tests; its types are not in this repo's tsconfig.
@@ -46,15 +56,15 @@ function bundleWorker(): Promise<string> {
 
 export async function createWorkerdStack(opts: WorkerdStackOptions): Promise<Stack> {
   const { Miniflare } = await import("miniflare");
-  const { tickEveryMs = 5_000, ...stackOpts } = opts;
+  const { tickEveryMs = 5_000, sweepEveryMs = tickEveryMs * 5, ...stackOpts } = opts;
   const worker = await bundleWorker();
   const persist = mkdtempSync(join(tmpdir(), "hermesd-stack-"));
   let mf: Mf | undefined;
-  let timer: ReturnType<typeof setInterval> | undefined;
+  const timers: Array<ReturnType<typeof setInterval>> = [];
   // Everything acquired so far is released by `release`, whether setup fails or `close` runs.
   const release = async (): Promise<void> => {
     const errors: unknown[] = [];
-    if (timer) clearInterval(timer);
+    for (const t of timers.splice(0)) clearInterval(t);
     try {
       await mf?.dispose();
     } catch (e) {
@@ -102,7 +112,11 @@ export async function createWorkerdStack(opts: WorkerdStackOptions): Promise<Sta
   let closed = false;
   // Register the session with the profile actor, as the node stack does.
   await actor("profile", "/rpc", { method: "register_session", params: { session: "s1" } });
-  timer = tickEveryMs > 0 && stackOpts.autoSweep !== false ? setInterval(() => void actor("sweeper", "/ctl/cron", { name: "tick" }).catch(() => undefined), tickEveryMs) : undefined;
+  if (stackOpts.autoSweep !== false) {
+    for (const [name, every] of [["tick", tickEveryMs], ["sweep", sweepEveryMs]] as const) {
+      if (every > 0) timers.push(setInterval(() => void actor("sweeper", "/ctl/cron", { name }).catch(() => undefined), every));
+    }
+  }
 
   return {
     host: "workerd",
@@ -120,7 +134,10 @@ export async function createWorkerdStack(opts: WorkerdStackOptions): Promise<Sta
       }
     },
     call: (a, method, params) => actor(a, "/rpc", { method, params }),
-    rows: async (a, sql) => (await actor(a, "/ctl/rows", { sql })) as SqlRow[],
+    rows: async (a, sql) =>
+      ((await actor(a, "/ctl/rows", { sql })) as Array<Record<string, unknown>>).map((row) =>
+        Object.fromEntries(Object.entries(row).map(([k, v]) => [k, decodeValue(v)])),
+      ) as SqlRow[],
     // The abort ends the request; nothing follows it, so the actor stays out of memory until the next event.
     evict: async (a) => void (await actor(a, "/ctl/abort")),
     epochOf: async (a) => Number(await actor(a, "/ctl/epoch")),
