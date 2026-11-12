@@ -1,0 +1,148 @@
+{
+ "name": "turns-plain",
+ "mode": "chat_completions",
+ "steps": [
+  {
+   "reply": "Hello 0!"
+  },
+  {
+   "reply": "Hello 1!"
+  },
+  {
+   "reply": "Hello 2!"
+  },
+  {
+   "reply": "Hello 3!"
+  },
+  {
+   "reply": "Hello 4!"
+  },
+  {
+   "reply": "Hello 5!"
+  },
+  {
+   "reply": "Hello 6!"
+  },
+  {
+   "reply": "Hello 7!"
+  },
+  {
+   "reply": "Hello 8!"
+  },
+  {
+   "reply": "Hello 9!"
+  },
+  {
+   "reply": "Hello 10!"
+  },
+  {
+   "reply": "Hello 11!"
+  },
+  {
+   "reply": "Hello 12!"
+  },
+  {
+   "reply": "Hello 13!"
+  },
+  {
+   "reply": "Hello 14!"
+  },
+  {
+   "reply": "Hello 15!"
+  },
+  {
+   "reply": "Hello 16!"
+  },
+  {
+   "reply": "Hello 17!"
+  },
+  {
+   "reply": "Hello 18!"
+  },
+  {
+   "reply": "Hello 19!"
+  },
+  {
+   "reply": "Hello 20!"
+  },
+  {
+   "reply": "Hello 21!"
+  },
+  {
+   "reply": "Hello 22!"
+  },
+  {
+   "reply": "Hello 23!"
+  },
+  {
+   "reply": "Hello 24!"
+  },
+  {
+   "reply": "Hello 25!"
+  },
+  {
+   "reply": "Hello 26!"
+  },
+  {
+   "reply": "Hello 27!"
+  },
+  {
+   "reply": "Hello 28!"
+  },
+  {
+   "reply": "Hello 29!"
+  },
+  {
+   "reply": "Hello 30!"
+  },
+  {
+   "reply": "Hello 31!"
+  },
+  {
+   "reply": "Hello 32!"
+  },
+  {
+   "reply": "Hello 33!"
+  },
+  {
+   "reply": "Hello 34!"
+  },
+  {
+   "reply": "Hello 35!"
+  },
+  {
+   "reply": "Hello 36!"
+  },
+  {
+   "reply": "Hello 37!"
+  },
+  {
+   "reply": "Hello 38!"
+  },
+  {
+   "reply": "Hello 39!"
+  },
+  {
+   "reply": "Hello 40!"
+  },
+  {
+   "reply": "Hello 41!"
+  },
+  {
+   "reply": "Hello 42!"
+  },
+  {
+   "reply": "Hello 43!"
+  },
+  {
+   "reply": "Hello 44!"
+  }
+ ],
+ "commands": {},
+ "inputs": [
+  {
+   "send": "x"
+  }
+ ],
+ "expect": {}
+}

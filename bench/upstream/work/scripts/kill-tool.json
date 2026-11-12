@@ -1,0 +1,37 @@
+{
+ "name": "kill-tool",
+ "mode": "chat_completions",
+ "steps": [
+  {
+   "reply": "warm"
+  },
+  {
+   "reply": "running",
+   "toolCalls": [
+    {
+     "id": "call_s",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo start >> /home/vhawk19/hb/kill-tool-3.marker; sleep 30; echo end >> /home/vhawk19/hb/kill-tool-3.marker"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "REPLY-AFTER-TOOL"
+  },
+  {
+   "reply": "REPLY-C"
+  },
+  {
+   "reply": "REPLY-D"
+  }
+ ],
+ "commands": {},
+ "inputs": [
+  {
+   "send": "x"
+  }
+ ],
+ "expect": {}
+}

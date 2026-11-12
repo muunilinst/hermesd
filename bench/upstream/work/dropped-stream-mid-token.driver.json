@@ -1,0 +1,13 @@
+[
+  {
+    "input": 0,
+    "cmd": [
+      "chat",
+      "-q",
+      "build it"
+    ],
+    "rc": 0,
+    "secs": 6.76,
+    "out": "Query: build it\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u2624 Hermes\nI will start tI will start the build now\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nResume this session with:\n  hermes --resume local-706a6e2faa3acfe5fb69d635515ad1fd0526b8856fd300a49bd9a8d83b46458c\n\nSession:        local-706a6e2faa3acfe5fb69d635515ad1fd0526b8856fd300a49bd9a8d83b46458c\nDuration:       5s\nMessages:       2 (1 user, 0 tool calls)\n"
+  }
+]

@@ -1,0 +1,1363 @@
+{
+ "name": "turns-tool",
+ "mode": "chat_completions",
+ "steps": [
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_0",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_1",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_2",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_3",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_4",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_5",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_6",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_7",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_8",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_9",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_10",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_11",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_12",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_13",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_14",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_15",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_16",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_17",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_18",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_19",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_20",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_21",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_22",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_23",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_24",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_25",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_26",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_27",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_28",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_29",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_30",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_31",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_32",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_33",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_34",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_35",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_36",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_37",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_38",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_39",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_40",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_41",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_42",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_43",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_44",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_45",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_46",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_47",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_48",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_49",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_50",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_51",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_52",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_53",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_54",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_55",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_56",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_57",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_58",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_59",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_60",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_61",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_62",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_63",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_64",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_65",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_66",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_67",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_68",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_69",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_70",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_71",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_72",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_73",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_74",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_75",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_76",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_77",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_78",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_79",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_80",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_81",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_82",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_83",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_84",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_85",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_86",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_87",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_88",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  },
+  {
+   "reply": "I will run it.",
+   "toolCalls": [
+    {
+     "id": "call_89",
+     "name": "terminal",
+     "arguments": {
+      "command": "echo hello"
+     }
+    }
+   ]
+  },
+  {
+   "reply": "It printed hello."
+  }
+ ],
+ "commands": {},
+ "inputs": [
+  {
+   "send": "x"
+  }
+ ],
+ "expect": {}
+}

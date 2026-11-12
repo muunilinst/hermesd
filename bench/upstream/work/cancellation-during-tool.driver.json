@@ -1,0 +1,30 @@
+[
+  {
+    "input": 0,
+    "event": "SIGINT sent",
+    "at": 6.6
+  },
+  {
+    "input": 0,
+    "cmd": [
+      "chat",
+      "-q",
+      "wait a minute"
+    ],
+    "rc": -2,
+    "secs": 8.35,
+    "out": "Query: wait a minute\n\u2717 $ sleep 60  0.9s [exit 130]\nTraceback (most recent call last):\n  File \"/home/vhawk19/hvenv/bin/hermes\", line 10, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File \"/Users/vhawk19/Documents/code/hermes-agent-pin/hermes_cli/main.py\", line 3400, in main\n    if _try_fast_chat_launch():\n       ~~~~~~~~~~~~~~~~~~~~~^^\n  File \"/Users/vhawk19/Documents/code/hermes-agent-pin/hermes_cli/main.py\", line 3025, in _try_fast_chat_launch\n    cmd_chat(args)\n    ~~~~~~~~^^^^^^\n  File \"/Users/vhawk19/Documents/code/hermes-agent-pin/hermes_cli/main.py\", line 1686, in cmd_chat\n    cli_main(**kwargs)\n    ~~~~~~~~^^^^^^^^^^\n  File \"/Users/vhawk19/Documents/code/hermes-agent-pin/cli.py\", line 1784, in main\n    _run_single_query_mode(cli, query, image, quiet, oneshot, stream_json=output_format == \"stream-json\")\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/vhawk19/Documents/code/hermes-agent-pin/hermes_cli/cli_single_query.py\", line 554, in _run_single_query_mode\n    response = cli.chat(query, images=single_query_images or None)\n  File \"/Users/vhawk19/Documents/code/hermes-agent-pin/hermes_cli/cli_chat_turn_mixin.py\", line 126, in chat\n    interrupt_msg = self._chat_monitor_agent_thread(turn, agent_thread)\n  File \"/Users/vhawk19/Documents/code/hermes-agent-pin/hermes_cli/cli_chat_turn_mixin.py\", line 430, in _chat_monitor_agent_thread\n    interrupt_msg = self._interrupt_queue.get(timeout=0.1)\n  File \"/home/vhawk19/.local/share/uv/python/cpython-3.14.10-linux-aarch64-gnu/lib/python3.14/queue.py\", line 210, in get\n    self.not_empty.wait(remaining)\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^\n  File \"/home/vhawk19/.local/share/uv/python/cpython-3.14.10-linux-aarch64-gnu/lib/python3.14/threading.py\", line 376, in wait\n    gotit = waiter.acquire(True, timeout)\n  File \"/Users/vhawk19/Documents/code/hermes-agent-pin/hermes_cli/cli_single_query.py\", line 451, in _signal_handler_q\n    raise KeyboardInterrupt()\nKeyboardInterrupt\n"
+  },
+  {
+    "input": 1,
+    "cmd": [
+      "chat",
+      "-c",
+      "-q",
+      "again"
+    ],
+    "rc": 0,
+    "secs": 1.34,
+    "out": "Query: again\n\u21bb Resumed session \nlocal-8ee4843d322938232494a3875162124e3d79cb651fc7d321e1eb084ebcc36a18 (1 user \nmessage, 4 total messages)\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u2624 Hermes\nUnderstood.\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nResume this session with:\n  hermes --resume local-8ee4843d322938232494a3875162124e3d79cb651fc7d321e1eb084ebcc36a18\n\nSession:        local-8ee4843d322938232494a3875162124e3d79cb651fc7d321e1eb084ebcc36a18\nDuration:       0s\nMessages:       6 (2 user, 2 tool calls)\n"
+  }
+]

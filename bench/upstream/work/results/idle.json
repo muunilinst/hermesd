@@ -1,0 +1,68 @@
+[
+ {
+  "secs": 300.3,
+  "cpu_percent_of_one_core": 1.718,
+  "cpu_seconds": 5.16,
+  "rss_kib_start": 281460,
+  "rss_kib_after_idle": 260884,
+  "per_process": {
+   "1897": [
+    "hermes",
+    260884
+   ]
+  },
+  "samples": [
+   {
+    "t": 30,
+    "rss_kib": 288020,
+    "cpu_ticks": 46
+   },
+   {
+    "t": 60,
+    "rss_kib": 280108,
+    "cpu_ticks": 94
+   },
+   {
+    "t": 90,
+    "rss_kib": 280388,
+    "cpu_ticks": 126
+   },
+   {
+    "t": 120,
+    "rss_kib": 268564,
+    "cpu_ticks": 219
+   },
+   {
+    "t": 150,
+    "rss_kib": 260316,
+    "cpu_ticks": 267
+   },
+   {
+    "t": 180,
+    "rss_kib": 260188,
+    "cpu_ticks": 316
+   },
+   {
+    "t": 210,
+    "rss_kib": 259324,
+    "cpu_ticks": 360
+   },
+   {
+    "t": 240,
+    "rss_kib": 259112,
+    "cpu_ticks": 407
+   },
+   {
+    "t": 270,
+    "rss_kib": 259500,
+    "cpu_ticks": 450
+   },
+   {
+    "t": 300,
+    "rss_kib": 260884,
+    "cpu_ticks": 516
+   }
+  ],
+  "ncpu": 11
+ }
+]

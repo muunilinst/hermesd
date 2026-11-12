@@ -1,0 +1,22 @@
+{
+ "name": "idle",
+ "mode": "chat_completions",
+ "steps": [
+  {
+   "reply": "ok"
+  },
+  {
+   "reply": "ok"
+  },
+  {
+   "reply": "ok"
+  }
+ ],
+ "commands": {},
+ "inputs": [
+  {
+   "send": "x"
+  }
+ ],
+ "expect": {}
+}

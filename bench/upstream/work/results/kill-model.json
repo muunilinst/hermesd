@@ -1,0 +1,476 @@
+[
+ {
+  "kind": "model",
+  "run": 1,
+  "events": [
+   {
+    "t": 1.22,
+    "event": "kill -9 gateway",
+    "model_requests": 2
+   },
+   {
+    "t": 1.23,
+    "event": "client result after kill",
+    "error": "RemoteDisconnected('Remote end closed connection without response')"
+   },
+   {
+    "event": "processes of old gateway tree still alive",
+    "pids": []
+   },
+   {
+    "t": 4.56,
+    "event": "gateway restarted"
+   },
+   {
+    "t": 7.57,
+    "event": "released hold",
+    "model_requests": 2
+   },
+   {
+    "t": 82.61,
+    "event": "after 75s watch",
+    "model_requests": 2
+   },
+   {
+    "t": 82.67,
+    "event": "client retry with same Idempotency-Key",
+    "error": "<HTTPError 409: 'Conflict'>",
+    "model_requests": 2
+   }
+  ],
+  "rows_at_kill": [
+   {
+    "role": "user",
+    "content": "warm",
+    "tool_calls": ""
+   },
+   {
+    "role": "assistant",
+    "content": "warm",
+    "tool_calls": ""
+   },
+   {
+    "role": "session_meta",
+    "content": "",
+    "tool_calls": ""
+   },
+   {
+    "role": "user",
+    "content": "the turn under test",
+    "tool_calls": ""
+   }
+  ],
+  "admissions_at_kill": [
+   {
+    "seq": 1,
+    "admission_id": "f588b75fb00541678856771e7df9e50b",
+    "request_id": "fd17d700c8684ec595987bce50f56f95",
+    "principal_id": "api",
+    "target_session_id": "api-97a2cd5e71bcc2f4",
+    "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+    "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+    "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+    "intent": "queue",
+    "status": "terminal",
+    "outcome": "completed",
+    "owner_epoch": 1,
+    "generation": 1
+   },
+   {
+    "seq": 2,
+    "admission_id": "2fd9e3963fac4604ae22113d3345a753",
+    "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-model-1",
+    "principal_id": "api",
+    "target_session_id": "api-97a2cd5e71bcc2f4",
+    "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+    "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+    "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+    "intent": "queue",
+    "status": "started",
+    "outcome": null,
+    "owner_epoch": 1,
+    "generation": 2
+   }
+  ],
+  "rows_final": [
+   {
+    "role": "user",
+    "content": "warm",
+    "tool_calls": ""
+   },
+   {
+    "role": "assistant",
+    "content": "warm",
+    "tool_calls": ""
+   },
+   {
+    "role": "session_meta",
+    "content": "",
+    "tool_calls": ""
+   },
+   {
+    "role": "user",
+    "content": "the turn under test",
+    "tool_calls": ""
+   }
+  ],
+  "admissions_final": [
+   {
+    "seq": 1,
+    "admission_id": "f588b75fb00541678856771e7df9e50b",
+    "request_id": "fd17d700c8684ec595987bce50f56f95",
+    "principal_id": "api",
+    "target_session_id": "api-97a2cd5e71bcc2f4",
+    "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+    "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+    "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+    "intent": "queue",
+    "status": "terminal",
+    "outcome": "completed",
+    "owner_epoch": 1,
+    "generation": 1
+   },
+   {
+    "seq": 2,
+    "admission_id": "2fd9e3963fac4604ae22113d3345a753",
+    "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-model-1",
+    "principal_id": "api",
+    "target_session_id": "api-97a2cd5e71bcc2f4",
+    "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+    "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+    "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+    "intent": "queue",
+    "status": "unknown",
+    "outcome": null,
+    "owner_epoch": 1,
+    "generation": 2
+   }
+  ],
+  "model_request_count": 2,
+  "model_requests_last_user": [
+   [
+    "warm"
+   ],
+   [
+    "the turn under test"
+   ]
+  ],
+  "marker": null
+ },
+ {
+  "kind": "model",
+  "run": 2,
+  "events": [
+   {
+    "t": 1.11,
+    "event": "kill -9 gateway",
+    "model_requests": 2
+   },
+   {
+    "t": 1.13,
+    "event": "client result after kill",
+    "error": "RemoteDisconnected('Remote end closed connection without response')"
+   },
+   {
+    "event": "processes of old gateway tree still alive",
+    "pids": []
+   },
+   {
+    "t": 4.18,
+    "event": "gateway restarted"
+   },
+   {
+    "t": 7.19,
+    "event": "released hold",
+    "model_requests": 2
+   },
+   {
+    "t": 82.21,
+    "event": "after 75s watch",
+    "model_requests": 2
+   },
+   {
+    "t": 82.24,
+    "event": "client retry with same Idempotency-Key",
+    "error": "<HTTPError 409: 'Conflict'>",
+    "model_requests": 2
+   }
+  ],
+  "rows_at_kill": [
+   {
+    "role": "user",
+    "content": "warm",
+    "tool_calls": ""
+   },
+   {
+    "role": "assistant",
+    "content": "warm",
+    "tool_calls": ""
+   },
+   {
+    "role": "session_meta",
+    "content": "",
+    "tool_calls": ""
+   },
+   {
+    "role": "user",
+    "content": "the turn under test",
+    "tool_calls": ""
+   }
+  ],
+  "admissions_at_kill": [
+   {
+    "seq": 1,
+    "admission_id": "837c5554cb864c0f8b718109f7bc1d6e",
+    "request_id": "65f287c0fac146a3ae948e00c604fcd6",
+    "principal_id": "api",
+    "target_session_id": "api-97a2cd5e71bcc2f4",
+    "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+    "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+    "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+    "intent": "queue",
+    "status": "terminal",
+    "outcome": "completed",
+    "owner_epoch": 1,
+    "generation": 1
+   },
+   {
+    "seq": 2,
+    "admission_id": "49501c2bd877497f9a58c0f4ac6b975e",
+    "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-model-2",
+    "principal_id": "api",
+    "target_session_id": "api-97a2cd5e71bcc2f4",
+    "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+    "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+    "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+    "intent": "queue",
+    "status": "started",
+    "outcome": null,
+    "owner_epoch": 1,
+    "generation": 2
+   }
+  ],
+  "rows_final": [
+   {
+    "role": "user",
+    "content": "warm",
+    "tool_calls": ""
+   },
+   {
+    "role": "assistant",
+    "content": "warm",
+    "tool_calls": ""
+   },
+   {
+    "role": "session_meta",
+    "content": "",
+    "tool_calls": ""
+   },
+   {
+    "role": "user",
+    "content": "the turn under test",
+    "tool_calls": ""
+   }
+  ],
+  "admissions_final": [
+   {
+    "seq": 1,
+    "admission_id": "837c5554cb864c0f8b718109f7bc1d6e",
+    "request_id": "65f287c0fac146a3ae948e00c604fcd6",
+    "principal_id": "api",
+    "target_session_id": "api-97a2cd5e71bcc2f4",
+    "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+    "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+    "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+    "intent": "queue",
+    "status": "terminal",
+    "outcome": "completed",
+    "owner_epoch": 1,
+    "generation": 1
+   },
+   {
+    "seq": 2,
+    "admission_id": "49501c2bd877497f9a58c0f4ac6b975e",
+    "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-model-2",
+    "principal_id": "api",
+    "target_session_id": "api-97a2cd5e71bcc2f4",
+    "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+    "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+    "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+    "intent": "queue",
+    "status": "unknown",
+    "outcome": null,
+    "owner_epoch": 1,
+    "generation": 2
+   }
+  ],
+  "model_request_count": 2,
+  "model_requests_last_user": [
+   [
+    "warm"
+   ],
+   [
+    "the turn under test"
+   ]
+  ],
+  "marker": null
+ },
+ {
+  "kind": "model",
+  "run": 3,
+  "events": [
+   {
+    "t": 1.12,
+    "event": "kill -9 gateway",
+    "model_requests": 2
+   },
+   {
+    "t": 1.13,
+    "event": "client result after kill",
+    "error": "RemoteDisconnected('Remote end closed connection without response')"
+   },
+   {
+    "event": "processes of old gateway tree still alive",
+    "pids": []
+   },
+   {
+    "t": 4.5,
+    "event": "gateway restarted"
+   },
+   {
+    "t": 7.51,
+    "event": "released hold",
+    "model_requests": 2
+   },
+   {
+    "t": 82.54,
+    "event": "after 75s watch",
+    "model_requests": 2
+   },
+   {
+    "t": 82.59,
+    "event": "client retry with same Idempotency-Key",
+    "error": "<HTTPError 409: 'Conflict'>",
+    "model_requests": 2
+   }
+  ],
+  "rows_at_kill": [
+   {
+    "role": "user",
+    "content": "warm",
+    "tool_calls": ""
+   },
+   {
+    "role": "assistant",
+    "content": "warm",
+    "tool_calls": ""
+   },
+   {
+    "role": "session_meta",
+    "content": "",
+    "tool_calls": ""
+   },
+   {
+    "role": "user",
+    "content": "the turn under test",
+    "tool_calls": ""
+   }
+  ],
+  "admissions_at_kill": [
+   {
+    "seq": 1,
+    "admission_id": "04919f974860477dafa4f643c74209ef",
+    "request_id": "d30b80a051bf43c29b55bee631ec7fb4",
+    "principal_id": "api",
+    "target_session_id": "api-97a2cd5e71bcc2f4",
+    "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+    "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+    "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+    "intent": "queue",
+    "status": "terminal",
+    "outcome": "completed",
+    "owner_epoch": 1,
+    "generation": 1
+   },
+   {
+    "seq": 2,
+    "admission_id": "a7bd2b42a97a41fd85eb946f3159798e",
+    "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-model-3",
+    "principal_id": "api",
+    "target_session_id": "api-97a2cd5e71bcc2f4",
+    "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+    "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+    "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+    "intent": "queue",
+    "status": "started",
+    "outcome": null,
+    "owner_epoch": 1,
+    "generation": 2
+   }
+  ],
+  "rows_final": [
+   {
+    "role": "user",
+    "content": "warm",
+    "tool_calls": ""
+   },
+   {
+    "role": "assistant",
+    "content": "warm",
+    "tool_calls": ""
+   },
+   {
+    "role": "session_meta",
+    "content": "",
+    "tool_calls": ""
+   },
+   {
+    "role": "user",
+    "content": "the turn under test",
+    "tool_calls": ""
+   }
+  ],
+  "admissions_final": [
+   {
+    "seq": 1,
+    "admission_id": "04919f974860477dafa4f643c74209ef",
+    "request_id": "d30b80a051bf43c29b55bee631ec7fb4",
+    "principal_id": "api",
+    "target_session_id": "api-97a2cd5e71bcc2f4",
+    "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+    "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"\",\"session_model\":null}},\"text\":\"warm\"}",
+    "payload_digest": "8b91b31118cb0de0eabe21c066255b32f525a639547120c0bae2be94b6dc0545",
+    "intent": "queue",
+    "status": "terminal",
+    "outcome": "completed",
+    "owner_epoch": 1,
+    "generation": 1
+   },
+   {
+    "seq": 2,
+    "admission_id": "a7bd2b42a97a41fd85eb946f3159798e",
+    "request_id": "chat:289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d:kill-model-3",
+    "principal_id": "api",
+    "target_session_id": "api-97a2cd5e71bcc2f4",
+    "lineage_json": "[\"api-97a2cd5e71bcc2f4\"]",
+    "payload_json": "{\"api_turn_v1\":{\"history\":null,\"run_owner_scope\":\"289f88cad97d9d39f9bd4778ea2a2ffc5b1b02bd93569360eeeb7085ef73950d\",\"settings\":{\"confirmed_runtime_lock\":false,\"ephemeral_system_prompt\":null,\"model_options\":null,\"requested_model\":null,\"requested_provider\":null,\"requested_runtime\":null,\"room_dispatch\":null,\"room_execution_policy\":null,\"route\":null,\"route_source\":\"global\",\"session_history_delivery\":\"1\",\"session_model\":null}},\"text\":\"the turn under test\"}",
+    "payload_digest": "6bafde9265a62024822e4f801c3a4bdf824d43d2ee6ce1ae1da0c770092e4b59",
+    "intent": "queue",
+    "status": "unknown",
+    "outcome": null,
+    "owner_epoch": 1,
+    "generation": 2
+   }
+  ],
+  "model_request_count": 2,
+  "model_requests_last_user": [
+   [
+    "warm"
+   ],
+   [
+    "the turn under test"
+   ]
+  ],
+  "marker": null
+ }
+]

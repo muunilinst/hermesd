@@ -1,0 +1,84 @@
+[
+ {
+  "runs": [
+   {
+    "run": 0,
+    "home": "fresh",
+    "health_s": 5.156,
+    "first_reply_s": 6.483,
+    "rss_kib_after_first": 256708
+   },
+   {
+    "run": 1,
+    "home": "warm(reused HERMES_HOME)",
+    "health_s": 3.305,
+    "first_reply_s": 4.085,
+    "rss_kib_after_first": 252284
+   },
+   {
+    "run": 2,
+    "home": "warm(reused HERMES_HOME)",
+    "health_s": 2.877,
+    "first_reply_s": 3.738,
+    "rss_kib_after_first": 251752
+   },
+   {
+    "run": 3,
+    "home": "warm(reused HERMES_HOME)",
+    "health_s": 2.772,
+    "first_reply_s": 3.546,
+    "rss_kib_after_first": 250904
+   },
+   {
+    "run": 4,
+    "home": "warm(reused HERMES_HOME)",
+    "health_s": 2.911,
+    "first_reply_s": 3.824,
+    "rss_kib_after_first": 251236
+   }
+  ],
+  "median_health_s": 2.911,
+  "median_first_reply_s": 3.824
+ },
+ {
+  "runs": [
+   {
+    "run": 0,
+    "home": "fresh",
+    "health_s": 3.24,
+    "first_reply_s": 4.559,
+    "rss_kib_after_first": 258396
+   },
+   {
+    "run": 1,
+    "home": "fresh",
+    "health_s": 3.254,
+    "first_reply_s": 4.303,
+    "rss_kib_after_first": 251228
+   },
+   {
+    "run": 2,
+    "home": "fresh",
+    "health_s": 3.272,
+    "first_reply_s": 4.396,
+    "rss_kib_after_first": 252564
+   },
+   {
+    "run": 3,
+    "home": "fresh",
+    "health_s": 3.213,
+    "first_reply_s": 4.386,
+    "rss_kib_after_first": 254128
+   },
+   {
+    "run": 4,
+    "home": "fresh",
+    "health_s": 3.168,
+    "first_reply_s": 4.418,
+    "rss_kib_after_first": 259028
+   }
+  ],
+  "median_health_s": 3.24,
+  "median_first_reply_s": 4.396
+ }
+]

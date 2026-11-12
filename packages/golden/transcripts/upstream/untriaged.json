@@ -1,0 +1,23 @@
+{
+  "note": "Scripts whose upstream transcript was recorded (2026-11-12, hermes-agent a9ff979) but whose differences are not yet sorted into port bug, upstream change or stand-in (UPSTREAM.md, 'Reading a difference'). The test checks that each one still differs; when one agrees, it fails until the name is removed here. The diffs are in bench/upstream/compare/<name>.txt.",
+  "scripts": [
+    "cancellation-during-tool",
+    "clarify-sequential",
+    "dropped-stream-mid-token",
+    "format-anthropic-messages",
+    "format-bedrock-converse",
+    "format-chat-completions",
+    "format-codex-responses",
+    "hook-blocks-tool",
+    "hook-crashes",
+    "hook-time-budget",
+    "interrupt-mid-call",
+    "one-tool-call",
+    "parallel-tools",
+    "persistence-failure-before-tool",
+    "plain-reply",
+    "provider-fallback-429",
+    "three-plugins-hook-order",
+    "tool-error-text"
+  ]
+}

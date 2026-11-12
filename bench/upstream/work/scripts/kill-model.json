@@ -1,0 +1,29 @@
+{
+ "name": "kill-model",
+ "mode": "chat_completions",
+ "steps": [
+  {
+   "reply": "warm"
+  },
+  {
+   "hold": "h",
+   "reply": "REPLY-A (the held answer)"
+  },
+  {
+   "reply": "REPLY-B (a second request)"
+  },
+  {
+   "reply": "REPLY-C"
+  },
+  {
+   "reply": "REPLY-D"
+  }
+ ],
+ "commands": {},
+ "inputs": [
+  {
+   "send": "x"
+  }
+ ],
+ "expect": {}
+}
