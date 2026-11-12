@@ -66,6 +66,7 @@ still the in-memory model and there is no VM, so none of this demonstrates a mec
 | --- | --- | --- | --- |
 | A plain turn | pass | pass | pass |
 | A terminal call runs once | pass | pass | pass |
+| Terminal-call turns back to back | pass | pass | pass |
 | A model call longer than the idle sleep timeout, one request | pass | pass | pass |
 | D3 same message twice, one turn | pass | pass | pass |
 | D1 eviction while the model call is open | pass | pass | pass |
@@ -73,6 +74,12 @@ still the in-memory model and there is no VM, so none of this demonstrates a mec
 | D9 (b) crash before the request leaves, the wake alone resumes | pass | pass | pass |
 | D2 actor side, eviction while a command runs | pass | pass | pass |
 | D12 crash before the index update, the outbox catches up | pass | pass | pass |
+| `rows` refuses anything but one read-only statement | pass | pass | pass |
+
+D1 now requires a second model request with the original nonempty call id. D9 (b) runs with the
+sweeper off, so only the session alarm can resume the turn. D2 evicts after the executor has
+recorded one run of the held command. D12 checks the interrupted user entry and that the fault
+fired. These scenarios cover losing the session actor only. The gateway and executor stay up.
 
 Step 8 numbers from these runs are in `bench/`.
 

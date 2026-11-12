@@ -67,7 +67,8 @@ export async function createRivetStack(opts: StackOptions): Promise<RivetStack> 
     keys: { s1: [`${run}-s1`], sweeper: [`${run}-sweeper`], profile: [`${run}-profile`] },
   };
   const use = Object.fromEntries(ACTOR_NAMES.map((n) => [n, defineWorldActor(n, world, { actor, db })]));
-  const registry = setup({ use });
+  // The stack needs no first-party Services actor host; leaving it on also ties every run to one fixed port.
+  const registry = setup({ use, startServices: false });
   const finishers: Array<() => Promise<void> | void> = [];
   const crons: Array<ReturnType<typeof setInterval>> = [];
   // Release what was acquired, each step on its own: one failure does not stop the next. Errors are rethrown together.

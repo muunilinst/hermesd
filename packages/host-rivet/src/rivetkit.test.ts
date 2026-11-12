@@ -127,7 +127,7 @@ async function build(): Promise<Any> {
     }
   }
 
-  registry = setup({ use: { kept: make(true), lazy: make(false) } });
+  registry = setup({ use: { kept: make(true), lazy: make(false) }, startServices: false });
   const { client } = await setupTest({ onTestFinished: (f: () => Promise<void>) => finishers.push(f) }, registry);
   return client;
 }
