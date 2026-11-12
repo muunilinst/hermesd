@@ -773,7 +773,8 @@ export class LoopDriver implements TurnDriver {
       if (!turnIsOpen(sql, ctx.turnId)) throw new StepRaced();
       if (t.guard && !t.guard(sql)) throw new StepRaced();
       const turn = sql.exec("SELECT interrupted FROM loop_turn WHERE turn_id = ?", ctx.turnId)[0];
-      if (turn && num(turn.interrupted) === 1 && !plan.finish) throw new StepRaced();
+      // A stop that committed after the answer was read wins: the stop path ends the turn with "Stopped.", not this answer.
+      if (turn && num(turn.interrupted) === 1) throw new StepRaced();
       if (!turn) insertPortRow(sql, this.#set, "loop_turn", { turn_id: ctx.turnId, interrupted: 0, model_calls: 0 }, {});
       // A compact call may have made a child since the snapshot. The step writes to the current session.
       const sid = currentSessionId(sql, snap.sessionId);

@@ -51,8 +51,8 @@ CallGoesOut ==
 WriteTarget == cur
 Wrote == lost' = (lost \/ WriteTarget # cur)
 
-ModelAnswers ==   \* text only: the turn ends 'done' (allowed after a stop too)
-  /\ Up /\ turn = "call" /\ inflight
+ModelAnswers ==   \* text only: the turn ends 'done'. After a stop the step is raced and the stop ends the turn.
+  /\ Up /\ turn = "call" /\ inflight /\ ~stopped
   /\ turn' = "none" /\ inflight' = FALSE /\ stopped' = FALSE /\ Wrote
   /\ UNCHANGED <<owner, adopted, queue, asking, openCalls, cur, callSess, link>>
 
