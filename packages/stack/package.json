@@ -1,0 +1,20 @@
+{
+  "name": "@hermesd/stack",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./world": "./src/world.ts",
+    "./meter": "./src/meter.ts"
+  },
+  "dependencies": {
+    "@hermesd/executor-model": "*",
+    "@hermesd/executor-protocol": "*",
+    "@hermesd/host": "*",
+    "@hermesd/host-node": "*",
+    "@hermesd/profile-actor": "*",
+    "@hermesd/runtime": "*",
+    "@hermesd/session-actor": "*"
+  }
+}

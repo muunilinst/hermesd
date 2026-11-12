@@ -133,6 +133,19 @@
         "@hermesd/runtime": "*",
       },
     },
+    "packages/stack": {
+      "name": "@hermesd/stack",
+      "version": "0.0.0",
+      "dependencies": {
+        "@hermesd/executor-model": "*",
+        "@hermesd/executor-protocol": "*",
+        "@hermesd/host": "*",
+        "@hermesd/host-node": "*",
+        "@hermesd/profile-actor": "*",
+        "@hermesd/runtime": "*",
+        "@hermesd/session-actor": "*",
+      },
+    },
     "packages/state-port": {
       "name": "@hermesd/state-port",
       "version": "0.0.0",
@@ -206,6 +219,8 @@
     "@hermesd/runtime": ["@hermesd/runtime@workspace:packages/runtime"],
 
     "@hermesd/session-actor": ["@hermesd/session-actor@workspace:packages/session-actor"],
+
+    "@hermesd/stack": ["@hermesd/stack@workspace:packages/stack"],
 
     "@hermesd/state-port": ["@hermesd/state-port@workspace:packages/state-port"],
 
