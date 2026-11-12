@@ -2,7 +2,7 @@
 
 Milestone 1 step 8 (guide 10.2) measures memory, awake time, rows and commits per turn, and wake
 latency. The baseline is upstream Hermes on an always-on VM (design doc goals 1 to 4).
-Measured on 2026-11-12. The port numbers were regenerated after the PR #4 review.
+Measured on 2026-11-12. The port numbers were regenerated after the second PR #4 review.
 
 None of this is a deployment. The port ran on real workerd (Miniflare) and real rivetkit, both
 local, with the in-memory executor model and no VM. Upstream ran in a real VM, but on a laptop.
@@ -27,8 +27,9 @@ Read the numbers as "same order of magnitude, same shape", not as production fig
   requests. Both sides use the same percentile method: linear interpolation at rank q·(n−1).
 - **Cold wake.** The port evicts the actor, then starts the clock *before* the request that
   activates it again (`evict` sends the actor nothing). The interval runs to the model request,
-  so it includes activation. `epochOf` is read afterwards to confirm that a new activation
-  served the request.
+  so it includes activation. A sample counts only if the session was activated exactly once
+  and the first event of that activation was the timed request (by its request id). A sample
+  where an alarm, a sweep or another call woke the actor first is rejected and retried.
 - **Counters.** Background work (the outbox delivery and the profile update) is drained before
   counters are reset and again before the final snapshot is taken.
 
@@ -39,9 +40,9 @@ reply. Upstream's values were recomputed with the interpolated percentiles and d
 
 | | Upstream, always-on VM (historical, pending re-run) | Port on workerd (local) | Port on rivetkit (local) |
 | --- | --- | --- | --- |
-| Plain turn, send to delivery | 96 ms (154) | 16 ms (23) | 144 ms (165) |
-| Tool turn, send to delivery | 156 ms (215) | 28 ms (35) | 207 ms (223) |
-| Start before the first turn | process start: 2.9 s to /health, 3.8 s to the first reply | actor activation: 18 to 19 ms from the waking send to the model request (8 to 10 ms warm) | actor activation: 146 to 168 ms (84 ms warm); one of 5 plain-run samples took 1.8 s |
+| Plain turn, send to delivery | 96 ms (154) | 17 ms (26) | 144 ms (171) |
+| Tool turn, send to delivery | 156 ms (215) | 30 ms (37) | 188 ms (211) |
+| Start before the first turn | process start: 2.9 s to /health, 3.8 s to the first reply | actor activation: 15 to 17 ms from the waking send to the model request (10 ms warm) | actor activation: 139 to 152 ms (71 to 86 ms warm); one of 5 tool-run samples took 1.8 s |
 | Memory | 246 MiB after start, 287 to 302 MiB after 40 turns, 255 MiB idle, held all month | billed at 128 MB per object, only while a turn or its I/O is open | not measured |
 | Idle CPU | 1.72% of one core | not measured | not measured |
 
@@ -57,8 +58,8 @@ These columns count different operations, so the table does not say which side c
 
 | | Upstream: SQLite WAL commit frames | Port: `Host.commit()` durability waits | Port: transactions (`tx`) | Port: rows changed | Port: adapter rows + timer calls |
 | --- | --- | --- | --- | --- | --- |
-| Plain turn | 14 to 15 | workerd 18, rivet 18 | rivet 43 | 59 | workerd 6 + 6, rivet 6 + 9 |
-| Tool turn | 19 to 20 | workerd 24, rivet 25 | rivet 62 | 91 to 92 | workerd 8 + 8, rivet 9 + 13 |
+| Plain turn | 14 to 15 | workerd 18, rivet 18 | workerd 42, rivet 43 | 59 | workerd 6 + 6, rivet 6 + 9 |
+| Tool turn | 19 to 20 | workerd 24, rivet 24 | workerd 60, rivet 61 | 91 to 92 | workerd 8 + 8, rivet 8 + 13 |
 
 - A `Host.commit()` waits until earlier writes are durable. On workerd and Rivet the writes
   themselves run inside `tx()`, and the platform decides how many storage commits that takes.
@@ -132,8 +133,8 @@ gateway before the intended trigger. They are kept, labelled, and not used for a
    memory footprint and on list prices, not on the figures that need a re-run. Rows written
    decide the port's bill, so fewer rows per turn is the lever.
 2. **Faster: not yet concluded.** The port's own figures are validated: on workerd a turn adds
-   about 16 to 28 ms, and an evicted session reactivates in under 20 ms. rivetkit on its local
-   engine adds about 145 to 210 ms a turn, which goes to actor-to-actor calls through the
+   about 17 to 30 ms, and an evicted session reactivates in under 20 ms. rivetkit on its local
+   engine adds about 145 to 190 ms a turn, which goes to actor-to-actor calls through the
    engine. The upstream side of the comparison is pending a validated run.
 3. **More reliable: not yet concluded.** The port finishes the turn when its session actor is
    lost mid-model-call or mid-command, on all three hosts, and that result is validated. The
