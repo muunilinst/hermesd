@@ -246,6 +246,16 @@ export class NodePlatform {
     arm(this.clock.now() + everyMs);
   }
 
+  /**
+   * Run one named cron job of an actor now, once, without moving the clock. Test-facing:
+   * the scheduled runs (`cron()`) stay as they are and no other alarm or job is touched.
+   */
+  async runCron(key: string, name: string): Promise<void> {
+    const rec = this.#rec(key);
+    if (!rec.crons.some((c) => c.name === name)) throw new Error(`no cron job ${name} on ${key}`);
+    await this.#deliverCron(rec, name);
+  }
+
   // ---------------------------------------------------------------- clients
 
   /** Send a request to an actor. Wakes the actor if it is not running. */

@@ -47,21 +47,48 @@ function bundleWorker(): Promise<string> {
 export async function createWorkerdStack(opts: WorkerdStackOptions): Promise<Stack> {
   const { Miniflare } = await import("miniflare");
   const { tickEveryMs = 5_000, ...stackOpts } = opts;
+  const worker = await bundleWorker();
   const persist = mkdtempSync(join(tmpdir(), "hermesd-stack-"));
-  const mf = new Miniflare({
-    modules: [{ type: "ESModule", path: "worker.js", contents: await bundleWorker() }],
-    compatibilityDate: "2026-07-01",
-    durableObjects: {
-      SESSION: { className: "Session", useSQLite: true },
-      SWEEPER: { className: "Sweeper", useSQLite: true },
-      PROFILE: { className: "Profile", useSQLite: true },
-      SERVICES: { className: "Services", useSQLite: true },
-    },
-    durableObjectsPersist: persist,
-    bindings: { OPTS: JSON.stringify(stackOpts) },
-  } as never) as unknown as Mf;
-  await mf.ready;
+  let mf: Mf | undefined;
+  let timer: ReturnType<typeof setInterval> | undefined;
+  // Everything acquired so far is released by `release`, whether setup fails or `close` runs.
+  const release = async (): Promise<void> => {
+    const errors: unknown[] = [];
+    if (timer) clearInterval(timer);
+    try {
+      await mf?.dispose();
+    } catch (e) {
+      errors.push(e);
+    }
+    try {
+      rmSync(persist, { recursive: true, force: true });
+    } catch (e) {
+      errors.push(e);
+    }
+    if (errors.length === 1) throw errors[0];
+    if (errors.length > 1) throw new AggregateError(errors, "workerd stack teardown failed");
+  };
+  try {
+    mf = new Miniflare({
+      modules: [{ type: "ESModule", path: "worker.js", contents: worker }],
+      compatibilityDate: "2026-07-01",
+      durableObjects: {
+        SESSION: { className: "Session", useSQLite: true },
+        SWEEPER: { className: "Sweeper", useSQLite: true },
+        PROFILE: { className: "Profile", useSQLite: true },
+        SERVICES: { className: "Services", useSQLite: true },
+      },
+      durableObjectsPersist: persist,
+      bindings: { OPTS: JSON.stringify(stackOpts) },
+    } as never) as unknown as Mf;
+    await mf.ready;
+    return await build(mf);
+  } catch (e) {
+    await release().catch(() => undefined);
+    throw e;
+  }
 
+  async function build(mf: Mf): Promise<Stack> {
   const post = async (path: string, body: unknown = {}): Promise<unknown> => {
     const res = await mf.dispatchFetch(`http://stack.test${path}`, { method: "POST", body: JSON.stringify(body) });
     const v = (await res.json()) as unknown;
@@ -75,7 +102,7 @@ export async function createWorkerdStack(opts: WorkerdStackOptions): Promise<Sta
   let closed = false;
   // Register the session with the profile actor, as the node stack does.
   await actor("profile", "/rpc", { method: "register_session", params: { session: "s1" } });
-  const timer = tickEveryMs > 0 ? setInterval(() => void actor("sweeper", "/ctl/cron", { name: "tick" }).catch(() => undefined), tickEveryMs) : undefined;
+  timer = tickEveryMs > 0 && stackOpts.autoSweep !== false ? setInterval(() => void actor("sweeper", "/ctl/cron", { name: "tick" }).catch(() => undefined), tickEveryMs) : undefined;
 
   return {
     host: "workerd",
@@ -94,7 +121,11 @@ export async function createWorkerdStack(opts: WorkerdStackOptions): Promise<Sta
     },
     call: (a, method, params) => actor(a, "/rpc", { method, params }),
     rows: async (a, sql) => (await actor(a, "/ctl/rows", { sql })) as SqlRow[],
+    // The abort ends the request; nothing follows it, so the actor stays out of memory until the next event.
     evict: async (a) => void (await actor(a, "/ctl/abort")),
+    epochOf: async (a) => Number((await actor(a, "/ctl/rows", { sql: "SELECT v FROM host_meta WHERE k = 'owner_epoch'" }) as SqlRow[])[0]!["v"]),
+    advance: (ms) => new Promise((r) => setTimeout(r, ms)),
+    crashesFired: async () => Number(await post("/crashes")),
     crashAt: async (rule: StackFaultRule) => void (await post("/crash-at", { rule })),
     release: async (name) => void (await services("/ctl/release", { name })),
     cron: async (name) => void (await actor("sweeper", "/ctl/cron", { name })),
@@ -105,9 +136,8 @@ export async function createWorkerdStack(opts: WorkerdStackOptions): Promise<Sta
     async close() {
       if (closed) return;
       closed = true;
-      if (timer) clearInterval(timer);
-      await mf.dispose();
-      rmSync(persist, { recursive: true, force: true });
+      await release();
     },
   };
+  }
 }

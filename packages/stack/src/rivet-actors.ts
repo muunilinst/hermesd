@@ -3,6 +3,7 @@ import { RivetHost, type ActorLike, type FetcherLike } from "@hermesd/host-rivet
 import type { ActorBehavior, Clock } from "@hermesd/runtime";
 import { FaultRules, Meter, MeteredHost } from "./meter.ts";
 import type { ActorName, StackOptions } from "./types.ts";
+import { assertReadOnlySql } from "./readonly-sql.ts";
 import { ExecutorService, GatewayService, ModelService, NAMES, actorFactory, actorOfTarget, meteredBehavior } from "./world.ts";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -22,6 +23,12 @@ export interface RivetWorld {
   rules: FaultRules;
   /** A rivetkit client, set once the registry runs. Actors reach each other through it. */
   client: () => Any;
+  /** Wakes of actors that belong to an earlier stack or process, which were destroyed (see `wake`). */
+  ghosts: { destroyed: number };
+  /** Injected crashes that acted. */
+  crashes: { fired: number };
+  /** How many activations of each actor of this stack have gone to sleep (`onSleep`). */
+  sleeps: Record<ActorName, number>;
   /** The rivetkit key of each actor, unique per stack. */
   keys: Record<ActorName, string[]>;
 }
@@ -87,6 +94,7 @@ export function defineWorldActor(name: ActorName, w: RivetWorld, rivet: { actor:
     // own owner epoch and fences the live session at the sweeper. It is not ours: destroy it, which
     // also removes its schedules.
     if (!isOurs(c)) {
+      w.ghosts.destroyed += 1;
       c.destroy();
       return;
     }
@@ -111,7 +119,10 @@ export function defineWorldActor(name: ActorName, w: RivetWorld, rivet: { actor:
       fetch: (req, signal) => raw.fetch(req, signal),
       sidecar: (n) => raw.sidecar(n),
     };
-    const host: Host = new MeteredHost(named, { actor: name, meter, rules: w.rules, crash: () => c.sleep() });
+    const host: Host = new MeteredHost(named, { actor: name, meter, rules: w.rules, crash: () => {
+        w.crashes.fired += 1;
+        c.sleep();
+      } });
     const b = meteredBehavior(make(host), meter);
     behaviors.set(c.actorId, b);
     // A timer fires: hostWake -> handleWake re-arms first, then calls this -> behavior.alarm().
@@ -128,6 +139,7 @@ export function defineWorldActor(name: ActorName, w: RivetWorld, rivet: { actor:
     onWake: wake,
     onSleep: (c: Any) => {
       behaviors.delete(c.actorId);
+      if (isOurs(c)) w.sleeps[name] += 1;
     },
     actions: {
       call: (c: Any, method: string, params: unknown) => behavior(c).call(method, params),
@@ -137,8 +149,8 @@ export function defineWorldActor(name: ActorName, w: RivetWorld, rivet: { actor:
       },
       epoch: (c: Any) => RivetHost.of(c).epoch(),
       rows: (c: Any, sql: string) => {
-        if (!/^\s*select\b/i.test(sql)) throw new Error("rows: read-only queries only");
-        return RivetHost.of(c).tx((s) => s.exec(sql));
+        const text = assertReadOnlySql(sql);
+        return RivetHost.of(c).tx((s) => s.exec(text));
       },
       sleepNow: (c: Any) => c.sleep(),
     },

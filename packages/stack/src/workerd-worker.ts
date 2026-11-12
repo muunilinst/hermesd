@@ -2,6 +2,7 @@ import { DurableObject, type DurableObjectState } from "cloudflare:workers";
 import { CloudflareHost, type FetcherLike } from "@hermesd/host-cloudflare";
 import type { ActorBehavior } from "@hermesd/runtime";
 import { FaultRules, Meter, MeteredHost } from "./meter.ts";
+import { assertReadOnlySql } from "./readonly-sql.ts";
 import type { ActorName, StackFaultRule, StackOptions } from "./types.ts";
 import { ExecutorService, GatewayService, ModelService, NAMES, actorFactory, meteredBehavior } from "./world.ts";
 
@@ -30,6 +31,7 @@ interface Env {
 
 const meters = new Map<ActorName, Meter>();
 const rules = new FaultRules();
+let crashesFired = 0;
 const meterOf = (a: ActorName): Meter => {
   let m = meters.get(a);
   if (!m) meters.set(a, (m = new Meter()));
@@ -63,7 +65,10 @@ class ActorDO extends DurableObject<Env> {
     };
     this.#host = new CloudflareHost(ctx, { sidecars, fetch: (req) => viaServices(env, "/model").fetch(req) });
     const meter = meterOf(name);
-    const host = new MeteredHost(this.#host, { actor: name, meter, rules, crash: () => ctx.abort("injected crash") });
+    const host = new MeteredHost(this.#host, { actor: name, meter, rules, crash: () => {
+      crashesFired += 1;
+      ctx.abort("injected crash");
+    } });
     this.#behavior = meteredBehavior(actorFactory(name, optsOf(env), clock)(host), meter);
     this.#host.onAlarm(async () => void (await this.#behavior.alarm?.()));
   }
@@ -90,8 +95,13 @@ class ActorDO extends DurableObject<Env> {
       if (path === "/ctl/cron") return json(await this.#behavior.cron?.(((await req.json()) as { name: string }).name));
       if (path === "/ctl/rows") {
         const { sql } = (await req.json()) as { sql: string };
-        if (!/^\s*select\b/i.test(sql)) return json({ error: "read-only: SELECT only" }, 400);
-        return json(await this.#host.tx((s) => s.exec(sql)));
+        let text: string;
+        try {
+          text = assertReadOnlySql(sql);
+        } catch (e) {
+          return json({ error: (e as Error).message }, 400);
+        }
+        return json(await this.#host.tx((s) => s.exec(text)));
       }
       if (path === "/ctl/abort") this.ctx.abort("evicted by the test");
       return json({ error: `no route ${path}` }, 404);
@@ -180,6 +190,8 @@ export default {
       case "/crash-at":
         rules.add(c.rule!);
         return json(null);
+      case "/crashes":
+        return json(crashesFired);
       case "/meter":
         return json(meterOf(c.actor!).snapshot());
       case "/reset-meters":

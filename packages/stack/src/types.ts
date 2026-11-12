@@ -25,6 +25,12 @@ export interface StackOptions {
   minDelayMs?: number;
   /** How long a turn may run before the sweeper wakes the session. Default 10000. */
   horizonMs?: number;
+  /**
+   * Run the sweeper's automatic ticks and sweeps (the platform cron, or the harness stand-in for it).
+   * Default true. With false nothing wakes a session except its own wake timers; `Stack.cron` still
+   * runs a job when a test calls it.
+   */
+  autoSweep?: boolean;
 }
 
 /** A reply that reached the gateway. Each idempotency key once. */
@@ -103,15 +109,28 @@ export interface Stack {
   waitReplies(n: number, timeoutMs?: number): Promise<StackReply[]>;
   /** Call a method on an actor, as another actor or the gateway would. */
   call(actor: ActorName, method: string, params?: unknown): Promise<unknown>;
-  /** Run a read-only query on an actor's rows. */
+  /**
+   * Run a read-only query on an actor's rows: one SELECT (or WITH ... SELECT) statement, on every host.
+   * Anything else, including several statements, rejects and changes nothing.
+   */
   rows(actor: ActorName, sql: string): Promise<SqlRow[]>;
-  /** The platform throws the actor out of memory, as a crash or an eviction does. The next event activates it again. */
+  /**
+   * The platform throws the actor out of memory, as a crash or an eviction does. It returns once the old
+   * activation is gone, and it does not activate the actor again: the next event (a call, a wake timer,
+   * `epochOf`) does. A caller that times the wake can start its clock right after `evict`.
+   */
   evict(actor: ActorName): Promise<void>;
+  /** The owner epoch the actor's storage holds now. It is a request to the actor, so it wakes it if it is asleep. */
+  epochOf(actor: ActorName): Promise<number>;
   /** Crash the actor at a Host fault point, once. */
   crashAt(rule: StackFaultRule): Promise<void>;
+  /** Let `ms` pass: the Node simulator moves its virtual clock (timers come due); real hosts wait. */
+  advance(ms: number): Promise<void>;
+  /** How many injected crashes (`crashAt` rules) have acted so far, so a test can show its fault fired. */
+  crashesFired(): Promise<number>;
   /** Open the gate `name`: a held model step (`hold` in the script) and a held scripted command. */
   release(name: string): Promise<void>;
-  /** Run the sweeper's cron job now (`tick` or `sweep`). Real platforms run it on a schedule. */
+  /** Run only the sweeper's cron job `name` now (`tick` or `sweep`); nothing else is run or advanced. Real platforms run it on a schedule. */
   cron(name: "tick" | "sweep"): Promise<void>;
   /** The meter of an actor. */
   meter(actor: ActorName): Promise<MeterSnapshot>;

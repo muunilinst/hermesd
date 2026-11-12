@@ -1,6 +1,7 @@
 import { NodePlatform, type PlatformMode } from "@hermesd/host-node";
 import { Meter, MeteredHost } from "./meter.ts";
 import type { ActorName, Stack, StackOptions } from "./types.ts";
+import { assertReadOnlySql } from "./readonly-sql.ts";
 import { ExecutorService, GatewayService, ModelService, NAMES, actorFactory, meteredBehavior } from "./world.ts";
 
 const ACTORS: ActorName[] = ["s1", "sweeper", "profile"];
@@ -24,9 +25,12 @@ export async function createNodeStack(opts: StackOptions, mode: PlatformMode = "
     const make = actorFactory(name, opts, platform.clock);
     platform.defineActor(name, (h) => meteredBehavior(make(new MeteredHost(h, { actor: name, meter })), meter));
   }
-  platform.cron("sweeper", "tick", 60_000);
-  platform.cron("sweeper", "sweep", 600_000);
+  if (opts.autoSweep !== false) {
+    platform.cron("sweeper", "tick", 60_000);
+    platform.cron("sweeper", "sweep", 600_000);
+  }
   await platform.call("profile", "register_session", { session: NAMES.session });
+  let crashes = 0;
   const minDelay = opts.minDelayMs ?? 1_000;
 
   return {
@@ -45,15 +49,23 @@ export async function createNodeStack(opts: StackOptions, mode: PlatformMode = "
       return [...gateway.replies];
     },
     call: (actor, method, params) => platform.call(actor, method, params),
-    rows: async (actor, sql) => platform.query(actor, sql),
+    rows: async (actor, sql) => platform.query(actor, assertReadOnlySql(sql)),
     evict: async (actor) => platform.crash(actor),
-    crashAt: async (rule) => platform.crashAt({ actor: rule.actor, point: rule.point, ...(rule.detail ? { detail: rule.detail } : {}), ...(rule.nth ? { nth: rule.nth } : {}) }),
+    epochOf: async (actor) => platform.epochOf(actor),
+    crashAt: async (rule) => {
+      const point = { actor: rule.actor, point: rule.point, ...(rule.detail ? { detail: rule.detail } : {}), ...(rule.nth ? { nth: rule.nth } : {}) };
+      platform.crashAt(point);
+      // A hook rule on the same point matches the same event, so it counts the crash that rule makes.
+      platform.onPoint(point, () => void (crashes += 1));
+    },
+    advance: (ms) => platform.clock.advance(ms),
+    crashesFired: async () => crashes,
     release: async (name) => {
       model.release(name);
       exec.rig.commands.release(name);
     },
-    // The platform cron runs on the virtual clock: move it one period.
-    cron: (name) => platform.clock.advance(name === "tick" ? 60_000 : 600_000),
+    // Dispatch the named job alone; the virtual clock does not move.
+    cron: (name) => platform.runCron("sweeper", name),
     meter: async (actor) => meters.get(actor)!.snapshot(),
     resetMeters: async () => {
       for (const m of meters.values()) m.reset();
