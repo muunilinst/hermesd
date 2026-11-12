@@ -54,6 +54,10 @@ eachLoopWorld("compaction while a model call is out", (use) => {
       await w.until(() => w.replies.length === 1, "the reply");
       const where = w.rows("messages", "role = 'tool'").map((m) => `${m.session_id} active=${m.active}`);
       assert.deepEqual(where, [`${r.child} active=1`]);
+      // The next model request is built from the child: the summary, then the call and its result.
+      const body = w.model.recorder.requests.at(-1)!.body as { messages: Array<{ role: string; content: string | null }> };
+      assert.deepEqual(body.messages.slice(1).map((m) => m.role), ["user", "assistant", "tool"]);
+      assert.equal(body.messages[1]!.content, "Summary.");
       assert.deepEqual(await w.b.call("s1", "lineage_problems"), []);
       w.assertConsistent();
     }),

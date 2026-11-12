@@ -178,6 +178,9 @@ class StepRaced extends Error {
   }
 }
 
+/** A compact call made a new session current after the snapshot. A model call planned from the old transcript must not be written. */
+class SessionMoved extends StepRaced {}
+
 /** The executor refused our epoch: a newer owner exists. This activation must stop. */
 export class SupersededError extends Error {
   readonly code = "superseded";
@@ -753,6 +756,8 @@ export class LoopDriver implements TurnDriver {
       if (!turn) insertPortRow(sql, this.#set, "loop_turn", { turn_id: ctx.turnId, interrupted: 0, model_calls: 0 }, {});
       // A compact call may have made a child since the snapshot. The step writes to the current session.
       const sid = currentSessionId(sql, snap.sessionId);
+      // The request was built from the snapshot's transcript. After a compact it would send retired rows.
+      if (sid !== snap.sessionId && plan.modelCall) throw new SessionMoved();
       ensureSession(sql, { id: sid, source: "teenytiny", model: this.#cfg.model, systemPrompt: this.#cfg.systemPrompt, systemPromptHash: promptHash }, now);
       for (const m of plan.messages) {
         const id = insertMessage(sql, sid, m, now);
@@ -818,12 +823,18 @@ export class LoopDriver implements TurnDriver {
         this.#sessionUpsert(sql, outbox, sid, plan.finish.status, now);
       }
     };
-    await ctx.step({
-      settle: t.settle ?? [],
-      write,
-      pend,
-      ...(plan.finish ? { finish: plan.finish } : {}),
-    });
+    try {
+      await ctx.step({
+        settle: t.settle ?? [],
+        write,
+        pend,
+        ...(plan.finish ? { finish: plan.finish } : {}),
+      });
+    } catch (e) {
+      // Plan again from the new session. The new messages of this step are not written yet, so they go with it.
+      if (e instanceof SessionMoved) return this.#transition(ctx, await ctx.host.tx((sql) => this.#snapshot(sql, ctx)), t);
+      throw e;
+    }
     return true;
   }
 
