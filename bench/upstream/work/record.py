@@ -232,7 +232,8 @@ def main():
         time.sleep(1)
     failed += capture_failures(transcript, inputs)
     json.dump(transcript, open(f"{home}/driver.json", "w"), indent=2)
-    shutil.copy(f"{home}/driver.json", os.path.join(ROOT, "bench/upstream/work", name + ".driver.json"))
+    # A failed capture keeps its driver log under a separate name, so the checked-in log of the last good run stays.
+    shutil.copy(f"{home}/driver.json", os.path.join(ROOT, "bench/upstream/work", name + (".failed" if failed else "") + ".driver.json"))
     out = os.path.join(ROOT, "packages/golden/transcripts/upstream", name + ".json")
     for t in transcript:
         print(json.dumps({k: v for k, v in t.items() if k != "out"}), "\n", t.get("out", "")[-800:])

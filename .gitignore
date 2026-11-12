@@ -7,3 +7,4 @@ coverage/
 !.claude/skills/
 .verify/
 __pycache__/
+bench/upstream/work/*.failed.driver.json
