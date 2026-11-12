@@ -181,12 +181,15 @@ export class RivetHost implements Host {
     // `PRAGMA table_list` names the shadow tables (a name check would also match an ordinary table
     // such as an external content table named `notes_segments`). The ordinary tables go first: an
     // FTS4 external content table must exist before its virtual table is created.
-    let listed: Record<string, unknown>[];
+    // An SQLite before 3.37 has no table_list: it throws, or (an unknown pragma) returns no rows.
+    // A real table_list always lists sqlite_schema, so an empty answer means the pragma is missing.
+    let listed: Record<string, unknown>[] = [];
     try {
       listed = await this.#c.db.execute("PRAGMA table_list");
     } catch {
-      listed = shadowsInScratch(objects, isVirtual); // an SQLite before 3.37 has no table_list
+      listed = [];
     }
+    if (listed.length === 0) listed = shadowsInScratch(objects, isVirtual);
     const shadowNames = new Set(listed.filter((r) => r["type"] === "shadow" && r["schema"] === "main").map((r) => String(r["name"])));
     const isShadow = (name: string): boolean => shadowNames.has(name);
     const tables = objects.filter((o) => o["type"] === "table");

@@ -175,11 +175,14 @@ describe("RivetHost with a fake context", () => {
     assert.deepEqual(await again.tx((s) => s.exec("SELECT rowid FROM notes WHERE notes MATCH 'durable'").map((r) => r["rowid"])), [1]);
   });
 
-  for (const oldSqlite of [false, true]) {
-    it(`reloads an FTS4 external content table, which needs its content table first${oldSqlite ? " (no PRAGMA table_list)" : ""}`, async () => {
+  for (const oldSqlite of [null, "throws", "empty"] as const) {
+    it(`reloads an FTS4 external content table, which needs its content table first${oldSqlite ? ` (PRAGMA table_list ${oldSqlite})` : ""}`, async () => {
       const db = fakeDb();
       const execute = db.execute;
-      if (oldSqlite) db.execute = async (q, ...a) => (/table_list/i.test(q) ? Promise.reject(new Error("unknown pragma")) : execute(q, ...a));
+      if (oldSqlite) {
+        db.execute = async (q, ...a) =>
+          !/table_list/i.test(q) ? execute(q, ...a) : oldSqlite === "throws" ? Promise.reject(new Error("unknown pragma")) : [];
+      }
       const f = fakeActor(db);
       const h = await RivetHost.activate(f.c);
       await h.tx((s) => {
