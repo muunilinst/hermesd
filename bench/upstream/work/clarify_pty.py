@@ -33,7 +33,8 @@ while time.time() - t0 < 150:
 try: os.kill(pid, signal.SIGTERM)
 except Exception: pass
 srv.terminate()
-subprocess.run([R.HERMES, "gateway", "stop"], env=env, capture_output=True, timeout=60); subprocess.run(["pkill", "-f", "gateway run"])
+# Stop only this recording's gateway: `gateway stop` is scoped by HERMES_HOME. No pattern kill.
+subprocess.run([R.HERMES, "gateway", "stop"], env=env, capture_output=True, timeout=60)
 open(os.path.join(R.ROOT, "bench/upstream/work", name + ".pty.txt"), "w").write(strip(buf))
 out = os.path.join(R.ROOT, "packages/golden/transcripts/upstream", name + ".json")
 print(subprocess.run([R.BUN, f"{R.G}/assemble.mjs", spath, "--log", log, "--db", f"{home}/state.db", "--out", out], capture_output=True, text=True).stdout, events)
