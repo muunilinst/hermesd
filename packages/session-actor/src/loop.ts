@@ -493,8 +493,7 @@ export class LoopDriver implements TurnDriver {
     if (row.attempts > this.#cfg.maxModelRetries) {
       const why = `the model call ${row.callId} did not return after ${row.attempts - 1} retries`;
       if (compression) return this.#finishCompression(ctx, snap, row, { fallbackReason: why });
-      await this.#failCall(ctx, row, why);
-      return "wait";
+      return this.#failCall(ctx, row, why);
     }
     const ac = new AbortController();
     this.#fetches.set(ctx.turnId, ac);
@@ -521,8 +520,7 @@ export class LoopDriver implements TurnDriver {
       }
       if ("fail" in r) {
         if (compression) return this.#finishCompression(ctx, snap, row, { fallbackReason: r.fail });
-        await this.#failCall(ctx, row, r.fail);
-        return "wait";
+        return this.#failCall(ctx, row, r.fail);
       }
       parsed = r.parsed;
       text = r.text;
@@ -542,8 +540,7 @@ export class LoopDriver implements TurnDriver {
       if (!res.ok) {
         const why = `the model returned HTTP ${res.status}`;
         if (compression) return this.#finishCompression(ctx, snap, row, { fallbackReason: why });
-        await this.#failCall(ctx, row, why);
-        return "wait";
+        return this.#failCall(ctx, row, why);
       }
       try {
         parsed = parseChatResponse(JSON.parse(text) as unknown);
@@ -553,8 +550,7 @@ export class LoopDriver implements TurnDriver {
     }
     if (typeof parsed === "string") {
       if (compression) return this.#finishCompression(ctx, snap, row, { fallbackReason: parsed });
-      await this.#failCall(ctx, row, parsed);
-      return "wait";
+      return this.#failCall(ctx, row, parsed);
     }
     if (compression) {
       const body = (parsed.content ?? "").trim();
@@ -722,19 +718,31 @@ export class LoopDriver implements TurnDriver {
   }
 
   /** The tool-call turn could not be written. The turn ends, and no tool runs (guide 2.3). */
-  async #persistenceFailed(ctx: TurnContext, row: CallRow, cause: unknown): Promise<"wait"> {
+  async #persistenceFailed(ctx: TurnContext, row: CallRow, cause: unknown): Promise<"again" | "wait"> {
     if (cause instanceof Error && cause.name === "StaleEpochError") throw cause; // we are not the owner: do nothing
     const detail = cause instanceof Error ? cause.message : String(cause);
-    await this.#failCall(ctx, row, `session_persistence_failed: ${detail}`);
+    return this.#failCall(ctx, row, `session_persistence_failed: ${detail}`);
+  }
+
+  /** End the turn with the call's error. A committed stop wins: the next drive replies "Stopped." instead. */
+  async #failCall(ctx: TurnContext, row: CallRow, error: string): Promise<"again" | "wait"> {
+    const now = this.#deps.clock.now();
+    try {
+      await this.#failCallStep(ctx, row, error, now);
+    } catch (e) {
+      if (e instanceof StepRaced) return "again";
+      throw e;
+    }
     return "wait";
   }
 
-  async #failCall(ctx: TurnContext, row: CallRow, error: string): Promise<void> {
-    const now = this.#deps.clock.now();
+  async #failCallStep(ctx: TurnContext, row: CallRow, error: string, now: number): Promise<void> {
     await ctx.step({
       settle: row.pendingId ? [{ id: row.pendingId, result: "failed" }] : [],
       write: (sql, outbox) => {
         if (!turnIsOpen(sql, ctx.turnId)) throw new StepRaced();
+        const turn = sql.exec("SELECT interrupted FROM loop_turn WHERE turn_id = ?", ctx.turnId)[0];
+        if (turn && num(turn.interrupted) === 1) throw new StepRaced();
         sql.exec("UPDATE pending_call SET status = 'failed', error = ?, updated_at = ? WHERE call_id = ? AND status = 'pending'", error, now, row.callId);
         this.#reply(outbox, ctx.turnId, `error: ${error}`);
       },
