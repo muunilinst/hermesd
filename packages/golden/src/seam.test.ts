@@ -103,4 +103,62 @@ for (const cfg of NODE_CONFIGS) {
       }
     });
   });
+
+  describe(`fallback target, keys and compaction [node/${cfg.mode}]`, () => {
+    /** A world with a primary and a fallback model; each request's model, authorization and messages are kept. */
+    async function world(primarySteps: ScriptStep[], fallbackSteps: ScriptStep[], fallbackKey?: string) {
+      const primary = new ScriptedModel("chat_completions", primarySteps);
+      const fallback = new ScriptedModel("chat_completions", fallbackSteps);
+      const seen: Array<{ model: string; auth: string | null; messages: Array<{ role: string; content: string | null }> }> = [];
+      const fetchAny = async (req: Request, signal?: AbortSignal): Promise<Response> => {
+        const body = (await req.clone().json()) as { model: string; messages: Array<{ role: string; content: string | null }> };
+        seen.push({ model: body.model, auth: req.headers.get("authorization"), messages: body.messages });
+        return (body.model === "fallback-model" ? fallback : primary).fetch(req, signal);
+      };
+      const w = await createLoopWorld(cfg, {
+        script: [],
+        provider: {
+          client: createModelClient("chat_completions", { model: "primary-model" }),
+          model: { fetch: fetchAny, requests: [], aborted: 0, release: (n) => primary.release(n) },
+        },
+        fallback: { client: createModelClient("chat_completions", { model: "fallback-model" }), model: "fallback-model", ...(fallbackKey ? { apiKey: fallbackKey } : {}) },
+        loop: { ...scriptedTerminal, model: "primary-model", apiKey: "primary-secret" },
+      });
+      return { w, seen };
+    }
+
+    it("the fallback never receives the primary key", async () => {
+      for (const key of ["fallback-key", undefined]) {
+        const { w, seen } = await world([{ status: 429 }], [{ reply: "fallback done" }], key);
+        try {
+          await w.send("one");
+          await w.until(() => w.replies.length === 1, "the reply");
+          assert.deepEqual(seen.map((s) => [s.model, s.auth]), [
+            ["primary-model", "Bearer primary-secret"],
+            ["fallback-model", key ? `Bearer ${key}` : null],
+          ]);
+        } finally {
+          w.b.close();
+        }
+      }
+    });
+
+    it("a switch after a compact builds the fallback request from the new session", async () => {
+      const { w, seen } = await world([{ reply: "first" }, { status: 429, hold: "p" }], [{ reply: "fallback done" }]);
+      try {
+        await w.send("one");
+        await w.until(() => w.replies.length === 1, "the first reply");
+        await w.send("two");
+        await w.until(() => seen.length === 2, "the second primary call is out");
+        await w.b.call("s1", "compact", { summary: "Summary." });
+        w.provider!.release("p");
+        await w.until(() => w.replies.length === 2, "the second reply");
+        const fb = seen.find((s) => s.model === "fallback-model")!;
+        assert.equal(fb.messages[1]!.content, "Summary.");
+        assert.equal(fb.messages.some((m) => m.content === "first"), false, "no retired row");
+      } finally {
+        w.b.close();
+      }
+    });
+  });
 }

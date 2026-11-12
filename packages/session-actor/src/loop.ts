@@ -154,6 +154,11 @@ export interface LoopHooks {
 export interface LoopFallback {
   client: LoopModelClient;
   model: string;
+  /**
+   * The key for the fallback target. The primary `apiKey` never goes to the fallback: it may be
+   * another host. Without one, the fallback client uses the key of its own config, if any.
+   */
+  apiKey?: string;
 }
 
 export interface LoopDeps {
@@ -497,10 +502,21 @@ export class LoopDriver implements TurnDriver {
     let text: string;
     if (this.#deps.modelClient) {
       const onFallback = row.data.target === "fallback" && this.#deps.fallback !== undefined;
-      const r = await this.#callClient(ctx, row, ac, onFallback ? this.#deps.fallback!.client : this.#deps.modelClient, !compression && !onFallback && this.#deps.fallback !== undefined);
+      const r = await this.#callClient(
+        ctx,
+        row,
+        ac,
+        onFallback ? this.#deps.fallback!.client : this.#deps.modelClient,
+        onFallback ? this.#deps.fallback!.apiKey : this.#cfg.apiKey,
+        !compression && !onFallback && this.#deps.fallback !== undefined,
+      );
       if ("end" in r) return r.end;
       if ("switch" in r) {
-        await this.#switchToFallback(ctx, snap, row);
+        try {
+          await this.#switchToFallback(ctx, row);
+        } catch (e) {
+          if (!(e instanceof StepRaced)) throw e; // the turn ended or the session moved: read the rows again
+        }
         return "again";
       }
       if ("fail" in r) {
@@ -647,6 +663,7 @@ export class LoopDriver implements TurnDriver {
     row: CallRow,
     ac: AbortController,
     client: LoopModelClient,
+    apiKey: string | undefined,
     canSwitch: boolean,
   ): Promise<{ parsed: ParsedResponse; text: string } | { end: "again" | "wait" } | { fail: string } | { switch: true }> {
     try {
@@ -654,7 +671,7 @@ export class LoopDriver implements TurnDriver {
         callId: row.callId,
         fetch: (req, signal) => ctx.host.fetch(req, signal),
         signal: ac.signal,
-        ...(this.#cfg.apiKey ? { apiKey: this.#cfg.apiKey } : {}),
+        ...(apiKey ? { apiKey } : {}),
       });
       if (ac.signal.aborted) return { end: "again" };
       return { parsed: sent.response, text: sent.raw };
@@ -677,8 +694,11 @@ export class LoopDriver implements TurnDriver {
    * `target: "fallback"`, in one commit. The next try sends the new bytes. The
    * summary call of a compaction does not switch: it keeps the wait-and-resend path.
    */
-  async #switchToFallback(ctx: TurnContext, snap: Snapshot, row: CallRow): Promise<void> {
+  async #switchToFallback(ctx: TurnContext, row: CallRow): Promise<void> {
     const fb = this.#deps.fallback!;
+    // The transcript is read now, not taken from the snapshot of the primary try: a compact may
+    // have made a new session current while that try was out. The write checks it did not move again.
+    const snap = await ctx.host.tx((sql) => this.#snapshot(sql, ctx));
     const body: ChatRequestBody = {
       model: fb.model,
       messages: [{ role: "system", content: this.#cfg.systemPrompt }, ...snap.messages.map(toApiMessage)],
@@ -689,6 +709,7 @@ export class LoopDriver implements TurnDriver {
     await ctx.step({
       write: (sql) => {
         if (!turnIsOpen(sql, ctx.turnId)) throw new StepRaced();
+        if (currentSessionId(sql, snap.sessionId) !== snap.sessionId) throw new StepRaced();
         sql.exec(
           "UPDATE pending_call SET request = ?, data = ?, updated_at = ? WHERE call_id = ? AND status = 'pending'",
           request,
