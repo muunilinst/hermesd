@@ -325,7 +325,8 @@ function runOne(name: string, rt: Runtime): boolean {
         skipped.push(`drive ${d.name} (needs Linux)`);
         continue;
       }
-      const args = d.args.map((a) => a.replaceAll("$QTMP", shellQuote(tmp)).replaceAll("$TMP", tmp));
+      // One pass, and a function replacement: a path with "$&" or "$TMP" in it is put in as it is.
+      const args = d.args.map((a) => a.replace(/\$Q?TMP/g, (m) => (m === "$QTMP" ? shellQuote(tmp) : tmp)));
       const before = (d.unchanged ?? []).map(contentHash);
       const deadline = Date.now() + (d.retry?.timeoutMs ?? 0);
       let r: ReturnType<typeof sh>;
