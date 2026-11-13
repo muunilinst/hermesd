@@ -199,8 +199,10 @@ export function writeWindowChild(
     let m: NewMessage;
     if (a.source) {
       if (a.summary) {
-        // The summary is merged into this row: Codex message items and ordered blocks hold the old text.
-        const { codexMessageItems: _m, orderedBlocks: _o, ...rest } = a.source;
+        // The summary is merged into this row: Codex message items and ordered blocks hold the old
+        // text, and so does `api_content`, which the model would read in place of the new content
+        // (`drop_stale_api_content`). The row now carries the summary, so it is not hidden either.
+        const { codexMessageItems: _m, orderedBlocks: _o, apiContent: _a, displayKind: _d, ...rest } = a.source;
         m = { ...rest, content: a.content, compressedSummary: true };
       } else m = { ...a.source, content: a.content };
     } else {

@@ -98,10 +98,42 @@ function applySystemMarkers(m: Message, cc: Dict, prefix: string | null | undefi
   return 1;
 }
 
-/** `apply_anthropic_cache_control`. Returns a new list; the input is not changed. */
+const isPlainTextPart = (p: unknown): p is { type?: string; text: string } =>
+  isDict(p) && (p.type ?? "text") === "text" && typeof p.text === "string" && Object.keys(p).every((k) => k === "type" || k === "text");
+
+/**
+ * `strip_anthropic_cache_control` on one message: the markers go, and the list shapes that
+ * decoration makes from a string (one text part, the two-part system split) become the
+ * string again. Returns a copy when something changed.
+ */
+function stripMessage(m: Message): Message {
+  const c = m.content;
+  const partMarked = Array.isArray(c) && c.some((p) => isDict(p) && "cache_control" in p);
+  if (!("cache_control" in m) && !partMarked) return m;
+  const out: Message = { ...m };
+  delete out.cache_control;
+  if (Array.isArray(c)) {
+    const parts = c.map((p) => (isDict(p) && "cache_control" in p ? (({ cache_control: _cc, ...rest }) => rest)(p) : p));
+    out.content = parts.length > 0 && parts.every(isPlainTextPart) && (parts.length === 1 || (m.role === "system" && parts.length === 2))
+      ? parts.map((p) => (p as { text: string }).text).join("")
+      : parts;
+  }
+  return out;
+}
+
+/** `strip_anthropic_tool_cache_control`: copied tools without markers. */
+export function stripToolCacheControl<T>(tools: readonly T[]): T[] {
+  return tools.map((t) => (isDict(t) && "cache_control" in t ? ((({ cache_control: _cc, ...rest }) => rest)(t) as T) : t));
+}
+
+/**
+ * `apply_anthropic_cache_control`. Prior markers are stripped first (`_strip_prior_decoration`),
+ * so a request that already carries some never goes past four. Returns a new list; the
+ * input is not changed.
+ */
 export function applyAnthropicCacheControl(messages: readonly Message[], o: CachePlanOptions): Message[] {
   if (messages.length === 0) return [...messages];
-  const out = [...messages];
+  const out = messages.map(stripMessage);
   const cc = marker(o.ttl);
   let used = 0;
   if (out[0]!.role === "system") {
@@ -128,19 +160,25 @@ export function isOneShotRequest(messages: readonly Message[], tools: readonly u
 }
 
 /**
- * The request-local plan for one destination: the messages with markers, or the
- * same list when the route does not cache or caching is off.
+ * The request-local plan for one destination (`build_prompt_cache_plan`): the messages
+ * with markers and the tools without any, or both as they came when the route does not
+ * cache or caching is off. The planner owns every breakpoint of a request it decorates:
+ * a marker that came in on a message or a tool is dropped, so there are never more than four.
  */
-export function planPromptCache(
+export function planPromptCache<T>(
   messages: readonly Message[],
-  tools: readonly unknown[],
+  tools: readonly T[],
   r: { mode: ApiMode; model: string; baseUrl?: string | null | undefined; promptCaching?: false | { ttl?: CacheTtl } | undefined; staticSystemPrefix?: string | null | undefined },
-): Message[] {
-  if (r.promptCaching === false || isOneShotRequest(messages, tools)) return [...messages];
+): { messages: Message[]; tools: T[] } {
+  const asIs = { messages: [...messages], tools: [...tools] };
+  if (r.promptCaching === false || isOneShotRequest(messages, tools)) return asIs;
   const [cache, native] = anthropicPromptCachePolicy(r);
-  if (!cache) return [...messages];
+  if (!cache) return asIs;
   // `effective_cache_ttl`: Qwen routes keep a 5m cache only.
   const asked = r.promptCaching?.ttl ?? "5m";
   const ttl: CacheTtl = asked === "1h" && r.model.toLowerCase().includes("qwen") ? "5m" : asked;
-  return applyAnthropicCacheControl(messages, { native, ttl, staticSystemPrefix: r.staticSystemPrefix ?? null });
+  return {
+    messages: applyAnthropicCacheControl(messages, { native, ttl, staticSystemPrefix: r.staticSystemPrefix ?? null }),
+    tools: stripToolCacheControl(tools),
+  };
 }

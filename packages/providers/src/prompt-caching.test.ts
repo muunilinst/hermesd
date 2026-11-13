@@ -85,7 +85,7 @@ describe("prompt caching: on the wire", () => {
     const one: Message[] = [{ role: "user", content: "summarize" }];
     assert.equal(isOneShotRequest(one, []), true);
     assert.equal(isOneShotRequest(one, TOOLS), false);
-    assert.deepEqual(planPromptCache(one, [], { mode: "anthropic_messages", model: "claude-sonnet-4-5" }), one);
+    assert.deepEqual(planPromptCache(one, [], { mode: "anthropic_messages", model: "claude-sonnet-4-5" }).messages, one);
   });
 
   it("anthropic_messages: system blocks, a marked text block and a marked tool_result", () => {
@@ -110,5 +110,35 @@ describe("prompt caching: on the wire", () => {
   it("chat_completions to OpenAI stays unmarked", () => {
     const body = buildChatBody({ model: "gpt-4o", messages: CONVO, tools: TOOLS, options: { baseUrl: "https://api.openai.com/v1/chat/completions" } });
     assert.equal(body.includes("cache_control"), false);
+  });
+});
+
+describe("prompt caching: markers that came with the request", () => {
+  const countMarkers = (body: Dict): number => (JSON.stringify(body).match(/"cache_control"/g) ?? []).length;
+
+  it("a marked tool and marked messages never push the request past four breakpoints", () => {
+    const tools = [{ ...TOOLS[0]!, cache_control: EPH }, ...TOOLS.slice(1)];
+    const msgs: Message[] = [
+      { role: "system", content: [{ type: "text", text: STATIC, cache_control: EPH }, { type: "text", text: SYSTEM.slice(STATIC.length), cache_control: EPH }] },
+      { role: "user", content: [{ type: "text", text: "say hello", cache_control: EPH }] },
+      ...CONVO.slice(2),
+    ];
+    const body = JSON.parse(
+      buildAnthropicBody({ model: "claude-sonnet-4-5", messages: msgs, tools, options: { baseUrl: "https://api.anthropic.com/v1/messages", staticSystemPrefix: STATIC } }),
+    ) as Dict;
+    assert.equal(countMarkers(body), 4);
+    assert.equal(body.tools.some((t: Dict) => t.cache_control), false, "the planner owns the breakpoints: the tool marker is dropped");
+    assert.equal(body.messages[0].content, "say hello", "the old marker on the first user message is gone, and its one-part shape with it");
+  });
+
+  it("planning twice gives the same request", () => {
+    const once = applyAnthropicCacheControl(CONVO, { native: true, staticSystemPrefix: STATIC });
+    assert.deepEqual(applyAnthropicCacheControl(once, { native: true, staticSystemPrefix: STATIC }), once);
+  });
+
+  it("with caching off, markers that came in are left alone", () => {
+    const tools = [{ ...TOOLS[0]!, cache_control: EPH }];
+    const r = planPromptCache(CONVO, tools, { mode: "anthropic_messages", model: "claude-sonnet-4-5", promptCaching: false });
+    assert.deepEqual(r.tools, tools);
   });
 });

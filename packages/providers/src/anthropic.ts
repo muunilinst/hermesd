@@ -633,8 +633,8 @@ const TOOL_CHOICE_MAP: Record<string, Dict> = { auto: { type: "auto" }, required
 export function buildAnthropicBody(input: ModelCallInput): string {
   const o = input.options ?? {};
   const planned = planPromptCache(input.messages, input.tools, { mode: "anthropic_messages", model: input.model, baseUrl: o.baseUrl, promptCaching: o.promptCaching, staticSystemPrefix: o.staticSystemPrefix });
-  const [system, msgs] = convertMessagesToAnthropic(clone(planned), o.baseUrl, input.model);
-  const tools = input.tools.length > 0 ? convertToolsToAnthropic(input.tools) : [];
+  const [system, msgs] = convertMessagesToAnthropic(clone(planned.messages), o.baseUrl, input.model);
+  const tools = planned.tools.length > 0 ? convertToolsToAnthropic(planned.tools) : [];
   const model = isNousPortal(o.baseUrl) ? input.model : normalizeModelName(input.model);
   const effective = resolvePositiveMaxTokens(o.maxTokens) ?? maxOutput(model);
   const kwargs: Dict = { model, messages: msgs, max_tokens: effective };

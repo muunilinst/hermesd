@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { toApiMessage, type NewMessage } from "./messages.ts";
+import type { OutboxWriter } from "@hermesd/runtime";
+import { writeWindowChild } from "./lineage.ts";
+import { ensureSession, insertMessage, loadActiveMessages, toApiMessage, type NewMessage } from "./messages.ts";
+import { DEFAULT_MIGRATIONS } from "./migrate.ts";
+import { sessionDb } from "./testing.ts";
 import {
   FAILED_TURN_NOTICE,
   INTERRUPTED_COMMAND_RESULT,
@@ -66,5 +70,31 @@ describe("rows that close a stopped turn", () => {
     assert.equal(failedTurnRow([user("hi")], "u").content, FAILED_TURN_NOTICE);
     assert.equal(failedTurnRow([user("hi"), asst([call("c1", "terminal")])], "u").content, PARTIAL_FAILED_TURN_NOTICE);
     assert.equal(failedTurnRow([user("hi")], "u").displayKind, "failed_turn");
+  });
+});
+
+describe("compaction of a stopped turn", () => {
+  it("a summary merged into the hidden placeholder row reaches the model", () => {
+    const { sql } = sessionDb();
+    ensureSession(sql, { id: "s1", source: "teenytiny", model: "m", systemPrompt: "p", systemPromptHash: "h" }, 0);
+    const rows: NewMessage[] = [
+      user("u1"),
+      { ...asst([call("c1", "terminal")]), messageUid: "t1:a" },
+      tool("c1", "terminal", INTERRUPTED_COMMAND_RESULT),
+      interruptPlaceholderRow("t1:stop"),
+      user("again"),
+    ];
+    for (const m of rows) insertMessage(sql, "s1", m, 0);
+    const outbox = { enqueue: () => undefined } as unknown as OutboxWriter;
+    const deps = { migrations: DEFAULT_MIGRATIONS, source: "teenytiny", model: "m", systemPrompt: "p", systemPromptHash: "h", profileTarget: null, fallbackId: "s1" };
+    // Head [u1], the tool run is summarized, and the summary merges into the placeholder (user, then assistant).
+    const r = writeWindowChild(sql, deps, outbox, { headUids: ["u1"], middleUids: ["t1:a", "c1:r"], summary: { text: "SUMMARY of the stopped run" }, tokensBefore: 0, reason: "threshold", turnId: "t2" }, 0);
+    assert.ok(r);
+    const child = loadActiveMessages(sql, r.childId);
+    const merged = child.find((m) => m.compressedSummary && m.role === "assistant");
+    assert.ok(merged, "the summary went into the placeholder row");
+    assert.equal(merged.apiContent, undefined, "the stale api_content is dropped");
+    assert.equal(merged.displayKind, undefined, "the row now carries the summary, so it is not hidden");
+    assert.match(String(toApiMessage(merged).content), /SUMMARY of the stopped run/);
   });
 });

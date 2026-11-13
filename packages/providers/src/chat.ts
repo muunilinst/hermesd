@@ -121,10 +121,10 @@ export function swapDeveloperRole(messages: Message[], model: string): Message[]
 export function buildChatBody(input: ModelCallInput): string {
   const o = input.options ?? {};
   const planned = planPromptCache(input.messages, input.tools, { mode: "chat_completions", model: input.model, baseUrl: o.baseUrl, promptCaching: o.promptCaching, staticSystemPrefix: o.staticSystemPrefix });
-  const messages = swapDeveloperRole(convertMessagesChat(planned, o.baseUrl, input.model), input.model);
+  const messages = swapDeveloperRole(convertMessagesChat(planned.messages, o.baseUrl, input.model), input.model);
   const body: Dict = { model: input.model, messages };
   if (o.temperature !== undefined && o.temperature !== null) body.temperature = o.temperature;
-  if (input.tools.length > 0) body.tools = input.tools;
+  if (planned.tools.length > 0) body.tools = planned.tools;
   if (o.maxTokens !== undefined && o.maxTokens !== null) body[o.maxTokensParam ?? "max_tokens"] = o.maxTokens;
   if (o.extraBody) Object.assign(body, o.extraBody);
   if (o.stream) {
