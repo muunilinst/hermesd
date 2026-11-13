@@ -1,6 +1,6 @@
 import { StreamDroppedError, guardedEvents } from "./sse.ts";
-import { planPromptCache } from "./prompt-caching.ts";
-import { type Dict, type Message, type ModelCallInput, type NormalizedResponse, type ToolCallWire, type Usage, isDict } from "./types.ts";
+import { capCacheBreakpoints, planPromptCache } from "./prompt-caching.ts";
+import { type Dict, type Message, type ModelCallInput, type NormalizedResponse, type ToolCallWire, type Usage, clone, isDict } from "./types.ts";
 
 /**
  * The OpenAI chat_completions mode.
@@ -126,7 +126,8 @@ export function buildChatBody(input: ModelCallInput): string {
   if (o.temperature !== undefined && o.temperature !== null) body.temperature = o.temperature;
   if (planned.tools.length > 0) body.tools = planned.tools;
   if (o.maxTokens !== undefined && o.maxTokens !== null) body[o.maxTokensParam ?? "max_tokens"] = o.maxTokens;
-  if (o.extraBody) Object.assign(body, o.extraBody);
+  if (o.extraBody) Object.assign(body, clone(o.extraBody)); // a copy: the cap below may change it
+  if (planned.cached) capCacheBreakpoints(body);
   if (o.stream) {
     body.stream = true;
     body.stream_options = { include_usage: true };

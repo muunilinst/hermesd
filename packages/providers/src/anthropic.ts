@@ -1,5 +1,5 @@
 import { hostMatches, hostOf } from "./chat.ts";
-import { planPromptCache } from "./prompt-caching.ts";
+import { capCacheBreakpoints, planPromptCache } from "./prompt-caching.ts";
 import { StreamDroppedError, guardedEvents } from "./sse.ts";
 import { type Dict, type Message, type ModelCallInput, type NormalizedResponse, type ToolCallWire, type ToolDefinition, type Usage, asList, clone, isDict, truthy } from "./types.ts";
 
@@ -647,7 +647,8 @@ export function buildAnthropicBody(input: ModelCallInput): string {
   }
   if (o.reasoningConfig) Object.assign(kwargs, thinkingKwargs(o.reasoningConfig, model, effective));
   if (forbidsSamplingParams(model)) for (const k of ["temperature", "top_p", "top_k"]) delete kwargs[k];
-  if (o.extraBody) Object.assign(kwargs, o.extraBody);
+  if (o.extraBody) Object.assign(kwargs, clone(o.extraBody)); // a copy: the cap below may change it
+  if (planned.cached) capCacheBreakpoints(kwargs);
   if (o.stream) kwargs.stream = true;
   return JSON.stringify(kwargs);
 }

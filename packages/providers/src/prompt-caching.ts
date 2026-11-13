@@ -106,12 +106,20 @@ const isPlainTextPart = (p: unknown): p is { type?: string; text: string } =>
  * decoration makes from a string (one text part, the two-part system split) become the
  * string again. Returns a copy when something changed.
  */
+const REPLAY_CARRIERS = ["anthropic_content_blocks", "_anthropic_content_blocks", "bedrock_content_blocks"] as const;
+const unmark = (p: unknown): unknown => (isDict(p) && "cache_control" in p ? (({ cache_control: _cc, ...rest }) => rest)(p) : p);
+const hasPartMarker = (v: unknown): boolean => Array.isArray(v) && v.some((p) => isDict(p) && "cache_control" in p);
+
 function stripMessage(m: Message): Message {
   const c = m.content;
-  const partMarked = Array.isArray(c) && c.some((p) => isDict(p) && "cache_control" in p);
-  if (!("cache_control" in m) && !partMarked) return m;
+  const partMarked = hasPartMarker(c);
+  const carriers = REPLAY_CARRIERS.filter((k) => hasPartMarker(m[k]));
+  if (!("cache_control" in m) && !partMarked && carriers.length === 0) return m;
   const out: Message = { ...m };
   delete out.cache_control;
+  // A stored answer's ordered blocks are replayed as they are: a marker in them is a breakpoint too.
+  for (const k of carriers) out[k] = (m[k] as unknown[]).map(unmark);
+  if (!partMarked) return out;
   if (Array.isArray(c)) {
     const parts = c.map((p) => (isDict(p) && "cache_control" in p ? (({ cache_control: _cc, ...rest }) => rest)(p) : p));
     out.content = parts.length > 0 && parts.every(isPlainTextPart) && (parts.length === 1 || (m.role === "system" && parts.length === 2))
@@ -122,6 +130,38 @@ function stripMessage(m: Message): Message {
 }
 
 /** `strip_anthropic_tool_cache_control`: copied tools without markers. */
+export const MAX_CACHE_BREAKPOINTS = 4;
+
+/**
+ * The last guard on a built request body (Messages or chat_completions): Anthropic rejects
+ * more than four `cache_control` breakpoints. A request override (`extraBody`) can add
+ * markers after the planner ran. Over the limit, markers go first from `tools`, then from
+ * the oldest messages, then from the system prompt, so the planner's newest breakpoints stay.
+ * Changes `body` in place and returns the number of markers removed.
+ */
+export function capCacheBreakpoints(body: Dict, max = MAX_CACHE_BREAKPOINTS): number {
+  const holders: Dict[] = [];
+  const walk = (v: unknown): void => {
+    if (Array.isArray(v)) for (const x of v) walk(x);
+    else if (isDict(v)) {
+      if (isDict(v.cache_control)) holders.push(v);
+      for (const [k, x] of Object.entries(v)) if (k !== "cache_control" && typeof x === "object") walk(x);
+    }
+  };
+  walk(body.tools);
+  walk(body.messages);
+  walk(body.system);
+  let extra = holders.length - max;
+  let removed = 0;
+  for (const h of holders) {
+    if (extra <= 0) break;
+    delete h.cache_control;
+    extra--;
+    removed++;
+  }
+  return removed;
+}
+
 export function stripToolCacheControl<T>(tools: readonly T[]): T[] {
   return tools.map((t) => (isDict(t) && "cache_control" in t ? ((({ cache_control: _cc, ...rest }) => rest)(t) as T) : t));
 }
@@ -169,8 +209,8 @@ export function planPromptCache<T>(
   messages: readonly Message[],
   tools: readonly T[],
   r: { mode: ApiMode; model: string; baseUrl?: string | null | undefined; promptCaching?: false | { ttl?: CacheTtl } | undefined; staticSystemPrefix?: string | null | undefined },
-): { messages: Message[]; tools: T[] } {
-  const asIs = { messages: [...messages], tools: [...tools] };
+): { messages: Message[]; tools: T[]; cached: boolean } {
+  const asIs = { messages: [...messages], tools: [...tools], cached: false };
   if (r.promptCaching === false || isOneShotRequest(messages, tools)) return asIs;
   const [cache, native] = anthropicPromptCachePolicy(r);
   if (!cache) return asIs;
@@ -180,5 +220,6 @@ export function planPromptCache<T>(
   return {
     messages: applyAnthropicCacheControl(messages, { native, ttl, staticSystemPrefix: r.staticSystemPrefix ?? null }),
     tools: stripToolCacheControl(tools),
+    cached: true,
   };
 }

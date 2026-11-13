@@ -142,3 +142,50 @@ describe("prompt caching: markers that came with the request", () => {
     assert.deepEqual(r.tools, tools);
   });
 });
+
+describe("prompt caching: the final request stays within four breakpoints", () => {
+  const countMarkers = (body: Dict): number => (JSON.stringify(body).match(/"cache_control"/g) ?? []).length;
+  const NATIVE = { baseUrl: "https://api.anthropic.com/v1/messages", staticSystemPrefix: STATIC };
+  const SIGNED: Message = {
+    role: "assistant",
+    content: "I will run it.",
+    tool_calls: CONVO[2]!.tool_calls!,
+    anthropic_content_blocks: [
+      { type: "thinking", thinking: "Plan.", signature: "SIG==" },
+      { type: "text", text: "I will run it.", cache_control: EPH },
+      { type: "tool_use", id: "call_1", name: "terminal", input: { command: "echo hello" } },
+    ],
+  };
+
+  it("a marker inside replayed ordered blocks is dropped before the planner places its four", () => {
+    // The signed turn is old: two newer messages follow it, so it is outside the planner's window.
+    const msgs: Message[] = [CONVO[0]!, CONVO[1]!, SIGNED, CONVO[3]!, { role: "user", content: "next" }, { role: "assistant", content: "ok" }, { role: "user", content: "and now" }];
+    const body = JSON.parse(buildAnthropicBody({ model: "claude-sonnet-4-5", messages: msgs, tools: TOOLS, options: NATIVE })) as Dict;
+    assert.equal(countMarkers(body), 4);
+    assert.equal(JSON.stringify(body.messages[1]).includes("cache_control"), false, "the old replayed turn carries no marker");
+  });
+
+  it("a marked tool passed through extraBody is capped, and the caller's object is not changed", () => {
+    const extraTools = [{ name: "terminal", description: "run", input_schema: { type: "object" }, cache_control: EPH }];
+    const extraBody = { tools: extraTools };
+    const body = JSON.parse(buildAnthropicBody({ model: "claude-sonnet-4-5", messages: CONVO, tools: TOOLS, options: { ...NATIVE, extraBody } })) as Dict;
+    assert.equal(countMarkers(body), 4);
+    assert.equal(body.tools[0].cache_control, undefined, "the override's tool marker goes first");
+    assert.deepEqual(body.system.map((b: Dict) => Boolean(b.cache_control)), [true, true], "the planner's system breakpoints stay");
+    assert.deepEqual(extraTools[0]!.cache_control, EPH);
+  });
+
+  it("the same guard holds on the OpenAI-wire envelope route", () => {
+    const extraBody = { tools: [{ ...TOOLS[0]!, cache_control: EPH }] };
+    const body = JSON.parse(
+      buildChatBody({ model: "anthropic/claude-sonnet-4.5", messages: CONVO, tools: TOOLS, options: { baseUrl: "https://openrouter.ai/api/v1/chat/completions", extraBody } }),
+    ) as Dict;
+    assert.ok(countMarkers(body) <= 4);
+  });
+
+  it("caching off: an override's markers are the caller's business", () => {
+    const extraBody = { tools: [{ name: "t", input_schema: { type: "object" }, cache_control: EPH }] };
+    const body = JSON.parse(buildAnthropicBody({ model: "claude-sonnet-4-5", messages: CONVO, tools: TOOLS, options: { promptCaching: false, extraBody } })) as Dict;
+    assert.deepEqual(body.tools[0].cache_control, EPH);
+  });
+});
