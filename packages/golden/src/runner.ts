@@ -237,6 +237,7 @@ export async function runOnce(script: Script, cfg: NodeBackendOptions): Promise<
         ...(script.config?.compression ? { compression: script.config.compression } : {}),
         ...(script.config?.tools ? { tools: script.config.tools as ToolName[] } : {}),
         ...(script.config?.systemPrompt ? { systemPrompt: script.config.systemPrompt } : {}),
+        ...(script.config?.systemPromptStatic ? { systemPromptStatic: script.config.systemPromptStatic } : {}),
       },
       ...(host ? { hooks: host.hooks as LoopHooks } : {}),
       ...(fallback ? { fallback: { client: fallback.client, model: fallback.name } } : {}),

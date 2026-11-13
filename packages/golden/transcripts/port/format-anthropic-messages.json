@@ -12,11 +12,34 @@
         "messages": [
           {
             "role": "user",
-            "content": "say hello in the shell"
+            "content": [
+              {
+                "type": "text",
+                "text": "say hello in the shell",
+                "cache_control": {
+                  "type": "ephemeral"
+                }
+              }
+            ]
           }
         ],
         "max_tokens": 64000,
-        "system": "You are a helpful agent.",
+        "system": [
+          {
+            "type": "text",
+            "text": "You are a helpful agent.",
+            "cache_control": {
+              "type": "ephemeral"
+            }
+          },
+          {
+            "type": "text",
+            "text": "\n\nConversation started: a scripted day.",
+            "cache_control": {
+              "type": "ephemeral"
+            }
+          }
+        ],
         "tools": [
           {
             "name": "terminal",
@@ -163,7 +186,10 @@
             "content": [
               {
                 "type": "text",
-                "text": "I will run it."
+                "text": "I will run it.",
+                "cache_control": {
+                  "type": "ephemeral"
+                }
               },
               {
                 "type": "tool_use",
@@ -181,13 +207,31 @@
               {
                 "type": "tool_result",
                 "tool_use_id": "call_1",
-                "content": "{\"output\":\"hello\\n\",\"exit_code\":0,\"error\":null}"
+                "content": "{\"output\":\"hello\\n\",\"exit_code\":0,\"error\":null}",
+                "cache_control": {
+                  "type": "ephemeral"
+                }
               }
             ]
           }
         ],
         "max_tokens": 64000,
-        "system": "You are a helpful agent.",
+        "system": [
+          {
+            "type": "text",
+            "text": "You are a helpful agent.",
+            "cache_control": {
+              "type": "ephemeral"
+            }
+          },
+          {
+            "type": "text",
+            "text": "\n\nConversation started: a scripted day.",
+            "cache_control": {
+              "type": "ephemeral"
+            }
+          }
+        ],
         "tools": [
           {
             "name": "terminal",

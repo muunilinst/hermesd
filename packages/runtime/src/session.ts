@@ -707,7 +707,7 @@ export class SessionActor implements ActorBehavior {
   }
 
   /** The rows of "end a turn". It runs inside a transaction. Returns false if the turn was not open. */
-  #closeTurnRows(sql: Sql, turnId: string, outcome: "done" | "failed" | "unknown", text: string, now: number): boolean {
+  #closeTurnRows(sql: Sql, turnId: string, outcome: "done" | "failed" | "unknown", text: string, now: number, interrupted = false): boolean {
     const r = sql.exec(
       "UPDATE turns SET status = ?, ended_at = ?, error = ? WHERE id = ? AND status = 'open' RETURNING admission_id",
       outcome,
@@ -716,10 +716,12 @@ export class SessionActor implements ActorBehavior {
       turnId,
     );
     if (r.length === 0) return false;
-    // done -> terminal/completed, failed -> terminal/failed, unknown -> unknown (upstream's words).
+    // done -> terminal/completed (terminal/interrupted for a stopped turn), failed -> terminal/failed,
+    // unknown -> unknown (upstream's words).
     const seq = num(r[0]!.admission_id);
+    const word = outcome === "failed" ? "failed" : interrupted ? "interrupted" : "completed";
     if (outcome === "unknown") sql.exec("UPDATE session_admissions SET status = 'unknown' WHERE seq = ?", seq);
-    else sql.exec("UPDATE session_admissions SET status = 'terminal', outcome = ? WHERE seq = ?", outcome === "done" ? "completed" : "failed", seq);
+    else sql.exec("UPDATE session_admissions SET status = 'terminal', outcome = ? WHERE seq = ?", word, seq);
     sql.exec("UPDATE rt_admission_port SET result = ?, updated_at = ? WHERE seq = ?", text, now, seq);
     sql.exec("UPDATE pending_rows SET status = 'done' WHERE turn_id = ? AND status = 'pending'", turnId);
     sql.exec("UPDATE wake_obligations SET state = 'done' WHERE turn_id = ? AND state = 'open'", turnId);
@@ -771,7 +773,7 @@ export class SessionActor implements ActorBehavior {
         );
       }
       if ((spec.settle?.length ?? 0) > 0 || rows.length > 0) sql.exec("UPDATE turns SET steps = steps + 1, wakes = 0 WHERE id = ?", turnId);
-      return spec.finish ? this.#closeTurnRows(sql, turnId, spec.finish.status, spec.finish.text, now) : false;
+      return spec.finish ? this.#closeTurnRows(sql, turnId, spec.finish.status, spec.finish.text, now, spec.finish.interrupted === true) : false;
     };
     if (rows.length === 0) {
       const closed = await this.#host.tx(body);

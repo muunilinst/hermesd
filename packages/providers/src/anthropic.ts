@@ -1,4 +1,5 @@
 import { hostMatches, hostOf } from "./chat.ts";
+import { callerOwnsCache, capCacheBreakpoints, planPromptCache } from "./prompt-caching.ts";
 import { StreamDroppedError, guardedEvents } from "./sse.ts";
 import { type Dict, type Message, type ModelCallInput, type NormalizedResponse, type ToolCallWire, type ToolDefinition, type Usage, asList, clone, isDict, truthy } from "./types.ts";
 
@@ -631,8 +632,9 @@ const TOOL_CHOICE_MAP: Record<string, Dict> = { auto: { type: "auto" }, required
  */
 export function buildAnthropicBody(input: ModelCallInput): string {
   const o = input.options ?? {};
-  const [system, msgs] = convertMessagesToAnthropic(clone(input.messages), o.baseUrl, input.model);
-  const tools = input.tools.length > 0 ? convertToolsToAnthropic(input.tools) : [];
+  const planned = planPromptCache(input.messages, input.tools, { mode: "anthropic_messages", model: input.model, baseUrl: o.baseUrl, promptCaching: callerOwnsCache(o.extraBody) ? false : o.promptCaching, staticSystemPrefix: o.staticSystemPrefix });
+  const [system, msgs] = convertMessagesToAnthropic(clone(planned.messages), o.baseUrl, input.model);
+  const tools = planned.tools.length > 0 ? convertToolsToAnthropic(planned.tools) : [];
   const model = isNousPortal(o.baseUrl) ? input.model : normalizeModelName(input.model);
   const effective = resolvePositiveMaxTokens(o.maxTokens) ?? maxOutput(model);
   const kwargs: Dict = { model, messages: msgs, max_tokens: effective };
@@ -645,7 +647,8 @@ export function buildAnthropicBody(input: ModelCallInput): string {
   }
   if (o.reasoningConfig) Object.assign(kwargs, thinkingKwargs(o.reasoningConfig, model, effective));
   if (forbidsSamplingParams(model)) for (const k of ["temperature", "top_p", "top_k"]) delete kwargs[k];
-  if (o.extraBody) Object.assign(kwargs, o.extraBody);
+  if (o.extraBody) Object.assign(kwargs, clone(o.extraBody)); // a copy: the cap below may change it
+  if (planned.cached) capCacheBreakpoints(kwargs);
   if (o.stream) kwargs.stream = true;
   return JSON.stringify(kwargs);
 }

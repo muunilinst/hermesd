@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { GOLDEN_FORMAT, type GoldenRecord } from "@hermesd/session-actor";
+import { FAILED_TURN_NOTICE, GOLDEN_FORMAT, INTERRUPTED_PLACEHOLDER, type GoldenRecord } from "@hermesd/session-actor";
 import { baselineProblems, checkAgainstBaseline, checkRecords, loadBaseline, summarize, type Baseline } from "./baseline.ts";
 import { compareTranscripts, formatDiffs } from "./compare.ts";
 import { runScript, serialize, type RunOutput } from "./runner.ts";
@@ -48,8 +48,11 @@ const SPECIFIC: Record<string, (out: RunOutput, s: Script) => void> = {
   "compaction-50": (out) => assertCompacted(out, "threshold"),
   "compaction-85": (out) => assertCompacted(out, "hygiene"),
   "interrupt-mid-call": (out) => {
-    assert.equal(out.record.rows.messages.filter((m) => m.role === "assistant").length, 1, "no row for the dropped answer");
-    assert.deepEqual(out.record.rows.admissions.map((a) => a.outcome), ["completed", "completed"]);
+    const assistants = out.record.rows.messages.filter((m) => m.role === "assistant").map((m) => m.content);
+    assert.deepEqual(assistants, [FAILED_TURN_NOTICE, "second"], "the dropped answer has no row; the stopped turn is closed by the notice");
+    assert.deepEqual(out.record.rows.admissions.map((a) => a.outcome), ["interrupted", "completed"]);
+    const second = out.record.requests[1]!.body as { messages: Array<{ role: string; content: unknown }> };
+    assert.deepEqual(second.messages.slice(1).map((m) => m.role), ["user", "assistant", "user"], "the notice is replayed between the two inputs");
   },
   "provider-fallback-429": (out) => {
     const models = out.record.requests.map((r) => (r.body as { model: string }).model);
@@ -70,7 +73,11 @@ const SPECIFIC: Record<string, (out: RunOutput, s: Script) => void> = {
     assert.deepEqual(out.record.rows.messages.map((m) => m.role), ["user", "assistant"], "no partial assistant row");
   },
   "cancellation-during-tool": (out) => {
-    assert.deepEqual(toolResults(out.record), ['{"error":"the turn was interrupted","status":"cancelled"}']);
+    assert.deepEqual(toolResults(out.record), ['{"output":"[Command interrupted]","exit_code":130,"error":null}'], "the row keeps the executor's interrupt result");
+    assert.deepEqual(out.record.rows.admissions.map((a) => a.outcome), ["interrupted", "completed"]);
+    const second = out.record.requests[1]!.body as { messages: Array<{ role: string; content: unknown }> };
+    assert.match(String(second.messages[3]!.content), /its effect is UNKNOWN/, "the model is told the effect is unknown");
+    assert.deepEqual(second.messages[4], { role: "assistant", content: INTERRUPTED_PLACEHOLDER }, "the empty closing row is replayed as the placeholder");
   },
   "three-plugins-hook-order": (out) => assert.deepEqual(toolResults(out.record), ['{"error": "policy says no"}'], "directory 10-policy comes before 30-audit"),
   "tool-error-text": (out) => {

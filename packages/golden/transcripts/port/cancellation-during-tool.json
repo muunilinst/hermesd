@@ -187,7 +187,11 @@
           {
             "role": "tool",
             "tool_call_id": "call_1",
-            "content": "{\"error\":\"the turn was interrupted\",\"status\":\"cancelled\"}"
+            "content": "[Orphan recovery: interrupted side-effecting tool may have executed; its effect is UNKNOWN. Inspect state before retrying.]"
+          },
+          {
+            "role": "assistant",
+            "content": "[interrupt: no assistant output for this turn]"
           },
           {
             "role": "user",
@@ -364,10 +368,20 @@
       },
       {
         "role": "tool",
-        "content": "{\"error\":\"the turn was interrupted\",\"status\":\"cancelled\"}",
+        "content": "{\"output\":\"[Command interrupted]\",\"exit_code\":130,\"error\":null}",
         "tool_calls": null,
         "tool_call_id": "call_1",
         "tool_name": "terminal",
+        "finish_reason": null,
+        "active": 1,
+        "compacted": 0
+      },
+      {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": null,
+        "tool_call_id": null,
+        "tool_name": null,
         "finish_reason": null,
         "active": 1,
         "compacted": 0
@@ -397,7 +411,7 @@
       {
         "status": "terminal",
         "input": "wait a minute",
-        "outcome": "completed"
+        "outcome": "interrupted"
       },
       {
         "status": "terminal",
