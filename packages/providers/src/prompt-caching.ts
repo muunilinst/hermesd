@@ -135,22 +135,32 @@ export const MAX_CACHE_BREAKPOINTS = 4;
 /**
  * The last guard on a built request body (Messages or chat_completions): Anthropic rejects
  * more than four `cache_control` breakpoints. A request override (`extraBody`) can add
- * markers after the planner ran. Over the limit, markers go first from `tools`, then from
- * the oldest messages, then from the system prompt, so the planner's newest breakpoints stay.
- * Changes `body` in place and returns the number of markers removed.
+ * markers after the planner ran. Only the places that can carry a breakpoint are looked at:
+ * a tool, a system block, a message (the envelope layout), a content block of a message
+ * and a block inside a `tool_result`. A tool parameter that happens to be named
+ * `cache_control` is schema, not a marker, and is never touched. Over the limit, markers
+ * go first from `tools`, then from the oldest messages, then from the system prompt, so
+ * the planner's newest breakpoints stay. Changes `body` in place (the builders pass their
+ * own copies) and returns the number of markers removed.
  */
 export function capCacheBreakpoints(body: Dict, max = MAX_CACHE_BREAKPOINTS): number {
   const holders: Dict[] = [];
-  const walk = (v: unknown): void => {
-    if (Array.isArray(v)) for (const x of v) walk(x);
-    else if (isDict(v)) {
-      if (isDict(v.cache_control)) holders.push(v);
-      for (const [k, x] of Object.entries(v)) if (k !== "cache_control" && typeof x === "object") walk(x);
+  const take = (v: unknown): void => {
+    if (isDict(v) && isDict(v.cache_control)) holders.push(v);
+  };
+  const blocks = (content: unknown): void => {
+    if (!Array.isArray(content)) return;
+    for (const b of content) {
+      take(b);
+      if (isDict(b) && b.type === "tool_result" && Array.isArray(b.content)) for (const inner of b.content) take(inner);
     }
   };
-  walk(body.tools);
-  walk(body.messages);
-  walk(body.system);
+  for (const t of Array.isArray(body.tools) ? body.tools : []) take(t);
+  for (const m of Array.isArray(body.messages) ? body.messages : []) {
+    take(m);
+    if (isDict(m)) blocks(m.content);
+  }
+  if (Array.isArray(body.system)) blocks(body.system);
   let extra = holders.length - max;
   let removed = 0;
   for (const h of holders) {
@@ -160,6 +170,16 @@ export function capCacheBreakpoints(body: Dict, max = MAX_CACHE_BREAKPOINTS): nu
     removed++;
   }
   return removed;
+}
+
+/**
+ * True when the caller asked for Anthropic's automatic caching: a top-level `cache_control`
+ * in the request override. The caller then owns the cache layout. Explicit markers next to
+ * it can only conflict (a 1h automatic marker after 5m explicit ones is a 400), so the
+ * planner adds none and the request goes out as the caller built it.
+ */
+export function callerOwnsCache(extraBody: Dict | null | undefined): boolean {
+  return isDict(extraBody) && isDict(extraBody.cache_control);
 }
 
 export function stripToolCacheControl<T>(tools: readonly T[]): T[] {

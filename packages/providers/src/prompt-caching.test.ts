@@ -189,3 +189,54 @@ describe("prompt caching: the final request stays within four breakpoints", () =
     assert.deepEqual(body.tools[0].cache_control, EPH);
   });
 });
+
+describe("prompt caching: what the limiter must not touch", () => {
+  const countMarkers = (body: Dict): number => (JSON.stringify(body).match(/"cache_control"/g) ?? []).length;
+  // A real tool can take a parameter named cache_control: that is schema, not a breakpoint.
+  const schemaTool = () => ({
+    type: "function",
+    function: {
+      name: "set_cache",
+      description: "Set a cache policy.",
+      parameters: { type: "object", properties: { cache_control: { type: "object", properties: { type: { type: "string" } } } }, required: ["cache_control"] },
+    },
+  });
+
+  it("native Anthropic: a parameter named cache_control keeps its schema", () => {
+    const tool = schemaTool();
+    const before = JSON.stringify(tool);
+    const body = JSON.parse(
+      buildAnthropicBody({ model: "claude-sonnet-4-5", messages: CONVO, tools: [tool], options: { baseUrl: "https://api.anthropic.com/v1/messages", staticSystemPrefix: STATIC } }),
+    ) as Dict;
+    assert.deepEqual(body.tools[0].input_schema.properties.cache_control, { type: "object", properties: { type: { type: "string" } } });
+    assert.deepEqual(body.tools[0].input_schema.required, ["cache_control"]);
+    assert.equal(JSON.stringify(tool), before, "the caller's tool is not changed");
+  });
+
+  it("OpenRouter: a parameter named cache_control keeps its schema, and the caller's tool is not changed", () => {
+    const tool = schemaTool();
+    const before = JSON.stringify(tool);
+    const body = JSON.parse(
+      buildChatBody({ model: "anthropic/claude-sonnet-4.5", messages: CONVO, tools: [tool], options: { baseUrl: "https://openrouter.ai/api/v1/chat/completions" } }),
+    ) as Dict;
+    assert.deepEqual(body.tools[0].function.parameters.properties.cache_control, { type: "object", properties: { type: { type: "string" } } });
+    assert.equal(JSON.stringify(tool), before);
+  });
+
+  it("a caller's automatic cache marker is honored: no explicit markers are added", () => {
+    const auto = { type: "ephemeral", ttl: "1h" };
+    const body = JSON.parse(
+      buildAnthropicBody({ model: "claude-sonnet-4-5", messages: CONVO, tools: TOOLS, options: { baseUrl: "https://api.anthropic.com/v1/messages", extraBody: { cache_control: auto } } }),
+    ) as Dict;
+    assert.deepEqual(body.cache_control, auto);
+    assert.equal(countMarkers(body), 1, "only the caller's marker");
+    assert.equal(body.system, SYSTEM);
+  });
+
+  it("the same on the OpenRouter route", () => {
+    const body = JSON.parse(
+      buildChatBody({ model: "anthropic/claude-sonnet-4.5", messages: CONVO, tools: TOOLS, options: { baseUrl: "https://openrouter.ai/api/v1/chat/completions", extraBody: { cache_control: { type: "ephemeral" } } } }),
+    ) as Dict;
+    assert.equal(countMarkers(body), 1);
+  });
+});

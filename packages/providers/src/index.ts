@@ -10,4 +10,4 @@ export { buildAnthropicBody, parseAnthropicResponse, readAnthropicStream, conver
 export { buildCodexBody, parseCodexResponse, readCodexStream, chatMessagesToResponsesInput } from "./codex.ts";
 export { buildConverseRequest, parseConverseResponse, normalizeConverseStreamEvents, convertMessagesToConverse, bearerSigner, type RequestSigner } from "./bedrock.ts";
 export { ALL_MODES, MODELS, PARALLEL_CONVERSATION, TOOLS } from "./fixtures.ts";
-export { anthropicPromptCachePolicy, applyAnthropicCacheControl, capCacheBreakpoints, isOneShotRequest, planPromptCache, type CacheTtl } from "./prompt-caching.ts";
+export { anthropicPromptCachePolicy, applyAnthropicCacheControl, callerOwnsCache, capCacheBreakpoints, isOneShotRequest, planPromptCache, type CacheTtl } from "./prompt-caching.ts";

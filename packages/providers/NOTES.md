@@ -202,7 +202,11 @@ Differences:
   Claude/Kimi. One-shot requests (compaction summaries) get none. `promptCaching: false`
   turns it off; `{ ttl: "1h" }` picks the 1h tier. Not ported: skill-scaffold splits, the
   direct native tool-array marker, MoA and LiteLLM routes, per-model custom-provider
-  capabilities. Bedrock keeps its own `cachePoint` markers.
+  capabilities. Bedrock keeps its own `cachePoint` markers. The planner owns the breakpoints of a request it decorates: incoming markers on
+  messages, replayed blocks and tools are stripped, and `capCacheBreakpoints` keeps the built
+  body (after `extraBody`) at four, looking only where a breakpoint can sit. A top-level
+  `cache_control` in `extraBody` (automatic caching) means the caller owns the cache: no
+  explicit markers are added.
 - `bun.lock` is updated by `bun install`; CI installs with `bun install --frozen-lockfile`.
 
 ## Tests
